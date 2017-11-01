@@ -11,5 +11,14 @@ public class MyFirstClass {
 		boolean boo = true;//자주사용
 		char c = '가';//자주사용
 		System.out.println();
+		String str = new String("가");
+		String str1 = "가";
+		String str2 = str;
+		System.out.println(str==str1);
+		System.out.println(str==str2);
+		str = "나";
+		System.out.println(str);
+		System.out.println(str2);
+		System.out.println(str==str2);
 	}
 }
