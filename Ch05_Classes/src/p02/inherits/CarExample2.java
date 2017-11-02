@@ -28,7 +28,12 @@ public class CarExample2 {
 		//move()라는 메소드는 이름은 동일하지만 속한 객체에 다라 실행결과가 달라짐 - 메소드의 다형성
 		for (int i =0; i<car.length; i++) {
 			car[i].move(); //메소드의 다형성
-			System.out.println(car[i].a); //아 왜 이거값은 안바뀜...
+			System.out.println(car[i].a);
+			/* 자식 객체들이 부모객체인 Car타입으로
+			 * 자동 형변환되어 본인의 필드값으로 접근이 안됨.
+			 * 굳이 자식객체들의 a값을 받을려면 강제형변환 시켜야함
+			 * 다만 override된 메소드는 override된 결과로 출력가능
+			 */
 		if (car[i] instanceof Ambulance) { //casting가능한지 판별하는 게 instanceof, 
 			Ambulance am = (Ambulance)car[i];
 			am.special();
