@@ -31,7 +31,6 @@ public class ArrExam {
 			}else if(selectNo==4) {
 				run = false;//종료
 			}
-			
 		}//while문 끝
 		System.out.println("종료합니다.");
 

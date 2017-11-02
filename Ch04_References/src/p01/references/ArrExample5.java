@@ -8,7 +8,7 @@ public class ArrExample5 {
 		int sum = 0;
 		String[] title = {"이름","국어","영어","수학","총점","평균"};
 		String[] name = {"첫째","둘째","셋째","넷째"};
-		int[][] score = {{90,80,70},{76,96,90},{90,78,90},{80,80,80}}; 
+		int[][] score = {{90,80,70},{76,86,90},{90,78,90},{80,80,80}}; 
 		System.out.println("성적표\n");
 		for(String t:title) {
 			System.out.print(t+"\t");
