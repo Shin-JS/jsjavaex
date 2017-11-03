@@ -27,7 +27,7 @@ public class ArrExam2 {
 				}	
 			}else if(selectNo==3) {
 				for (int i=0;i<scores.length;i++) {
-					System.out.println("scores["+(i+1)+"]"+"="+scores[i]);
+					System.out.println((i+1)+"번째 학생의 점수는"+scores[i] + " 점 입니다.");
 				}
 			}else if(selectNo==5) {
 				run = false;//종료
