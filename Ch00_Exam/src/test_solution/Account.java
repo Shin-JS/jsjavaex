@@ -1,4 +1,4 @@
-package test;
+package test_solution;
 
 public class Account {
 	//필드

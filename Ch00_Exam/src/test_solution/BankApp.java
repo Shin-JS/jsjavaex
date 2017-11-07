@@ -1,4 +1,4 @@
-package test;
+package test_solution;
 import java.text.DecimalFormat;
 import java.util.Scanner;
 

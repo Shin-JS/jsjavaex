@@ -8,8 +8,7 @@ import java.util.Scanner;
  *  password입력받고 성공하면 "로그인완료"
  *  "~~~님 반갑습니다."라는 환영메시지가 나올 수 있게
  *  id나 password가 안맞을경우 "회원가입을 하시겠습니까?" 후 회원가입을 받을 수 있게
- *  
- *  스캐너, 배열, 중복체크, Member클래스에 findMember메소드, 배열형태로 id, password, name받을 변수도 필요할거같고...
+ *  id&&password 동시 and연산 들어가야할듯............ id와 다른 password써도 로그인되는 오류
  **/
 public class MemberServiceExample {
 	static Member[] memberArray = new Member[100];
@@ -22,8 +21,8 @@ public class MemberServiceExample {
 		String id = scanner.next(); //id입력받기
 		Member member = null;
 		Member memberId = findId(id);
-		Member memberPassword = findPw(password);
-		if(memberId==null) { //동일 id가 없을때 회원가입받음
+		Member memberPassword = findPw(id, password);
+		if(memberId==null) { //동일 id가 없을때 회원가입받음, id먼저 확인 후 비밀번호 입력
 			System.out.println("회원가입하세요");
 			System.out.println("신규 가입할 id를 입력하세요");
 			id = scanner.next();
@@ -42,9 +41,10 @@ public class MemberServiceExample {
 		}else { //동일 id가 있으면 이 후 비밀번호 입력
 			System.out.println("패스워드를 입력하세요: ");
 			password = scanner.next();
-			if(memberPassword==null) {
+			if(memberPassword==null) { //비밀번호 입력 실패시
 				System.out.println("정확한 비밀번호를 입력하세요");
 			}else {
+				memberPassword = findPw(id, password);
 				System.out.println(memberPassword.getName()+"님 로그인을 환영합니다.");
 			}
 			
@@ -71,11 +71,11 @@ public class MemberServiceExample {
 			System.out.println(member.getName()+"님 로그인을 환영합니다.");
 		}*/
 	}
-	private static Member findPw(String password) {
+	private static Member findPw(String id,String password) {
 		Member memberPw = null;
 		for (int i = 0; i < memberArray.length;i++) {
 			if(memberArray[i]!=null) {
-				if(memberArray[i].getName().equals(password)) {
+				if(memberArray[i].getName().equals(id)&&memberArray[i].getPassword().equals(password)) {
 					memberPw = memberArray[i];
 				}
 			}
