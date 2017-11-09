@@ -31,5 +31,6 @@ public class AnonymousExample2 {
 		//의 결과
 		RemoteControl rc = new SmartControl();
 		anony.method2(rc); //가 이거임
+		anony.method3(1);
 	}
 }
