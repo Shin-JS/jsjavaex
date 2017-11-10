@@ -33,11 +33,5 @@ public class Member {
 		this.name = name;
 	}
 	
-	public void idCheck(String id) {
-		
-	}
-	public void passwordCheck(String password) {
-		
-	}
 	
 }
