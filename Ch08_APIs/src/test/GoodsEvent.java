@@ -33,7 +33,7 @@ public class GoodsEvent {
 		this.endDate = endDate;
 	}
 	public void events(LocalDate localDate) {
-		if(localDate.isAfter(startDate)||localDate.isEqual(startDate)&&localDate.isBefore(endDate)||localDate.isEqual(endDate)) {
+		if((localDate.isAfter(startDate)||localDate.isEqual(startDate))&&(localDate.isBefore(endDate)||localDate.isEqual(endDate))) {
 			goods.setPrice((goods.getPrice()*8/10)); //long타입이라 0.8을 그냥 곱할 수 없었음...
 			System.out.println("제품명: "+ goods.getName() + ", 가격: " + goods.getPrice());
 		}else {

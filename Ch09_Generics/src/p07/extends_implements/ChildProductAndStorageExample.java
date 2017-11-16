@@ -13,7 +13,8 @@ public class ChildProductAndStorageExample {
 		Storage<Tv> storage = new StorageImple<>(100);
 		storage.add(new Tv(), 0); //저장
 		Tv tv = storage.get(0);
-		System.out.println(tv);
+		long data1 = 1000;
+
 		
 	}
 }

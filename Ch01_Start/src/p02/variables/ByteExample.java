@@ -25,6 +25,8 @@ public class ByteExample {
 		System.out.println("var3= " + var3);
 		System.out.println("var4= " + var4);
 		System.out.println("var5= " + var5);
+		float a = 5*3.1f;
+		System.out.println(a);
 		
 	}
 
