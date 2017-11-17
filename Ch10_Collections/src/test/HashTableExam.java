@@ -4,9 +4,7 @@ import java.util.Hashtable;
 import java.util.Map;
 import java.util.Scanner;
 
-/**
- * [List 컬렉션] Map HashTable Thread-safe: 멀티쓰레드환경에서 자료를 보호할 수 있는 구조
- **/
+
 public class HashTableExam {
 	static Map<String, String> map = new Hashtable<>();
 	static Scanner scanner = new Scanner(System.in);
@@ -58,7 +56,6 @@ public class HashTableExam {
 	}
 
 	private static void login() {
-		while (true) {
 			System.out.print("가입한 아이디를 입력하세요: ");
 			String id = scanner.next();
 			if (map.containsKey(id)) {
@@ -66,7 +63,6 @@ public class HashTableExam {
 				String pw = scanner.next();
 				if (map.get(id).equals(pw)) {
 					System.out.println("로그인 완료");
-					break;
 				} else {
 					for (int i = 1; i <= 4; i++) {
 						System.out.println("비밀번호가 다릅니다.(5회 오류시 프로그램이 종료됩니다.)");
@@ -75,6 +71,7 @@ public class HashTableExam {
 						pw = scanner.next();
 						if (map.get(id).equals(pw)) {
 							System.out.println("로그인 완료");
+							break; //메인메뉴 진입을 위한 break;
 						} else {
 							System.out.println("비밀번호를 " + (i + 1) + "번 틀렸습니다.");
 						}
@@ -90,11 +87,10 @@ public class HashTableExam {
 				if (select.equalsIgnoreCase("y")) {
 					join();
 				} else {
-					break;
 				}
 
 			}
-		}
+		
 	}
 
 }// 클래스 끝

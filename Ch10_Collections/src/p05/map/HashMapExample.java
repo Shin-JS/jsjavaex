@@ -1,5 +1,6 @@
 package p05.map;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -13,6 +14,7 @@ public class HashMapExample {
 	public static void main(String[] args) {
 		//Map객체 생성
 		Map<String,Integer> map = new HashMap<>();
+		map = Collections.synchronizedMap(map); //동기화 끝....
 		//객체 저장
 		map.put("홍길동", 85);//중복키값 저장불가..., 첫번째와 4번째는 키가 "홍길동"으로 동일
 		map.put("일지매", 90);//두번째값과 5번째값은 값이 90으로 동일

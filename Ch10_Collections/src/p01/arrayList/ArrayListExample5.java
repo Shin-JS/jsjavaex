@@ -1,7 +1,7 @@
 package p01.arrayList;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
 
@@ -14,6 +14,7 @@ public class ArrayListExample5 {
 		//입력된 객체의 갯수만큼 반복해서 index번호 0번지의 값을 삭제하는 코드
 		Scanner scanner = new Scanner(System.in);
 		List<String> list = new ArrayList<>();
+		list=Collections.synchronizedList(list); //동기화 된거임...
 		String str;
 		for(int i = 0; i < 4; i++) {
 			System.out.println(i+1);

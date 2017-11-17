@@ -1,5 +1,6 @@
 package p04.set;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -12,6 +13,7 @@ public class HashSetExample {
 	public static void main(String[] args) {
 		//Set객체 생성
 		Set<String> set = new HashSet<>(); //HashSet 객체 생성 후 Promotion
+		set = Collections.synchronizedSet(set); //동기화 끝
 		set.add("Java");
 		set.add("JDBC");
 		set.add("Servlet/JSP");
