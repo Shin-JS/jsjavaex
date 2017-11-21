@@ -33,7 +33,7 @@ public class ServerExample {
 				String message2 = new String(bytes,0,readByteCnt);
 				readByteCnt = is.read(bytes);
 				String message3 = new String(bytes,0,readByteCnt);
-				System.out.println("[데이터 받기 성공]:" +"숫자1"+message +"숫자2"+message2+"연산자"+message3);
+				System.out.println("[데이터 받기 성공]:" +"숫자1: "+message +",숫자2: "+message2+",연산자: "+message3);
 				//---------------------------- 전송받은 메세지 출력완료---------------------
 				OutputStream os = socket.getOutputStream(); //출력객체 생성
 				Integer int1 = new Integer(message);
@@ -46,6 +46,7 @@ public class ServerExample {
 					bytes = result.getBytes();
 					os.write(bytes);
 					os.flush();
+					System.out.println("[데이터 보내기 성공]");
 					break;
 				case "-": 
 					int minus = int1-int2;
@@ -53,6 +54,7 @@ public class ServerExample {
 					bytes = result.getBytes();
 					os.write(bytes);
 					os.flush();
+					System.out.println("[데이터 보내기 성공]");
 					break;
 				case "*": 
 					int product = int1*int2;
@@ -60,6 +62,7 @@ public class ServerExample {
 					bytes = result.getBytes();
 					os.write(bytes);
 					os.flush();
+					System.out.println("[데이터 보내기 성공]");
 					break;
 				case "/": 
 					int divide = int1/int2;
@@ -67,6 +70,7 @@ public class ServerExample {
 					bytes = result.getBytes();
 					os.write(bytes);
 					os.flush();
+					System.out.println("[데이터 보내기 성공]");
 					break;
 				}
 				
@@ -77,7 +81,7 @@ public class ServerExample {
 //				bytes = message2.getBytes();
 //				os.write(bytes);
 //				os.flush();
-				System.out.println("[데이터 보내기 성공]");
+//				System.out.println("[데이터 보내기 성공]");
 				
 				is.close();
 				os.close();

@@ -24,21 +24,20 @@ public class ClientExample {
 			
 			String message = null;
 			byte[] bytes = null;
-			String message2 = null;
 			
 			OutputStream os = socket.getOutputStream(); //출력객체 생성
 			Scanner scanner = new Scanner(System.in);
-			System.out.print("숫자1입력>");
+			System.out.print("숫자1입력: ");
 			message = scanner.next();
 			bytes = message.getBytes(); //String.getBytes()→문자열을 byte배열로 변환
 			os.write(bytes); //전송
 			os.flush(); //메세지 밀어내기
-			System.out.print("숫자2입력>");
+			System.out.print("숫자2입력: ");
 			message = scanner.next();
 			bytes = message.getBytes(); //String.getBytes()→문자열을 byte배열로 변환
 			os.write(bytes); //전송
 			os.flush();
-			System.out.print("연산자 입력>");
+			System.out.print("연산자 입력(+,-,*,/):");
 			message = scanner.next();
 			bytes = message.getBytes();
 			os.write(bytes);
@@ -49,10 +48,7 @@ public class ClientExample {
 			bytes = new byte[100]; //byte단위의 값을 읽어들여 저장하는 배열
 			int readByteCnt = is.read(bytes);//읽어들인마큼 배열에 저장 후 저장된갯수를 readByteCnt에 대입
 			message = new String(bytes,0,readByteCnt); //메세지 생성
-//			readByteCnt = is.read(bytes);
-//			message2 = new String(bytes,0,readByteCnt);
 			System.out.println("[데이터 받기 성공]:" + message);
-//			System.out.println(message2);
 			
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
