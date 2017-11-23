@@ -30,9 +30,9 @@ public class ConfirmButtonActionListener implements ActionListener{
 		
 		try {
 			if(f.exists()==false) {
-				f.createNewFile();
+				f.createNewFile(); //파일이 없으면 만듬
 			}
-			OutputStream os = new FileOutputStream(f,true);
+			OutputStream os = new FileOutputStream(f,true); //기존에 있는 파일에 이어쓰기위해 뒤에 true붙여줌
 			String info = text1.getText()+","+text2.getText()+","+text3.getText()+"\r\n";
 			byte[] output = info.getBytes();
 			os.write(output);
