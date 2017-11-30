@@ -23,7 +23,7 @@ public class JDBCDeleteTest {
 		ResultSet rs = null;
 		//연결정보
 		Properties prop = new Properties();
-		String path = JDBCDeleteTest.class.getResource("database.properties").getPath();
+		String path = "C:\\Users\\Administrator\\eclipse-workspace\\JDBC\\src\\p01\\jdbc\\database.properties";
 		//쿼리문
 		int no = 0;
 		String sql = "";

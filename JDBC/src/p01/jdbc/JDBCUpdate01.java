@@ -9,7 +9,7 @@ import java.util.Scanner;
 /**[JDBC]
  * -.insert/update/delete executeUpdate();
  * executeUpdate()메소드는 반영된 행(row)수를 리턴함
- * update
+ * insert
  **/
 public class JDBCUpdate01 {
 	public static void main(String[] args) {
