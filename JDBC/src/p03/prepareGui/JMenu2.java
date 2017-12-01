@@ -54,7 +54,7 @@ public class JMenu2 extends JFrame implements ActionListener{
 
 		setJMenuBar(jmb); //메뉴프레임에 메뉴바 추가
 		textField = new TextField();
-//		contentPane.add(textField,BorderLayout.SOUTH);
+//		contentPane.add(textField,BorderLayout.SOUTH); 버튼을 가려서 제거
 		setTitle("JMenuTest");
 		setSize(300, 200);
 		setVisible(true);
@@ -69,6 +69,7 @@ public class JMenu2 extends JFrame implements ActionListener{
 	public void actionPerformed(ActionEvent e) {
 		String test = e.getActionCommand();
 		if(test=="주소록 입력") {
+			contentPane.removeAll(); //먼저 안에있던 것들 제거
 			JPanel panel = new JPanel();
 			panel.setLayout(new GridLayout(4, 2));
 			JTextField text1 = new JTextField();
@@ -89,7 +90,7 @@ public class JMenu2 extends JFrame implements ActionListener{
 			setVisible(true);
 
 		}else if(test=="주소록 출력"){
-
+			contentPane.removeAll();
 			String[] colName = {"no","이름","주소","전화번호"}; //헤드부분 데이터 생성
 			Object[][] data = new Object[100][4]; //데이터 저장공간 생성
 			//1단계 로드
@@ -97,6 +98,7 @@ public class JMenu2 extends JFrame implements ActionListener{
 			//2단계 쿼리객체 생성
 			String sql = "select * from address";
 			try {
+
 				PreparedStatement pstmt = conn.prepareStatement(sql);
 				ResultSet rs = pstmt.executeQuery();
 				int i = 0;
