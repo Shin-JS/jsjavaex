@@ -3,8 +3,6 @@ package p03.prepareGui;
 import java.io.FileReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.util.Properties;
 
 /**
@@ -26,12 +24,12 @@ public class Connections {
 	}
 	public Connection getConnection() {
 		Connection conn = null;
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
+		//프로버티 객체: 키와값이 문자열로 한정된 map
 		Properties prop = new Properties();
+		//상대경로로 파일 읽기
 		String path = Connections.class.getResource("database.properties").getPath();
 		try {
-			prop.load(new FileReader(path));
+			prop.load(new FileReader(path)); //상대경로로 부터 자료 읽기
 			String driver = prop.getProperty("driver");
 			String user = prop.getProperty("user");
 			String url = prop.getProperty("url");
