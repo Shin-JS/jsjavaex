@@ -69,7 +69,7 @@ public class JMenu2 extends JFrame implements ActionListener{
 	public void actionPerformed(ActionEvent e) {
 		String test = e.getActionCommand();
 		if(test=="주소록 입력") {
-			contentPane.removeAll(); //먼저 안에있던 것들 제거
+			contentPane.removeAll(); //컨테이너 정리
 			JPanel panel = new JPanel();
 			panel.setLayout(new GridLayout(4, 2));
 			JTextField text1 = new JTextField();
