@@ -1,0 +1,7 @@
+# Example name. Review/replace before execution. Run once, after 01-inspect.
+# If the type already exists, compare its definition; do not run add again.
+add type "ZCA Change Action"
+    derived "Change Action"
+    abstract false
+    description "Custom Change Action for the ZCA widget";
+print type "ZCA Change Action";

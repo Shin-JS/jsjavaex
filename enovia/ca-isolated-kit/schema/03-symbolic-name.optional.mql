@@ -1,0 +1,5 @@
+# Optional, only when project deployment conventions require symbolic mapping.
+# First inspect eServiceSchemaVariableMapping.tcl and check for a collision.
+add property type_ZCAChangeAction
+    on program eServiceSchemaVariableMapping.tcl
+    to type "ZCA Change Action";

@@ -1,0 +1,7 @@
+.zca-library-picker { margin: 14px 8px; padding: 12px; border-top: 1px solid #ccc; }
+.zca-library-picker .zca-library-line { display: flex; align-items: end; gap: 8px; }
+.zca-library-picker label { display: flex; flex: 1; flex-direction: column; gap: 6px; }
+.zca-library-picker input { padding: 7px; min-width: 120px; width: 100%; box-sizing: border-box; }
+.zca-library-picker button { padding: 7px 10px; cursor: pointer; }
+.zca-library-picker .zca-library-result { display: block; margin-top: 5px; text-align: left; }
+.zca-library-picker [role="status"] { margin-top: 6px; font-size: 12px; }

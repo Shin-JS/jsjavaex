@@ -1,0 +1,7 @@
+# Read-only. Run individually in the target environment.
+print type "Change Action";
+list type "ZCA Change Action";
+print program eServiceSchemaVariableMapping.tcl;
+# Inspect an existing CA separately:
+# print bus "<EXISTING_CA_ID>" select type policy vault;
+# Then print the actual policy returned above; do not assume its name.
