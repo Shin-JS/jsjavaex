@@ -1,4 +1,4 @@
-# 기존 파일 수정 방식: CA 속성 탭의 분류 선택 입력창
+# 기존 파일 수정 방식: CA 클래스 선택과 속성값 입력
 
 이 문서는 앞서 만든 별도 Launcher/Engine/facet 구성 대신, **기존 파일명과 기존 AMD 모듈을 유지하며 추가할 부분만** 정리한 버전입니다. 타입 생성 MQL은 기존 schema 폴더에 유지했습니다.
 
@@ -13,11 +13,11 @@
 | ENOChgGovernance.html | 커스텀 위젯의 초기화/onLoad | 이 위젯에만 기능 활성화 값 지정 |
 | ENOChgGovernanceUX.js | ChgCreateChangeAction.launchCreateChangeActionDialog | 활성화된 위젯에서 신규 타입 사용; OOTB 기본 타입 설정 저장은 제외 |
 | ENONewWidget.js | ENONewFacetHelper.getFacetList | 생성 대화상자마다 두 facet이 공유하는 bridge 추가 |
-| ENONewWidget.js | ENOListViewFacet.init/destroy | 속성 탭의 검색 입력창 추가와 정리 |
-| ENONewWidget.js | ENONewDialogController.destroy | 닫을 때 해당 bridge 정리 |
+| ENONewWidget.js | ENOListViewFacet.init/destroy | 속성 탭의 클래스 선택창/속성 폼 추가와 정리 |
+| ENONewWidget.js | ENONewDialogController.destroy | 탭 전환 시 속성 폼 위치 처리; 닫을 때 bridge 정리 |
 | ClassificationsFacet.js | PLMNewClassificationFacet.init/destroy | 기존 라이브러리 컨트롤러를 bridge에 연결 |
 
-`EditPropWidget.js`, 부모 타입의 attribute, 공용 CSS, 별도 신규 Launcher/Engine/Controller는 이번 수정 대상이 아닙니다. 분류 속성 표시와 저장은 기존 로직을 유지합니다.
+`EditPropWidget.js`, 부모 타입의 attribute, 공용 CSS, 별도 신규 Launcher/Engine/Controller는 이번 수정 대상이 아닙니다. 분류 속성의 모델과 저장은 기존 로직을 유지하고, 표시 위치를 옵션으로 선택합니다.
 
 ## 2. 타입 생성부터 진행
 
@@ -83,7 +83,7 @@ bridge는 getFacetList 호출마다 새로 만들며, 현재 대화상자의 ENO
 
 ### 5-2. ENOListViewFacet
 
-ZcaLibraryAdapter, zcaInstallPropertiesPicker, zcaDestroyPropertiesPicker를 이 factory 내부에 추가합니다. 기존 init에서 listview.loadView() 다음에 추가합니다.
+ZcaLibraryAdapter와 zcaInstallPropertiesPicker, zcaRenderClassFields, zcaRestoreClassFields, zcaDestroyPropertiesPicker를 이 factory 내부에 추가합니다. 기존 init에서 listview.loadView() 다음에 추가합니다.
 
 ```javascript
 zcaInstallPropertiesPicker(this, options);
@@ -95,7 +95,28 @@ zcaInstallPropertiesPicker(this, options);
 
 추가 CSS 파일은 만들지 않고 기존 ClassificationsFacet.css를 css! 로더로 가져옵니다. UI 컴포넌트도 zcaInstallPropertiesPicker 안에서 require하므로 기존 AMD factory의 의존성 배열/인자 순서를 바꿀 필요가 없습니다. 실제 설치 버전의 테마에 따른 최종 외형은 화면에서 확인하세요.
 
-이미 적용한 코드에서는 ENONewWidget.js의 [2] 영역에 있는 zcaInstallPropertiesPicker/zcaDestroyPropertiesPicker 두 함수를 교체합니다. ZcaLibraryAdapter, [1] bridge 구성, [3] 닫기 처리는 유지합니다. 특히 사용자가 테스트하면서 바꾼 Change Action 타입 조건을 이번 UI 변경 때문에 이전 ZCA Change Action 예시로 되돌리지 마세요.
+이미 적용한 코드에서는 ENONewWidget.js의 [2] 영역에서 zcaInstallPropertiesPicker/zcaDestroyPropertiesPicker를 교체하고 zcaRenderClassFields/zcaRestoreClassFields를 추가합니다. ZcaLibraryAdapter는 유지합니다. [1]에는 아래 모드 한 줄을 추가하고, [3]에는 탭 전환 함수와 호출을 추가합니다. 특히 사용자가 테스트하면서 바꾼 Change Action 타입 조건을 이번 UI 변경 때문에 이전 ZCA Change Action 예시로 되돌리지 마세요.
+
+### 클래스 속성 필드와 값 입력창의 표시 모드
+
+선택한 클래스의 기존 속성 폼을 재사용하여 속성 탭에서 필드와 값을 편집할 수 있게 했습니다. `zcaAttachBridge()`에서 properties.options.zcaBridge를 대입한 다음 한 줄을 추가합니다.
+
+```javascript
+properties.options.zcaClassFieldsMode = "move";
+```
+
+| 설정값 | 표시 위치 |
+|---|---|
+| `move` | 선택창 아래의 속성 탭에서만 클래스 속성 필드와 값 입력창을 표시 |
+| `both` | 속성 탭과 분류 탭에서 모두 같은 속성 필드와 값을 편집 |
+
+두 탭에 모두 표시하려면 위 값만 `"both"`로 바꿉니다. 생성 화면을 열기 전에 설정하며, 이미 열려 있는 화면의 모드를 실행 중에 바꾸는 방식은 지원하지 않습니다.
+
+두 모드 모두 기존 `PLMNewLibraryActiveController.accordeonCon`에 들어 있는 실제 ClassifPropWidget 폼을 사용합니다. 필드 DOM을 clone하거나 별도의 분류 속성 모델을 만들지 않습니다. `move`는 이 폼을 속성 탭의 host에 둡니다. `both`는 서로 배타적으로 표시되는 탭을 전환할 때 같은 폼을 현재 탭에 붙여 표시합니다. 따라서 화면에서는 두 탭 모두 편집할 수 있지만 DOM 폼은 한 개입니다. 두 탭을 동시에 보이도록 따로 펼친 레이아웃에서 독립적인 폼 두 개를 렌더링하는 기능은 아닙니다.
+
+선택 변경/삭제는 기존 컨트롤러의 속성 모델과 폼을 갱신합니다. 이미 입력한 값은 동일한 폼/모델에 유지됩니다. 클래스 선택이 없으면 속성 탭의 폼 영역을 숨깁니다. 내부 폼의 높이를 계산할 수 있도록 host 높이를 360px로 두었고, 해당 영역의 기존 스크롤을 사용합니다. 업무 화면의 높이가 다르면 zcaInstallPropertiesPicker의 fieldsHost.style.height를 조정합니다.
+
+폼을 옮기기 전에 활성 입력창의 blur를 실행하여 편집값을 커밋할 기회를 주고, 이동 뒤에는 기존 onInnerResize를 호출합니다. 실제 tweaker가 값을 모델에 반영하는 시점은 설치 화면에서 확인해야 합니다. 생성 화면을 닫을 때는 원래 부모/순서로 돌려놓고 선택창만 정리합니다. 기존 postCreation은 그대로 사용하여 한 번의 분류 저장 경로로 처리합니다.
 
 ### 5-2-1. 클래스 선택창에 파라미터 전달
 
@@ -115,7 +136,18 @@ properties.options.zcaOpenClassSelector = function (controller, parameters) {
 
 ### 5-3. ENONewDialogController
 
-zcaDisposeDialogBridge를 해당 factory에 추가하고 기존 destroy 첫 줄에서 호출합니다. 기존 프레임/대화상자 정리와 _parent 호출은 유지합니다. 이 호출이 취소 후 늦은 검색/선택 응답과 구독 상태를 정리합니다.
+zcaDisposeDialogBridge와 zcaSelectFieldsTab을 해당 factory 내부에 둡니다. 기존 destroy 첫 줄의 zcaDisposeDialogBridge 호출은 유지합니다.
+
+`both` 모드에서는 기존 onTabChange 콜백에 한 줄을 추가해야 합니다. 참조 소스의 변수명이 n=DialogController, e=선택 facet일 때 다음과 같습니다.
+
+```javascript
+onTabChange: function (e) {
+    n.manageButtons(e);
+    zcaSelectFieldsTab(n, e);
+}
+```
+
+이 호출은 같은 bridge에 현재 탭 이름을 알려 줍니다. bridge가 없는 일반 위젯은 처리하지 않습니다. 탭 전환 연결이 누락되면 both 모드에서 폼이 속성 탭에만 남습니다. 기존 프레임/대화상자 정리와 _parent 호출은 유지합니다.
 
 ## 6. ClassificationsFacet.js 적용
 
@@ -127,7 +159,7 @@ zcaConnectClassificationFacet(this, options);
 
 참조 소스의 options 변수명은 `e`입니다. 기존 destroy 첫 줄에서 zcaDisconnectClassificationFacet(this)를 호출합니다. **기존 postCreation은 그대로 유지합니다.** 생성된 객체에 분류 연결과 분류 속성을 저장하는 경로이기 때문입니다.
 
-기존 라이브러리 컨트롤러의 준비 완료를 기다린 뒤 bridge에 연결합니다. 속성 입력창에서 선택하면 기존 노드 선택 이벤트를 통해 분류 속성 모델을 생성합니다. 라이브러리 루트 대신 최종 General Class를 선택해야 클래스 속성 필드를 만들 수 있습니다.
+기존 라이브러리 컨트롤러의 준비 완료를 기다린 뒤 bridge에 연결합니다. 속성 입력창에서 선택하면 기존 노드 선택 이벤트를 통해 분류 속성 모델을 생성합니다. 폼의 표시 위치는 위 move/both 옵션을 따릅니다. 라이브러리 루트 대신 최종 General Class를 선택해야 클래스 속성 필드를 만들 수 있습니다.
 
 ## 7. 확인할 동작
 
@@ -135,7 +167,9 @@ zcaConnectClassificationFacet(this, options);
 |---|---|
 | 기능 값이 없는 원래 위젯에서 CA 생성 | 새 입력창 없음, 기존 타입/기본 타입 설정 처리 유지 |
 | 커스텀 위젯에서 신규 타입 생성 | 속성 탭에 입력창 표시 |
-| 분류 탭을 열기 전에 클래스 선택 | 준비 완료 후 선택 가능; 분류 탭에서 속성 필드 표시 |
+| 분류 탭을 열기 전에 클래스 선택 | 속성 탭의 선택창 아래에 클래스 속성 필드와 값 입력창 표시 |
+| move 모드에서 탭 전환 | 클래스 속성 폼은 속성 탭에만 표시 |
+| both 모드에서 양쪽 탭 편집 | 탭을 전환해도 동일한 속성값 유지 |
 | 분류 탭에서 선택/삭제 | 속성 탭의 선택 요약과 일치 |
 | 빠른 검색/중복 선택/취소 후 재실행 | 과거 응답이나 선택 상태가 남지 않음 |
 | 클래스 속성값 입력 후 생성하고 재조회 | 분류 연결과 입력값 유지 |
@@ -155,4 +189,5 @@ zcaConnectClassificationFacet(this, options);
 - https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js
 
 소스의 내부 메서드가 공식 확장 API로 보장되는 것은 아닙니다. minified 변수명은 버전에 따라 달라질 수 있습니다.
+
 

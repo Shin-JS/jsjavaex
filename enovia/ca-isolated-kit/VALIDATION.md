@@ -17,3 +17,13 @@
 - ClassificationsFacet.js의 실제 AutoComplete/Button 구성과 CSS 클래스, WUXAutoComplete의 selectedItems/disabled 동작 및 TreeNodeModel의 unselect 메서드를 공개 2024x 소스에서 확인.
 
 대역 검사는 실제 WUX 엔진 실행과 화면 검증을 대체하지 않습니다. 설치 환경에서 칩 표시/삭제, 검색, 선택창, 파라미터 수신 구현, 분류 속성 저장을 확인해야 합니다. 이번 변경은 UI 함수와 적용 안내에 한정하고 기존 타입/위젯 활성화 조건은 변경하지 않습니다.
+
+
+
+## 클래스 속성 폼 표시 위치 변경
+
+- 추가된 코드 조각의 JavaScript 문법 검사 통과.
+- DOM/WUX 대역 검사 통과: move 모드의 속성 탭 표시, both 모드의 두 탭 전환, 같은 필드 객체와 입력값 유지, 선택/삭제, 종료 시 원래 부모/순서 복원.
+- 참고 소스에서 accordeonCon에 기존 ClassifPropWidget이 주입되는 경로, onInnerResize 메서드, 기존 postCreation/saveClassificationFacet 경로를 확인했습니다. 새 저장 모델이나 중복 저장 경로를 추가하지 않았습니다.
+
+실제 ClassifPropWidget/tweaker 실행, 탭 전환 시 입력값 커밋, 필수 속성 검증, 실제 분류 속성 저장 및 최종 화면 크기는 사용자 설치 환경에서 확인해야 합니다. 대역 검사 결과만으로 이 통합 동작이 완료되었다고 판단하지 않습니다.
