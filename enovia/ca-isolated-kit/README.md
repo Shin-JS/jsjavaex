@@ -1,193 +1,211 @@
-# 기존 파일 수정 방식: CA 클래스 선택과 속성값 입력
+# CA 클래스 선택과 속성 입력: 변경한 코드의 동작 원리
 
-이 문서는 앞서 만든 별도 Launcher/Engine/facet 구성 대신, **기존 파일명과 기존 AMD 모듈을 유지하며 추가할 부분만** 정리한 버전입니다. 타입 생성 MQL은 기존 schema 폴더에 유지했습니다.
+이 기능은 속성 탭에서 클래스를 선택하고, 그 클래스의 속성 필드와 값 입력창도 속성 탭에서 사용할 수 있게 합니다. `move`는 속성 탭에서만 폼을 표시하고, `both`는 속성 탭과 분류 탭 양쪽에서 같은 폼을 사용할 수 있게 합니다.
 
-`webapps` 아래 파일은 전체 교체본이 아니라 수정용 코드 조각입니다. 원본 파일에 덮어쓰지 마세요. 파일의 주석에 표시한 AMD factory와 메서드를 찾아 해당 함수/호출만 넣습니다. 새 `define()`이나 새 모듈 경로 등록은 필요하지 않습니다.
+핵심은 **기존 분류 컨트롤러와 속성 모델을 계속 사용하면서 선택 UI와 폼의 표시 위치를 연결하는 것**입니다. 서버 타입 정의, 클래스 선택 상태, 선택창의 칩, 클래스 속성 모델, 화면에 붙은 폼은 서로 다른 역할을 합니다. 어떤 역할을 유지하고 어떤 역할을 연결하는지를 이해하면 코드가 이렇게 바뀌는 이유를 알 수 있습니다.
 
-2024x 공개 소스로 확인한 위치를 기준으로 합니다. 실제 환경의 파일이 여러 개의 개별 JS로 나뉘어 있으면 같은 AMD 모듈을 정의한 실제 파일에 적용합니다. 파일이 압축되어 있으면 먼저 작업용 복사본을 읽기 좋게 정리하고 메서드 단위로 반영하세요. 현재 환경의 전체 소스를 직접 수정한 상태는 아닙니다.
+구체적인 삽입 위치는 각 JS 파일의 주석에 있습니다. 이 README는 교체 순서보다 각 변경의 이유와 실행 흐름을 설명합니다. 코드는 공개 2024x 소스를 참고한 수정 조각이며, 실제 설치 버전에서의 표시·값 커밋·영구 저장은 따로 확인해야 합니다.
 
-## 1. 수정 대상
+## 1. 기존 생성 화면은 어떻게 구성되는가
 
-| 기존 파일명 | 찾아야 하는 AMD 모듈/위치 | 수정 내용 |
+CA 생성 버튼을 누르면 Change Governance의 생성 함수가 타입과 컨텍스트 등을 구성하고 ENONew 생성 인프라에 전달합니다. ENONew는 facet 목록을 만들고, 각 facet의 모듈을 로딩하여 탭을 구성합니다.
+
+| 구성 요소 | 기존 역할 | 이번에 연결한 부분 |
 |---|---|---|
-| ENOChgGovernance.html | 커스텀 위젯의 초기화/onLoad | 이 위젯에만 기능 활성화 값 지정 |
-| ENOChgGovernanceUX.js | ChgCreateChangeAction.launchCreateChangeActionDialog | 활성화된 위젯에서 신규 타입 사용; OOTB 기본 타입 설정 저장은 제외 |
-| ENONewWidget.js | ENONewFacetHelper.getFacetList | 생성 대화상자마다 두 facet이 공유하는 bridge 추가 |
-| ENONewWidget.js | ENOListViewFacet.init/destroy | 속성 탭의 클래스 선택창/속성 폼 추가와 정리 |
-| ENONewWidget.js | ENONewDialogController.destroy | 탭 전환 시 속성 폼 위치 처리; 닫을 때 bridge 정리 |
-| ClassificationsFacet.js | PLMNewClassificationFacet.init/destroy | 기존 라이브러리 컨트롤러를 bridge에 연결 |
+| `ChgCreateChangeAction` | 생성할 타입과 컨텍스트, 생성 후 동작 설정 | 적용 범위와 기본 타입 설정 저장 조건 |
+| `ENONewFacetHelper` | 속성·분류 facet의 정의와 옵션 구성 | 같은 대화상자의 두 facet에 공유 bridge 전달 |
+| `ENOListViewFacet` | 일반 속성 입력 폼 표시 | 클래스 선택창과 기존 클래스 속성 폼의 표시 영역 |
+| `PLMNewClassificationFacet` | 분류 UI 초기화 및 생성 후 분류 처리 | 라이브러리 컨트롤러를 bridge에 연결 |
+| `PLMNewLibraryActiveController` | 클래스 검색·선택 및 분류 속성 모델 관리 | 새 선택창도 이 컨트롤러를 사용 |
+| `ENONewDialogController` | 대화상자 및 탭 전환·종료 처리 | 활성 탭 전달과 종료 시 bridge 정리 |
 
-`EditPropWidget.js`, 부모 타입의 attribute, 공용 CSS, 별도 신규 Launcher/Engine/Controller는 이번 수정 대상이 아닙니다. 분류 속성의 모델과 저장은 기존 로직을 유지하고, 표시 위치를 옵션으로 선택합니다.
+`ENOCreate`는 기본 속성 facet의 이름이고, `classificationFacet`은 분류 facet의 이름입니다. 이름은 해당 facet을 찾기 위한 식별자입니다. `ENONewWidget.js`에는 여러 AMD 모듈이 들어 있으므로 같은 파일 안이라도 각 factory의 변수 범위는 다릅니다. 예를 들어 getFacetList의 지역변수 `a`를 다른 factory에서 사용할 수는 없습니다.
 
-## 2. 타입 생성부터 진행
+## 2. 타입 상속과 클래스 선택은 왜 별개의 작업인가
 
-예시 타입명은 `ZCA Change Action`입니다. 실제 타입명으로 바꿀 때 schema의 명령, ENOChgGovernanceUX.js의 zcaType, ENONewWidget.js의 currentType 비교를 함께 바꿉니다.
+Change Action을 상속한 새 타입은 서버 데이터 모델에서 새로운 업무 객체 종류를 정의하는 것입니다. 반면 생성 화면에서 라이브러리의 클래스를 선택하는 것은 그 객체를 특정 클래스에 분류하고 해당 클래스의 속성을 입력하기 위한 작업입니다.
 
-1. schema/01-inspect.mql로 부모 타입, 신규 이름 충돌, 기존 CA의 정책을 확인합니다.
-2. 신규 이름이 없을 때 schema/02-create-type.mql을 개별 실행합니다.
-3. 프로젝트에서 요구하면 schema/03-symbolic-name.optional.mql을 적용합니다.
-4. typeInfo와 CA 생성 서비스에서 신규 타입이 지원되는지 먼저 확인합니다.
+타입을 상속해도 속성 탭에 클래스 선택 UI가 자동으로 생기는 것은 아닙니다. 타입 정의는 어떤 업무 객체를 만들지 결정하고, 생성 화면의 facet과 컨트롤러는 사용자가 무엇을 어디에서 입력할지 결정합니다.
 
-핵심 명령:
+또한 라이브러리 선택창의 표시 문자열을 일반 attribute로 저장하는 것과 실제 클래스에 객체를 분류하는 것은 다릅니다. 이 구현은 클래스를 선택한 ID와 기존 분류 로직을 사용합니다. 클래스 속성은 해당 분류 모델을 통해 관리합니다.
 
-```mql
-add type "ZCA Change Action" derived "Change Action" abstract false;
-```
+기본 `Change Action`으로 화면 동작을 시험할 수도 있습니다. 새 타입의 생성 정책·서비스 지원을 검증하는 작업과 UI 연결을 확인하는 작업을 구분할 수 있기 때문입니다. 현재 JS 예시의 신규 타입명과 위젯 활성화 조건은 예시 설정이므로, 사용자가 적용한 `Change Action` 조건은 그대로 유지할 수 있습니다.
 
-정책 이름이나 정책의 하위 타입 허용을 추측해서 자동 수정하지 않습니다. 타입 생성만으로 CA 서비스 등록, 정책 선택, 이름 자동 생성, 국제화, 인덱싱이 모두 완료되는 것은 아닙니다. MQL 권한이 없다면 스키마 담당자가 실행해야 합니다.
+## 3. bridge는 어떤 문제를 해결하는가
 
-라이브러리 입력창을 문자열 attribute로 타입에 추가하지 않습니다. 이것은 기존 클래스 선택 UI를 한 탭에 더 제공하는 작업입니다. 클래스의 속성 모델은 기존 분류 컨트롤러가 관리합니다.
+속성 facet과 분류 facet은 각각 생성되는 객체입니다. 속성 facet의 초기화 함수에서 분류 facet의 컨트롤러 변수를 직접 참조할 수 있는 구조가 아닙니다. 두 facet이 같은 생성 대화상자에 속한다는 사실만으로 서로의 지역변수가 공유되지는 않습니다.
 
-## 3. 다른 위젯에 적용되지 않도록 조건 지정
-
-기존 파일을 공용 경로에서 수정하면 그 파일은 다른 위젯도 로드합니다. 그래서 모든 추가 로직은 **커스텀 위젯의 활성화 값 + 선택한 신규 타입**을 확인해야 합니다.
-
-커스텀 위젯 전용 진입 HTML의 기존 초기화/onLoad에서 생성 화면을 열기 전에 다음 한 줄을 넣습니다.
+그래서 facet 목록을 만드는 시점에 bridge를 하나 만들고 두 facet의 options에 같은 객체 참조를 넣습니다.
 
 ```javascript
-widget.setValue("zcaEnableLibraryInProperties", true);
+properties.options.zcaBridge === classification.options.zcaBridge
+// 같은 생성 대화상자에서는 true
 ```
 
-이 한 줄은 플랫폼 공용 OOTB HTML에 넣지 않습니다. 현재 커스텀 위젯의 진입 파일명이 ENOChangeAction.html 등이라면 실제 그 파일에 넣습니다. 제공한 ENOChgGovernance.html 조각은 위치 안내용입니다.
+bridge는 독립적인 클래스 선택 데이터를 한 벌 더 저장하지 않습니다. 준비된 기존 라이브러리 컨트롤러의 참조를 보관하고, 그 컨트롤러의 현재 선택을 읽으며, 변경이 생기면 구독자에게 알려 줍니다.
 
-다른 위젯에서는 이 값을 지정하지 않습니다. 생성 옵션 변경은 활성화 값이 true인 경우만 실행하고, 속성 탭 입력창 추가는 신규 타입까지 일치하는 경우만 실행합니다. false 또는 미지정 상태에서는 기존 facet과 생성 타입 선택 경로를 그대로 사용합니다. OOTB CA_DEF_TYPE 사용자 설정에는 커스텀 타입을 저장하지 않습니다.
+따라서 속성 탭은 bridge를 통해 기존 분류 컨트롤러에 접근할 수 있습니다. 생성 대화상자마다 bridge를 새로 만드는 이유는 한 대화상자의 선택이나 종료 상태가 다른 대화상자에 섞이지 않도록 하기 위해서입니다. 전역 객체에 선택 목록을 두는 방식과 달리 공유 범위가 현재 대화상자의 두 facet으로 한정됩니다.
 
-별도 위젯 인스턴스/iframe에서 값과 AMD 문맥이 분리되어 있는지 실제 대시보드에서 확인해야 합니다. 동일 iframe에서 OOTB 분류 화면과 커스텀 생성 화면을 동시에 실행하는 환경은 분류 유틸리티의 singleton/provider 상태까지 검토해야 합니다. 조건문만으로 동일 실행 문맥의 모든 부작용을 해결했다고 볼 수 없습니다.
+## 4. getFacetList가 끝날 때 bridge를 연결하는 이유
 
-신규 타입 자체는 공용 서버 스키마입니다. 다른 위젯의 하위 타입 목록이나 부모 타입 기반 검색에 나타날 수 있습니다. UI 추가 로직의 조건 분리와 타입 비노출은 별개의 문제입니다.
+getFacetList는 먼저 기본 속성 facet을 만들고, 요청받은 분류 등의 facet을 추가하여 최종 배열을 구성합니다. 배열 구성이 끝나야 `ENOCreate`와 `classificationFacet`을 둘 다 찾을 수 있습니다.
 
-## 4. ENOChgGovernanceUX.js 적용
+이때 각 facet의 options에 bridge를 넣으면 이후 인프라가 facet 인스턴스를 생성하면서 같은 참조를 전달합니다. 그래서 zcaAttachBridge는 최종 배열이 만들어진 뒤, 배열이 반환되기 전에 실행됩니다.
 
-파일 안의 `ChgCreateChangeAction` AMD factory를 찾습니다. 제공한 js의 `zcaIsEnabledForThisWidget()`을 해당 factory 내부에 추가합니다.
+호출 위치가 함수 밖이면 지역변수인 배열을 찾지 못합니다. 배열을 다 만들기 전에 호출하면 분류 facet이 아직 없어서 연결되지 않을 수 있습니다. 이 연결이 누락되면 속성 facet의 options.zcaBridge는 undefined이므로 새 선택 UI를 만들지 않습니다.
 
-`launchCreateChangeActionDialog()`에서 활성화 값과 신규 타입명을 변수로 둡니다. 기존 사용자 기본 타입 조회, 생성 옵션의 type/typeName을 조건부로 변경합니다. onSuccess의 `saveUserPreference()` 호출도 비활성화 위젯에서만 실행하도록 바꿉니다. 정확한 변경 식은 같은 이름의 코드 조각 파일 주석에 있습니다.
+## 5. 컨트롤러 준비를 기다리는 이유
 
-기존 tenant/SecurityContext, classificationFacet 등록, 목록/상세 갱신, 취소/실패 처리는 유지합니다. 실제 타입 선택 옵션과 생성 요청의 type이 새 타입인지 확인합니다. 기본 타입 설정만 바꾸고 요청이 부모 타입으로 나가는 상태를 통과로 판단하지 않습니다.
+분류 facet 객체가 생성되어도 내부 라이브러리 컨트롤러와 AutoComplete가 즉시 준비되는 것은 아닙니다. 기존 초기화 코드가 다른 모듈을 비동기로 로딩하기 때문입니다.
 
-## 5. ENONewWidget.js 적용
+zcaConnectClassificationFacet는 기존 initUI에서 라이브러리 컨트롤러와 자동완성 컴포넌트가 준비되는지 확인하고 bridge에 연결합니다. 속성 탭의 선택창은 그 전까지 비활성화됩니다. 준비되지 않은 컨트롤러로 검색하거나 선택 노드를 추가하는 일을 막기 위해서입니다.
 
-이 파일에는 서로 다른 세 AMD 모듈의 수정 조각이 함께 있습니다. 각 블록은 주석에서 지정한 **해당 factory 내부**에만 넣습니다.
+`alwaysCalled`는 분류 facet의 백그라운드 초기화에 사용되는 기존 설정입니다. 현재 설치 버전에서도 분류 탭을 열지 않고 초기화가 실행되는지는 확인해야 합니다. 설정을 넣었다는 사실만으로 모든 버전의 로딩 시점이 같다고 볼 수는 없습니다.
 
-### 5-1. ENONewFacetHelper
+## 6. 클래스를 선택하면 속성 필드는 어떻게 생기는가
 
-`zcaCreateBridge()`와 `zcaAttachBridge()`를 해당 factory의 반환문 앞에 추가합니다. 기존 getFacetList가 최종 facet 배열을 만든 뒤 반환하기 전에 호출합니다.
+속성 탭에서 선택해도 실제 분류 상태를 변경하는 주체는 기존 라이브러리 컨트롤러입니다.
 
-```javascript
-zcaAttachBridge(data, facetList);
-return facetList;
+```mermaid
+flowchart TD
+    P["속성 탭의 클래스 선택"] --> L["기존 라이브러리 컨트롤러"]
+    C["분류 탭의 클래스 선택"] --> L
+    L --> M["클래스별 속성 모델"]
+    M --> F["기존 속성 폼의 필드와 값"]
+    M --> S["기존 생성 후 분류 처리"]
+    T["표시 모드와 활성 탭"] --> F
 ```
 
-참조 2024x 코드에서는 인자가 `e`, 최종 배열이 `a`이므로 호출은 `zcaAttachBridge(e, a)`입니다. 원본이 `return ..., a` 형태의 쉼표 표현식이면 배열 구성 후 `return a`로 읽기 좋게 풀고 그 직전에 호출합니다. 기존 배열 구성 로직을 삭제하면 안 됩니다.
+ZcaLibraryAdapter는 클래스 경로를 조회하고 선택 노드를 기존 자동완성 모델에 추가한 뒤 `select()`를 실행합니다. 기존 선택 변경 이벤트가 그 결과를 받아 클래스별 ClassifPropModel을 만들고 분류 속성을 조회·표시합니다.
 
-bridge는 getFacetList 호출마다 새로 만들며, 현재 대화상자의 ENOCreate와 classificationFacet 옵션에만 같은 참조를 넣습니다. 모듈 전역 변수나 window.top에 선택 목록을 저장하지 않습니다. 기존 facet의 require 경로와 AMD ID는 바꾸지 않습니다.
+즉 선택한 클래스의 이름을 문자열로 넣어서 필드가 생기는 것이 아닙니다. **기존 클래스 선택 이벤트를 실행했기 때문에 기존 속성 조회·폼 생성 로직이 이어지는 것**입니다. `selectedItems`에 배열만 넣는 것과 구분해야 하는 이유도 여기에 있습니다.
 
-### 5-2. ENOListViewFacet
+최종 선택 대상은 `General Class`입니다. 라이브러리 루트의 이름만 선택한 상태는 특정 클래스의 속성 필드를 만들기 위한 클래스 선택과 다릅니다. 선택한 클래스의 필드가 나타나는 것이며, 다른 객체에 저장된 값을 자동으로 복사하는 기능은 아닙니다.
 
-ZcaLibraryAdapter와 zcaInstallPropertiesPicker, zcaRenderClassFields, zcaRestoreClassFields, zcaDestroyPropertiesPicker를 이 factory 내부에 추가합니다. 기존 init에서 listview.loadView() 다음에 추가합니다.
+기존 클래스 경로 서비스는 같은 종류의 겹치는 요청을 취소하는 코드가 있으므로 추가 선택은 순서대로 처리합니다. 검색은 WUX AutoComplete가 담당하고, 클래스 연결용 노드 추가는 adapter가 담당합니다.
 
-```javascript
-zcaInstallPropertiesPicker(this, options);
-```
+## 7. 선택 UI는 왜 WUX로 바꾸었는가
 
-참조 소스에서는 options 변수명이 `t`입니다. bridge가 없는 일반 위젯은 즉시 반환하여 UI를 추가하지 않습니다. 기존 destroy의 listview.destroy() 앞에서 zcaDestroyPropertiesPicker(this)를 호출합니다.
+기본 HTML input과 button으로도 검색과 선택 로직을 연결할 수 있지만, 기존 분류 화면의 칩·아이콘·배치와 다른 외형이 됩니다. 그래서 기존 분류 탭과 같은 WUXAutoComplete, Controls/Button, TooltipModel, NLS, CSS 클래스를 사용합니다.
 
-검색/선택은 추가된 adapter가 수행하고 기존 라이브러리 컨트롤러 한 개에 결과를 반영합니다. 분류 속성 모델을 별도로 만들지 않습니다. 입력창은 기존 분류 탭과 같은 DS/WUXAutoComplete/AutoComplete를 사용합니다. 찾아보기는 DS/Controls/Button의 lite 아이콘 버튼을 사용하고, 원래 NLS와 ClassificationsFacet.css의 배치 클래스를 재사용합니다. 선택 항목은 기존처럼 칩으로 표시되며 속성 탭의 칩 삭제도 분류 탭에 반영됩니다. 두 화면의 TreeNodeModel 인스턴스는 복제하여 한쪽 UI의 선택 상태가 다른쪽 모델을 직접 바꾸지 않게 합니다.
+이 변경은 선택 결과를 관리하는 컨트롤러를 새로 만드는 작업이 아닙니다. 사용자가 조작하는 선택 UI를 기존 UI 계열로 맞추는 작업입니다. 검색/선택이 최종적으로 기존 분류 컨트롤러에 반영된다는 구조는 유지됩니다.
 
-추가 CSS 파일은 만들지 않고 기존 ClassificationsFacet.css를 css! 로더로 가져옵니다. UI 컴포넌트도 zcaInstallPropertiesPicker 안에서 require하므로 기존 AMD factory의 의존성 배열/인자 순서를 바꿀 필요가 없습니다. 실제 설치 버전의 테마에 따른 최종 외형은 화면에서 확인하세요.
+WUX 선택창에서 칩을 삭제하면 현재 선택 목록의 차이를 구해 기존 컨트롤러의 선택 노드를 `unselect()`합니다. 기존 분류 로직이 그 클래스의 속성 모델과 필드 제거를 처리합니다. 반대로 분류 탭에서 선택이 바뀌면 bridge 구독자가 속성 탭의 칩 표시를 갱신합니다.
 
-이미 적용한 코드에서는 ENONewWidget.js의 [2] 영역에서 zcaInstallPropertiesPicker/zcaDestroyPropertiesPicker를 교체하고 zcaRenderClassFields/zcaRestoreClassFields를 추가합니다. ZcaLibraryAdapter는 유지합니다. [1]에는 아래 모드 한 줄을 추가하고, [3]에는 탭 전환 함수와 호출을 추가합니다. 특히 사용자가 테스트하면서 바꾼 Change Action 타입 조건을 이번 UI 변경 때문에 이전 ZCA Change Action 예시로 되돌리지 마세요.
+## 8. 선택 칩은 복제하면서 속성 폼은 복제하지 않는 이유
 
-### 클래스 속성 필드와 값 입력창의 표시 모드
+| 대상 | 처리 방식 | 이유 |
+|---|---|---|
+| 두 선택창의 TreeNodeModel | 클래스 ID에 대응하는 표시용 노드를 각 UI에 별도로 둠 | 같은 선택 노드를 두 UI가 직접 관리하면 노드 선택·해제 이벤트가 서로의 UI 상태를 바꿀 수 있음 |
+| 선택한 클래스 목록 | 기존 분류 컨트롤러의 목록을 기준으로 사용 | 두 목록이 각각 업무 상태가 되는 것을 방지 |
+| 클래스 속성 모델과 입력 폼 | 기존 인스턴스를 재사용 | 기존 입력값, 필드 이벤트, 모델의 변경값과 저장 연결을 유지 |
 
-선택한 클래스의 기존 속성 폼을 재사용하여 속성 탭에서 필드와 값을 편집할 수 있게 했습니다. `zcaAttachBridge()`에서 properties.options.zcaBridge를 대입한 다음 한 줄을 추가합니다.
+칩에 보이는 노드와 분류 속성 데이터는 서로 다른 것입니다. 칩용 노드를 새로 만들어도 같은 클래스 ID를 표시할 수 있습니다. 하지만 속성 폼의 DOM만 clone하면 기존 tweaker 이벤트와 속성 모델까지 같은 동작으로 복제되는 것은 아닙니다. 반대로 속성 모델을 두 벌 만들면 변경값과 저장을 동기화하는 별도의 설계가 필요합니다.
+
+현재 구현은 선택 UI의 노드는 분리하고, 실제 클래스 속성 데이터와 편집 폼은 기존 것을 유지합니다.
+
+## 9. move 모드에서 속성 탭에 값 입력창이 나타나는 이유
+
+기존 라이브러리 컨트롤러의 `accordeonCon`에는 ClassifPropWidget이 주입되어 있습니다. 이 컨테이너 안에 클래스 속성의 실제 입력 폼이 있습니다.
+
+zcaRenderClassFields는 이 컨테이너를 속성 탭의 표시 영역에 붙입니다. 이때 클래스 속성 필드를 새로 만들거나 값을 복사하지 않습니다. 이미 이벤트와 모델이 연결된 같은 폼의 부모 DOM을 바꾸는 것입니다.
 
 ```javascript
 properties.options.zcaClassFieldsMode = "move";
 ```
 
-| 설정값 | 표시 위치 |
+`move`에서는 이 폼이 속성 탭에 머무릅니다. 사용자는 클래스 선택창 아래에서 속성값을 편집하고, 분류 탭은 기존 클래스 선택 기능을 사용할 수 있지만 해당 속성 폼은 속성 탭에 표시됩니다.
+
+아직 클래스가 선택되지 않았다면 속성 탭의 폼 표시 영역은 숨깁니다. 이후 클래스가 선택되어 기존 폼에 필드가 생성되면 그 필드가 속성 탭에서 보입니다. 화면에서 보이는 위치가 바뀌어도 컨트롤러의 모델·폼 참조는 같은 객체를 가리킵니다.
+
+## 10. both 모드에서 두 탭의 값이 유지되는 이유
+
+```javascript
+properties.options.zcaClassFieldsMode = "both";
+```
+
+`both`에서는 속성 탭과 분류 탭에서 같은 필드를 편집할 수 있습니다. 내부적으로는 폼 두 개를 만드는 대신, 탭 전환 시 같은 폼을 활성 탭에 붙입니다.
+
+| 현재 탭 | 폼이 붙는 위치 |
 |---|---|
-| `move` | 선택창 아래의 속성 탭에서만 클래스 속성 필드와 값 입력창을 표시 |
-| `both` | 속성 탭과 분류 탭에서 모두 같은 속성 필드와 값을 편집 |
+| 속성 탭 `ENOCreate` | 속성 탭의 클래스 속성 표시 영역 |
+| 분류 탭 `classificationFacet` | 원래 분류 컨테이너 |
 
-두 탭에 모두 표시하려면 위 값만 `"both"`로 바꿉니다. 생성 화면을 열기 전에 설정하며, 이미 열려 있는 화면의 모드를 실행 중에 바꾸는 방식은 지원하지 않습니다.
+ENONewDialogController가 탭 변경을 알려 주고, zcaSelectFieldsTab이 bridge에 현재 탭 이름을 전달합니다. bridge 구독자가 그 이름을 읽어 폼 위치를 정합니다.
 
-두 모드 모두 기존 `PLMNewLibraryActiveController.accordeonCon`에 들어 있는 실제 ClassifPropWidget 폼을 사용합니다. 필드 DOM을 clone하거나 별도의 분류 속성 모델을 만들지 않습니다. `move`는 이 폼을 속성 탭의 host에 둡니다. `both`는 서로 배타적으로 표시되는 탭을 전환할 때 같은 폼을 현재 탭에 붙여 표시합니다. 따라서 화면에서는 두 탭 모두 편집할 수 있지만 DOM 폼은 한 개입니다. 두 탭을 동시에 보이도록 따로 펼친 레이아웃에서 독립적인 폼 두 개를 렌더링하는 기능은 아닙니다.
+따라서 두 폼의 값을 서로 복사해서 맞추는 동기화가 필요하지 않습니다. 사용자가 편집한 **같은 폼과 같은 속성 모델**을 다음 탭에서도 사용하기 때문입니다. 이 방식은 탭이 번갈아 표시되는 현재 화면에 맞춘 구현입니다. 두 탭을 동시에 펼쳐 서로 다른 DOM 위치에 폼 두 개를 보여 주는 기능은 아닙니다.
 
-선택 변경/삭제는 기존 컨트롤러의 속성 모델과 폼을 갱신합니다. 이미 입력한 값은 동일한 폼/모델에 유지됩니다. 클래스 선택이 없으면 속성 탭의 폼 영역을 숨깁니다. 내부 폼의 높이를 계산할 수 있도록 host 높이를 360px로 두었고, 해당 영역의 기존 스크롤을 사용합니다. 업무 화면의 높이가 다르면 zcaInstallPropertiesPicker의 fieldsHost.style.height를 조정합니다.
+탭 변경 전달이 빠지면 bridge가 현재 탭을 알 수 없어 폼이 속성 탭에 남을 수 있습니다. both 모드에 탭 변경 연결이 필요한 이유입니다.
 
-폼을 옮기기 전에 활성 입력창의 blur를 실행하여 편집값을 커밋할 기회를 주고, 이동 뒤에는 기존 onInnerResize를 호출합니다. 실제 tweaker가 값을 모델에 반영하는 시점은 설치 화면에서 확인해야 합니다. 생성 화면을 닫을 때는 원래 부모/순서로 돌려놓고 선택창만 정리합니다. 기존 postCreation은 그대로 사용하여 한 번의 분류 저장 경로로 처리합니다.
+## 11. blur, 높이, resize 처리가 필요한 이유
 
-### 5-2-1. 클래스 선택창에 파라미터 전달
+입력창에 보이는 값이 항상 즉시 속성 모델에 커밋되는 것은 아닙니다. tweaker에 따라 포커스를 잃을 때 편집값을 확정할 수 있으므로, 폼을 옮기기 전에 활성 입력창에 blur를 실행하여 값 커밋 기회를 줍니다. 실제 값 커밋 시점은 설치 환경의 필드 종류별로 확인해야 합니다.
 
-기존 찾아보기 동작은 그대로 사용합니다. 필요한 경우 속성 facet의 options에 `zcaSelectorParameters` 객체와 `zcaOpenClassSelector` 함수를 연결할 수 있습니다. 둘 다 이번 추가 코드가 정의한 전달 지점이며 OOTB 옵션명이 아닙니다.
+ClassifPropWidget의 내부 컨트롤은 부모 영역의 크기를 이용해 레이아웃을 계산합니다. 새 표시 영역에 높이를 부여하고, 폼 이동 뒤 기존 onInnerResize를 호출하는 이유는 바뀐 부모 크기로 레이아웃을 다시 계산하게 하기 위해서입니다. 현재 360px는 코드의 표시 영역 기본 높이이며 서버 데이터나 클래스 속성 수를 뜻하지 않습니다.
 
-```javascript
-properties.options.zcaSelectorParameters = {
-    libraryId: "전달할 라이브러리 ID",
-    classId: "전달할 클래스 ID"
-};
-properties.options.zcaOpenClassSelector = function (controller, parameters) {
-    // parameters를 기존 선택창 생성 옵션/검색 조건에 매핑하는 수신 로직
-};
-```
+이 처리는 표시와 편집을 위한 것입니다. 서버에 속성값을 저장하는 호출은 아닙니다.
 
-위 설정은 zcaAttachBridge에서 properties를 찾은 뒤 넣습니다. 실제로 전달할 값과 사용 목적에 맞춰 수신 함수를 구현해야 합니다. 기본 onClickSelector는 인자를 처리하지 않으므로 `controller.onClickSelector(parameters)`만 호출해도 검색 범위/초기 선택이 바뀌는 것은 아닙니다. 수신 로직은 PLMNewLibraryActiveController.onClickSelector에서 LibraryActive 생성 옵션 또는 검색 서비스 요청 조건에 값을 반영해야 합니다. 옵션 지원 여부는 설치 버전에서 확인합니다. 파라미터만 지정하고 수신 함수를 연결하지 않으면 조용히 무시하지 않고 안내를 표시합니다.
+## 12. 폼이 속성 탭에 있어도 저장은 어떻게 이어지는가
 
-### 5-3. ENONewDialogController
+기본 속성 facet은 기존 CA 생성 입력을 처리합니다. 분류 facet은 생성된 객체 ID를 받은 뒤 기존 postCreation 경로에서 클래스 연결과 분류 속성 저장을 수행합니다.
 
-zcaDisposeDialogBridge와 zcaSelectFieldsTab을 해당 factory 내부에 둡니다. 기존 destroy 첫 줄의 zcaDisposeDialogBridge 호출은 유지합니다.
+이번 코드가 폼의 표시 위치를 바꾸어도 classifPropModels와 classifPropertiesView를 새로 만들지 않으므로 기존 분류 처리 경로가 같은 모델과 폼의 변경값을 참조할 수 있습니다. 속성 탭에 폼을 붙였다는 이유로 기본 속성 저장 요청에 분류 속성을 임의로 추가하지 않습니다.
 
-`both` 모드에서는 기존 onTabChange 콜백에 한 줄을 추가해야 합니다. 참조 소스의 변수명이 n=DialogController, e=선택 facet일 때 다음과 같습니다.
+**클래스 선택 성공, 속성 필드 표시, 값의 모델 반영, 서버 저장 완료는 서로 다른 단계입니다.** 참고 소스의 postCreation은 내부 속성 저장 완료를 기다리는 방식과 실패 전파를 추가 확인해야 합니다. 이 변경만으로 저장의 성공·실패 처리가 강화된 것은 아닙니다.
 
-```javascript
-onTabChange: function (e) {
-    n.manageButtons(e);
-    zcaSelectFieldsTab(n, e);
-}
-```
+생성 후 분류 저장이 실패하면 CA는 이미 만들어져 있을 수 있습니다. 그래서 완료 메시지뿐 아니라 실제 객체를 다시 열어 분류 연결과 입력값을 확인해야 합니다. 실패 재시도에서 새 CA를 중복 생성하지 않는 처리도 별도로 고려해야 합니다.
 
-이 호출은 같은 bridge에 현재 탭 이름을 알려 줍니다. bridge가 없는 일반 위젯은 처리하지 않습니다. 탭 전환 연결이 누락되면 both 모드에서 폼이 속성 탭에만 남습니다. 기존 프레임/대화상자 정리와 _parent 호출은 유지합니다.
+## 13. 다른 위젯에 대한 조건과 기본 타입 저장을 구분하는 이유
 
-## 6. ClassificationsFacet.js 적용
+공용 JS 파일은 여러 위젯이 로드할 수 있습니다. 저장소 예시는 위젯 활성화 값과 타입 조건을 확인한 뒤 현재 대화상자의 facet에만 bridge를 붙입니다. bridge가 없는 속성 facet은 새 UI를 추가하지 않습니다.
 
-PLMNewClassificationFacet factory에 두 함수를 추가합니다. init에서 기존 initUI 생성, getUI 호출, 보안 컨텍스트 구독을 마친 뒤 연결 함수를 호출합니다.
+현재 테스트처럼 타입 비교만 남겨 `Change Action`에 적용하면 위젯을 구분하는 조건은 사라집니다. 같은 타입의 생성 화면에서도 조건을 통과할 수 있다는 뜻입니다. 타입 조건만으로 특정 위젯 전용 동작이 보장되지는 않습니다.
 
-```javascript
-zcaConnectClassificationFacet(this, options);
-```
+CA_DEF_TYPE 사용자 설정은 방금 생성한 타입을 다음 생성의 기본값으로 저장하는 설정입니다. 이 설정에 커스텀 타입을 저장하면 다음 생성 화면의 기본 선택에도 영향을 줄 수 있으므로, 원래 예시는 커스텀 생성 경로에서 해당 저장 호출을 제외합니다. 이는 폼 표시 조건과 별개의 부작용을 줄이기 위한 변경입니다.
 
-참조 소스의 options 변수명은 `e`입니다. 기존 destroy 첫 줄에서 zcaDisconnectClassificationFacet(this)를 호출합니다. **기존 postCreation은 그대로 유지합니다.** 생성된 객체에 분류 연결과 분류 속성을 저장하는 경로이기 때문입니다.
+타입 생성은 서버 공용 스키마 변경이고, bridge와 폼 위치는 클라이언트 화면 변경입니다. 위젯 UI에 조건을 넣어도 신규 타입 자체가 다른 검색·하위 타입 목록에서 사라지는 것은 아닙니다.
 
-기존 라이브러리 컨트롤러의 준비 완료를 기다린 뒤 bridge에 연결합니다. 속성 입력창에서 선택하면 기존 노드 선택 이벤트를 통해 분류 속성 모델을 생성합니다. 폼의 표시 위치는 위 move/both 옵션을 따릅니다. 라이브러리 루트 대신 최종 General Class를 선택해야 클래스 속성 필드를 만들 수 있습니다.
+또한 실제 iframe/AMD 실행 문맥의 분리 여부가 중요합니다. 기존 분류 유틸리티에는 singleton/provider 상태가 있으므로, 같은 실행 문맥에서 여러 분류 화면을 동시에 여는 경우에는 추가 검토가 필요합니다.
 
-## 7. 확인할 동작
+## 14. 종료 시 원래 위치로 돌려놓는 이유
 
-| 확인 | 통과 기준 |
-|---|---|
-| 기능 값이 없는 원래 위젯에서 CA 생성 | 새 입력창 없음, 기존 타입/기본 타입 설정 처리 유지 |
-| 커스텀 위젯에서 신규 타입 생성 | 속성 탭에 입력창 표시 |
-| 분류 탭을 열기 전에 클래스 선택 | 속성 탭의 선택창 아래에 클래스 속성 필드와 값 입력창 표시 |
-| move 모드에서 탭 전환 | 클래스 속성 폼은 속성 탭에만 표시 |
-| both 모드에서 양쪽 탭 편집 | 탭을 전환해도 동일한 속성값 유지 |
-| 분류 탭에서 선택/삭제 | 속성 탭의 선택 요약과 일치 |
-| 빠른 검색/중복 선택/취소 후 재실행 | 과거 응답이나 선택 상태가 남지 않음 |
-| 클래스 속성값 입력 후 생성하고 재조회 | 분류 연결과 입력값 유지 |
-| 두 위젯을 별도 iframe으로 동시 사용 | UI/선택/기본 타입 설정이 서로 바뀌지 않음 |
+속성 탭의 표시 영역은 이번에 추가한 UI이지만, 그 안의 클래스 속성 폼은 기존 분류 컴포넌트가 소유하던 객체입니다. 표시 영역을 지우기 전에 기존 폼을 원래 부모와 순서로 되돌려 놓아야 기존 컴포넌트의 수명과 정리 경로를 유지할 수 있습니다.
 
-분류 속성 조회/저장이 완료되기 전에 생성 완료로 처리되는지 확인하세요. 참고 소스의 postCreation은 속성 저장 완료와 실패 전파를 추가 검토해야 합니다. 생성 후 분류 저장 실패는 CA가 이미 존재하는 부분 실패일 수 있습니다. 재시도 때 CA를 중복 생성하지 않도록 처리해야 합니다.
+zcaRestoreClassFields가 원래 위치를 복원하고, zcaDestroyPropertiesPicker가 추가한 WUX 컨트롤과 구독을 정리합니다. bridge를 dispose하면 진행 중인 추가 처리에서 종료 상태를 확인하여 닫힌 화면에 다시 선택을 반영하지 않도록 합니다.
 
-초기 적용은 한 대화상자에서 타입/보안 컨텍스트를 변경하지 않는 신규 생성 흐름을 기준으로 합니다. 타입/컨텍스트 변경, Create Another까지 필요하면 관련 updateFacet/재초기화 경로를 추가 연결해야 합니다.
+화면을 닫는 것과 이미 생성한 CA를 취소·삭제하는 것은 다릅니다. 이 정리 코드는 화면 객체와 구독의 수명을 관리하는 것이며 서버 객체를 삭제하지 않습니다.
 
-기존 파일 수정 방식은 업데이트 시 덮어쓰기와 충돌 가능성이 있으므로 원본 백업과 수정 기록을 남깁니다. 배포 전 현재 설치 버전의 API/내부 필드를 대조하세요. 이 자료는 변경 지점과 코드 조각이며 현재 서버에서 실행 검증한 패치는 아닙니다.
+## 15. 선택창 파라미터는 왜 수신 로직까지 필요한가
 
-## 8. 참고 소스
+zcaSelectorParameters는 선택창에 전달할 값을 담는 추가 코드의 옵션이고, zcaOpenClassSelector는 그 값을 받아 실제 선택창을 여는 연결 함수입니다. 둘 다 OOTB에 원래 존재하는 옵션명은 아닙니다.
+
+파라미터를 전달했다고 선택창의 검색 범위나 초기 선택이 자동으로 달라지는 것은 아닙니다. 기본 onClickSelector가 인자를 처리하지 않기 때문입니다. 실제 검색 범위 제한이나 초기 클래스 지정은 LibraryActive 생성 옵션 또는 검색 요청 조건에서 그 값을 사용하는 수신 로직이 있어야 합니다.
+
+즉 현재 추가한 부분은 전달 지점입니다. libraryId나 classId가 어떤 의미로 쓰일지는 요구사항과 설치 버전의 지원 옵션에 맞춰 구현해야 합니다.
+
+## 16. 함수별로 보면 무엇을 담당하는가
+
+| 함수 | 담당하는 일 | 이 함수가 필요한 이유 |
+|---|---|---|
+| zcaCreateBridge | 대화상자별 연결 객체 생성 | 두 facet을 연결하면서 대화상자 사이 상태를 분리 |
+| zcaAttachBridge | 적용 조건 검사와 공유 참조 전달 | 생성 인프라가 각 facet에 같은 연결을 전달하게 함 |
+| zcaConnectClassificationFacet | 기존 컨트롤러 준비 확인·연결 | 비동기 초기화 완료 전에 선택을 실행하지 않게 함 |
+| ZcaLibraryAdapter | 검색·선택을 기존 컨트롤러에 전달 | 기존 클래스 속성 모델 생성 이벤트를 재사용 |
+| zcaInstallPropertiesPicker | WUX 선택 UI와 속성 표시 영역 구성 | 기본 속성 폼에 클래스 선택/편집 공간을 제공 |
+| zcaRenderClassFields | 현재 모드·탭에 따라 기존 폼 배치 | 입력값과 모델을 유지한 채 표시 위치 변경 |
+| zcaSelectFieldsTab | 활성 탭을 bridge에 전달 | both 모드에서 다음 표시 위치 결정 |
+| zcaRestoreClassFields | 기존 폼의 원래 부모·순서 복원 | 기존 컴포넌트의 소유/정리 경로 유지 |
+| zcaDestroyPropertiesPicker | 추가 UI와 구독 정리 | 닫은 화면의 컨트롤·리스너를 남기지 않음 |
+| zcaDisposeDialogBridge | 대화상자의 bridge 종료 | 두 facet에 같은 종료 상태 전달 |
+
+## 17. 근거와 확인 범위
+
+참고한 공개 소스:
 
 - https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/ENONewWidget/ENONewWidget.js
 - https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/ClassificationsFacet/ClassificationsFacet.js
 - https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/PLMNewLibraryActive/PLMNewLibraryActive.js
+- https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/ClassificationProp/ClassificationProp.js
 - https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js
 
-소스의 내부 메서드가 공식 확장 API로 보장되는 것은 아닙니다. minified 변수명은 버전에 따라 달라질 수 있습니다.
-
-
+기존 모듈의 내부 필드는 공식 확장 API로 보장되는 것이 아닙니다. 설치 버전에 따라 변수명, 초기화 순서, 컨테이너, 속성 저장 경로가 달라질 수 있습니다. 로컬 대역 검사는 참조 공유와 폼 이동의 코드 동작을 확인한 것이며, 실제 WUX/tweaker 및 서버 저장의 통합 검증은 아닙니다. 검사 범위는 [VALIDATION.md](VALIDATION.md)에 구분해 두었습니다.
