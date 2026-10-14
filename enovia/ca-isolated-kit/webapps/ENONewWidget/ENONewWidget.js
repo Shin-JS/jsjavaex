@@ -6,7 +6,7 @@
 */
 
 /* [1] 모듈: DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper
-   zcaCreateBridge, zcaAttachBridge를 이 factory 내부에 추가합니다.
+   zcaCreateBridge, zcaAttachBridge, zcaGetCurrentUserParameters를 이 factory 내부에 추가합니다.
    getFacetList(data, facets, settings)의 기존 로직을 유지하고,
    마지막 return 직전에 아래 호출만 추가합니다.
 
@@ -91,6 +91,68 @@ function zcaCreateBridge() {
     return new Session();
 }
 /**
+ * 현재 로그인 사용자 조회를 Promise로 반환합니다. 호출자가 사용자명을 미리 지정할 필요가 없습니다.
+ * Compass에서 현재 플랫폼의 3DSpace URL을 얻고 WAFData로 인증된 GET을 호출합니다.
+ * 조회 결과는 전역/위젯 preference에 저장하지 않습니다. 사용자 이름과 현재 선택 권한 문맥은 별개입니다.
+ * preferredCredentials는 사용자 기본 권한이며, 현재 생성 화면의 securityContext와 같다고 가정하지 않습니다.
+ * API 응답의 data[0] 구조는 설치 버전에서 확인해야 하며 예상과 다르면 잘못된 사용자 대신 오류를 반환합니다.
+ */
+function zcaGetCurrentUserParameters(options) {
+    return new Promise(function (resolve, reject) {
+        require([
+            "DS/WAFData/WAFData",
+            "DS/i3DXCompassServices/i3DXCompassServices"
+        ], function (WAFData, CompassServices) {
+            try {
+                var tenant = options.tenant || widget.getValue("x3dPlatformId") || "OnPremise";
+                CompassServices.getServiceUrl({
+                    serviceName: "3DSpace",
+                    platformId: tenant,
+                    onComplete: function (serviceUrl) {
+                        try {
+                            if (typeof serviceUrl !== "string" || !serviceUrl) {
+                                throw new Error("현재 플랫폼의 3DSpace URL을 얻지 못했습니다.");
+                            }
+                            var url = serviceUrl.replace(/\/$/, "") +
+                                "/resources/modeler/pno/person?current=true" +
+                                "&select=preferredcredentials&tenant=" + encodeURIComponent(tenant);
+                            WAFData.authenticatedRequest(url, {
+                                method: "GET",
+                                type: "json",
+                                headers: {Accept: "application/json"},
+                                onComplete: function (response) {
+                                    try {
+                                        var result = typeof response === "string" ? JSON.parse(response) : response;
+                                        var person = result && Array.isArray(result.data) && result.data[0];
+                                        if (!person || !person.name) {
+                                            throw new Error("현재 사용자 응답의 data[0].name을 확인해 주세요.");
+                                        }
+                                        // 고정 옵션도 버튼을 누른 뒤 조회 완료 시점의 최신 값을 읽습니다.
+                                        resolve(Object.assign({}, options.zcaSelectorParameters || {}, {
+                                            userName: person.name,
+                                            currentUser: person,
+                                            preferredCredentials: person.preferredcredentials || null,
+                                            securityContext: options.securityContext || null,
+                                            tenant: tenant
+                                        }));
+                                    } catch (error) { reject(error); }
+                                },
+                                onFailure: function () {
+                                    reject(new Error("현재 로그인 사용자 조회에 실패했습니다."));
+                                }
+                            });
+                        } catch (error) { reject(error); }
+                    },
+                    onFailure: function () {
+                        reject(new Error("3DSpace URL 조회에 실패했습니다."));
+                    }
+                });
+            } catch (error) { reject(error); }
+        }, reject);
+    });
+}
+
+/**
  * [인자] data는 생성 폼 데이터이며 defaultAttributes.Type.value에서 현재 타입을 읽습니다.
  * facetList는 getFacetList가 구성한 최종 facet 배열입니다. 해당 함수 안에서 반환 직전에 전달해야 합니다.
  * [역할] 적용 대상인지 검사한 뒤 ENOCreate와 classificationFacet에 같은 bridge 참조를 넣습니다.
@@ -131,6 +193,16 @@ function zcaAttachBridge(data, facetList) {
  * 설치 버전에서 실제 초기화 순서는 별도로 확인해야 합니다.
  */
     properties.options.zcaBridge = bridge;
+/**
+ * 사용자 정보가 필요한 커스텀 선택창에서 호출하는 동적 공급 함수입니다.
+ * 함수만 등록하며 여기서 API를 호출하지 않습니다. 커스텀 수신 함수가 있을 때 버튼 클릭 후 조회합니다.
+ * 기존 동적 공급 함수를 직접 지정한 경우에는 덮어쓰지 않습니다.
+ */
+    if (typeof properties.options.zcaGetSelectorParameters !== "function") {
+        properties.options.zcaGetSelectorParameters = function () {
+            return zcaGetCurrentUserParameters(properties.options);
+        };
+    }
     classification.options.zcaBridge = bridge;
     classification.alwaysCalled = true;
 }
@@ -257,6 +329,33 @@ function zcaAttachBridge(data, facetList) {
  * 기본 onClickSelector는 인자를 처리하지 않아 파라미터의 실제 반영에는 별도 수신 구현이 필요합니다.
  */
     ZcaLibraryAdapter.prototype.browse = function () { this.controller().onClickSelector(); };
+/**
+ * 동적 공급 함수는 객체 또는 Promise를 반환할 수 있습니다.
+ * 실제 조회가 끝난 뒤 수신 함수를 호출하므로 사용자 정보가 없는 상태에서 선택창을 열지 않습니다.
+ * 조회 중 화면을 닫았다면 늦은 응답으로 선택창을 열지 않습니다.
+ * 수신 함수가 없으면 기존 browse를 유지합니다. 파라미터가 OOTB에 자동 반영되는 것은 아닙니다.
+ */
+function zcaOpenSelectorWithParameters(facet, session, options, adapter) {
+    return Promise.resolve().then(function () {
+        if (facet.zcaDisposed || session.disposed || !session.controller) return;
+        if (typeof options.zcaOpenClassSelector !== "function") {
+            if (options.zcaSelectorParameters) {
+                throw new Error("파라미터를 처리할 zcaOpenClassSelector를 연결해 주세요.");
+            }
+            return adapter.browse();
+        }
+        var parameters = typeof options.zcaGetSelectorParameters === "function" ?
+            options.zcaGetSelectorParameters() : options.zcaSelectorParameters || {};
+        return Promise.resolve(parameters).then(function (resolved) {
+            if (facet.zcaDisposed || session.disposed || !session.controller) return;
+            if (!resolved || typeof resolved !== "object" || Array.isArray(resolved)) {
+                throw new Error("선택창 파라미터 공급 함수는 객체를 반환해야 합니다.");
+            }
+            return options.zcaOpenClassSelector(session.controller, resolved);
+        });
+    });
+}
+
 /**
  * [인자] facet은 기존 ENOListViewFacet 인스턴스, options는 그 facet에 전달된 설정입니다.
  * [역할] 속성 탭에 WUX 클래스 선택창과 기존 클래스 속성 폼을 붙일 표시 영역을 만듭니다.
@@ -397,16 +496,23 @@ function zcaInstallPropertiesPicker(facet, options) {
             disabled: true,
             icon: {iconName: "open-in-a-new-window", fontIconFamily: 1},
             onClick: function () {
-                try {
-                    if (typeof options.zcaOpenClassSelector === "function") {
-                        // Optional custom receiving hook, not an OOTB API option.
-                        options.zcaOpenClassSelector(
-                            session.controller, options.zcaSelectorParameters || {}
-                        );
-                    } else if (options.zcaSelectorParameters) {
-                        throw new Error("파라미터를 처리할 zcaOpenClassSelector를 연결해 주세요.");
-                    } else { adapter.browse(); }
-                } catch (error) { setStatus(error.message || String(error)); }
+                if (facet.zcaSelectorPending || facet.zcaDisposed || session.disposed) return;
+                facet.zcaSelectorPending = true;
+                browse.disabled = true;
+                setStatus("선택창 정보를 준비하고 있습니다.");
+                zcaOpenSelectorWithParameters(facet, session, options, adapter)
+                    .then(function () {
+                        if (!facet.zcaDisposed && !session.disposed) setStatus("");
+                    }).catch(function (error) {
+                        if (!facet.zcaDisposed && !session.disposed) {
+                            setStatus(error.message || String(error));
+                        }
+                    }).then(function () {
+                        facet.zcaSelectorPending = false;
+                        if (!facet.zcaDisposed && !session.disposed) {
+                            browse.disabled = busy || !session.controller;
+                        }
+                    });
             }
         }).inject(browseHost);
         browse.tooltipInfos = new TooltipModel({shortHelp: Nls.tooltip_browse});
@@ -499,7 +605,8 @@ function zcaInstallPropertiesPicker(facet, options) {
             }).finally(function () {
                 busy = false;
                 if (facet.zcaDisposed || session.disposed) return;
-                picker.disabled = browse.disabled = !session.controller;
+                picker.disabled = !session.controller;
+                browse.disabled = facet.zcaSelectorPending || !session.controller;
                 syncFromController();
             });
         };
@@ -511,7 +618,8 @@ function zcaInstallPropertiesPicker(facet, options) {
  */
         facet.zcaUnsubscribe = session.subscribe(function (state) {
             if (state.disposed) { zcaDestroyPropertiesPicker(facet); return; }
-            picker.disabled = browse.disabled = busy || !state.controller;
+            picker.disabled = busy || !state.controller;
+            browse.disabled = busy || facet.zcaSelectorPending || !state.controller;
             var fieldsError = null;
             if (state.controller) {
                 try { zcaRenderClassFields(facet, state); }

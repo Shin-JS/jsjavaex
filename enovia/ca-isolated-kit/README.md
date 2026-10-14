@@ -8,7 +8,7 @@
 
 ## 소스 주석을 읽는 방법
 
-각 JS의 함수 앞 주석은 인자·역할·필요한 이유를 설명하고, 주요 처리 앞 주석은 모델/표시/UI 수명에서 그 코드가 담당하는 부분을 설명합니다. 나중에 기능을 수정할 때는 해당 함수의 주석과 아래 전체 흐름을 함께 보시면 됩니다. 이번 변경은 주석 보강이며 실행 동작은 변경하지 않았습니다. 분류 탭의 라이브러리 선택창 숨김은 ClassificationsFacet.js에서 오늘 적용한 한 줄의 위치와 영향 범위를 주석으로 설명했습니다.
+각 JS의 함수 앞 주석은 인자·역할·필요한 이유를 설명하고, 주요 처리 앞 주석은 모델/표시/UI 수명에서 그 코드가 담당하는 부분을 설명합니다. 나중에 기능을 수정할 때는 해당 함수의 주석과 아래 전체 흐름을 함께 보시면 됩니다. 주석 보강 이후 로그인 사용자 조회와 동적 파라미터 공급을 추가했습니다. 분류 탭의 라이브러리 선택창 숨김은 ClassificationsFacet.js에서 오늘 적용한 한 줄의 위치와 영향 범위를 주석으로 설명했습니다.
 
 ## 1. 기존 생성 화면은 어떻게 구성되는가
 
@@ -172,6 +172,34 @@ zcaSelectorParameters는 선택창에 전달할 값을 담는 추가 코드의 �
 파라미터를 전달했다고 선택창의 검색 범위나 초기 선택이 자동으로 달라지는 것은 아닙니다. 기본 onClickSelector가 인자를 처리하지 않기 때문입니다. 실제 검색 범위 제한이나 초기 클래스 지정은 LibraryActive 생성 옵션 또는 검색 요청 조건에서 그 값을 사용하는 수신 로직이 있어야 합니다.
 
 즉 현재 추가한 부분은 전달 지점입니다. libraryId나 classId가 어떤 의미로 쓰일지는 요구사항과 설치 버전의 지원 옵션에 맞춰 구현해야 합니다.
+
+### 로그인 사용자 정보를 동적으로 전달하는 방법
+
+`zcaAttachBridge()`는 속성 facet에 `zcaGetSelectorParameters` 공급 함수를 등록합니다. 커스텀 수신 함수가 연결된 경우 찾아보기 버튼을 누르면 이 공급 함수를 호출하고, 사용자 조회가 완료된 뒤 `zcaOpenClassSelector(controller, parameters)`에 전달합니다. 객체 또는 Promise를 반환하는 별도 공급 함수로 바꾸는 것도 가능합니다.
+
+조회 경로는 Compass의 `getServiceUrl` → WAFData의 `authenticatedRequest` → `GET /resources/modeler/pno/person?current=true&select=preferredcredentials`입니다. 예시 사용자 변수를 사용하지 않습니다. 사용자 조회는 커스텀 수신 함수가 있을 때만 실행하며 일반 browse는 유지합니다.
+
+`ENONewWidget.js`의 `zcaAttachBridge()`에서 `properties.options.zcaBridge = bridge;` 아래에 다음 수신 함수를 연결할 수 있습니다. 주석 위치에서 전달받은 정보를 실제 선택창 생성 옵션/검색 조건으로 사용합니다.
+
+```js
+properties.options.zcaOpenClassSelector = function (controller, parameters) {
+    // parameters.userName: 현재 로그인 사용자의 계정명
+    // parameters.currentUser: API가 반환한 현재 사용자 객체
+    // parameters.preferredCredentials: 사용자의 기본 권한 문맥
+    // parameters.securityContext: 해당 속성 facet으로 전달된 현재 권한 문맥
+    // parameters.tenant: 현재 플랫폼 ID
+    // 사용자별 필터가 필요하면 이 위치에서 선택창 생성/검색 로직에 적용합니다.
+    controller.onClickSelector();
+};
+```
+
+위 코드는 실제 사용자 조회와 수신까지 동작하는 연결 예제입니다. 마지막 `onClickSelector()`는 기존 선택창을 열며 파라미터를 사용하지 않습니다. 사용자에 따라 라이브러리 범위를 제한하려면 마지막 호출을 설치 버전의 선택창 생성/검색 구현으로 수정해야 합니다. 사용자별 라이브러리 매핑 규칙은 이번 작업에서 정하지 않았습니다.
+
+고정·동적 업무값은 기존 `properties.options.zcaSelectorParameters` 객체에 추가하면 사용자 정보와 함께 전달됩니다. `userName`, `currentUser`, `preferredCredentials`, `securityContext`, `tenant`는 조회 결과용 키이므로 공급 함수가 덮어씁니다. API의 응답 구조는 `data[0].name` 기준으로 확인하며 구조가 다르거나 조회가 실패하면 상태 메시지를 표시하고 선택창을 열지 않습니다. 조회 중 중복 클릭을 막고, 화면이 닫힌 뒤 도착한 응답도 선택창을 열지 않도록 처리합니다.
+
+`preferredCredentials`는 기본 권한이며 현재 선택한 organization과 일치한다고 가정하지 않습니다. 현재 문맥이 필요하면 facet의 `securityContext`를 사용해야 합니다. 사용자 정보 파라미터는 검색 동작에 사용할 데이터이고 서버 권한 검사를 대체하지 않습니다.
+
+참고: [Dassault CAA의 3DSpace REST 설명(문서 미러)](https://library.plmcoach.com/caa3dx/win_b64.doc/English/CAA3DSpaceREST/CAAi3DXTa3DSpaceWService.htm). 실제 설치 환경의 사용자 API 응답과 선택창 필터는 통합 검증이 필요합니다.
 
 ## 16. 함수별로 보면 무엇을 담당하는가
 
