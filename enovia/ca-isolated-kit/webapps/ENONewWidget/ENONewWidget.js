@@ -161,104 +161,199 @@ function zcaAttachBridge(data, facetList) {
     ZcaLibraryAdapter.prototype.browse = function () { this.controller().onClickSelector(); };
 function zcaInstallPropertiesPicker(facet, options) {
     if (!options.zcaBridge) return;
+    var session = options.zcaBridge;
+    var adapter = new ZcaLibraryAdapter(session);
+    facet.zcaDisposed = false;
+    var root = document.createElement("div");
+    root.className = "classificationPLMNewContainer zca-library-picker";
+    var status = document.createElement("div");
+    status.setAttribute("role", "status");
+    root.appendChild(status);
+    facet.skeleton.appendChild(root);
+    facet.zcaRoot = root;
+    function setStatus(message) {
+        status.textContent = message || "";
+        status.style.display = message ? "" : "none";
+    }
+    setStatus("분류 선택 화면을 준비하고 있습니다…");
 
-            var self = facet;
-            var session = options.zcaBridge;
-            var adapter = new ZcaLibraryAdapter(session);
-            facet.zcaDisposed = false;
-            facet.zcaRequest = 0;
-            var root = document.createElement("section");
-            root.className = "zca-library-picker";
-            var label = document.createElement("label");
-            label.textContent = "라이브러리 / 클래스";
-            var line = document.createElement("div");
-            line.className = "zca-library-line";
-            var input = document.createElement("input");
-            input.type = "text";
-            input.placeholder = "클래스 이름을 3자 이상 입력하세요";
-            input.setAttribute("aria-label", "라이브러리 클래스 검색");
-            var browse = document.createElement("button");
-            browse.type = "button";
-            browse.textContent = "찾아보기";
-            var results = document.createElement("div");
-            var selected = document.createElement("div");
-            var status = document.createElement("div");
-            status.setAttribute("role", "status");
-            label.appendChild(input);
-            line.appendChild(label);
-            line.appendChild(browse);
-            root.appendChild(line);
-            root.appendChild(results);
-            root.appendChild(selected);
-            root.appendChild(status);
-            facet.skeleton.appendChild(root);
-            facet.zcaRoot = root;
-            facet.zcaUnsubscribe = session.subscribe(function (state) {
-                if (state.disposed) {
-                    self.zcaDisposed = true;
-                    ++self.zcaRequest;
-                    clearTimeout(self.zcaSearchTimer);
-                    input.disabled = browse.disabled = true;
-                    return;
-                }
-                input.disabled = browse.disabled = !state.controller;
-                selected.textContent = state.selected().map(function (node) {
-                    return node.getLabel ? node.getLabel() : node.label || node.id;
-                }).join(" / ");
-                status.textContent = state.error ? state.error.message :
-                    state.controller ? "" : "분류 선택 화면을 준비하고 있습니다…";
+    // Existing AMD factory dependencies do not need new positional arguments.
+    require([
+        "DS/WUXAutoComplete/AutoComplete",
+        "DS/TreeModel/TreeDocument",
+        "DS/TreeModel/TreeNodeModel",
+        "DS/Controls/Button",
+        "DS/Controls/Popup",
+        "DS/Controls/TooltipModel",
+        "i18n!DS/ClassificationsFacet/assets/nls/PLMNewCommCmpSel",
+        "i18n!DS/LibraryActive/assets/nls/LibraryActive",
+        "css!DS/ClassificationsFacet/ClassificationsFacet.css"
+    ], function (AutoComplete, TreeDocument, TreeNodeModel, Button, Popup, TooltipModel, Nls, LibraryNls) {
+        if (facet.zcaDisposed || session.disposed) return;
+        function element(className, parent) {
+            var result = document.createElement("div");
+            result.className = className;
+            parent.appendChild(result);
+            return result;
+        }
+        var container = element("plmnew-autocomplete-container", root);
+        var labelHost = element("plmnew-autocomplete-label", container);
+        var label = document.createElement("label");
+        label.textContent = LibraryNls.name_Section_AllLibraries;
+        labelHost.appendChild(label);
+        var line = element("plmnew-autocomplete-line", container);
+        var inputHost = element("plmnew-autocomplete", line);
+        var browseHost = element("plmnew-button-browse", line);
+        var synchronizing = false;
+        var busy = false;
+        var picker = new AutoComplete({
+            elementsTree: new TreeDocument(),
+            placeholder: Nls.search,
+            typeDelayBeforeSearch: 400,
+            keepSearchResultsFlag: false,
+            multiSearchMode: true,
+            minLengthBeforeSearch: 0,
+            allowFreeInputFlag: false,
+            selectedItems: [],
+            disabled: true,
+            popupSizeAdjustPolicy: Popup.SizeAdjustPolicyEnum.NoAdjust,
+            columnOptions: {autoRowHeightFlag: true, typeRepresentation: "detailedUser"}
+        }).inject(inputHost);
+        facet.zcaPicker = picker;
+
+        function nodeId(node) { return node.getID ? node.getID() : node.id; }
+        function signature(nodes) {
+            return JSON.stringify(nodes.map(nodeId).sort());
+        }
+        function mirrorNode(node) {
+            // Do not share selected TreeNodeModel instances between the two views.
+            var id = nodeId(node);
+            var title = node.getLabel ? node.getLabel() : node.options.label;
+            var ctrl = session.controller;
+            var path = ctrl._classPathMap && ctrl._classPathMap.get(id);
+            var mirror = new TreeNodeModel({
+                label: title, customNode: true, isSelectable: true,
+                icons: node.options.icons,
+                value: {label: title, subLabel: path || ""}
             });
-            browse.addEventListener("click", function () {
-                try { adapter.browse(); } catch (error) { status.textContent = error.message; }
+            mirror.id = id;
+            mirror.plmType = node.plmType;
+            mirror.getID = function () { return id; };
+            mirror.getLabel = function () { return title; };
+            return mirror;
+        }
+        function syncFromController() {
+            if (facet.zcaDisposed || session.disposed || !session.controller || busy) return;
+            if (signature(picker.selectedItems || []) === signature(session.selected())) return;
+            synchronizing = true;
+            try { picker.selectedItems = session.selected().map(mirrorNode); }
+            finally { synchronizing = false; }
+        }
+        var browse = new Button({
+            displayStyle: "lite",
+            label: Nls.tooltip_browse,
+            showLabelFlag: false,
+            disabled: true,
+            icon: {iconName: "open-in-a-new-window", fontIconFamily: 1},
+            onClick: function () {
+                try {
+                    if (typeof options.zcaOpenClassSelector === "function") {
+                        // Optional custom receiving hook, not an OOTB API option.
+                        options.zcaOpenClassSelector(
+                            session.controller, options.zcaSelectorParameters || {}
+                        );
+                    } else if (options.zcaSelectorParameters) {
+                        throw new Error("파라미터를 처리할 zcaOpenClassSelector를 연결해 주세요.");
+                    } else { adapter.browse(); }
+                } catch (error) { setStatus(error.message || String(error)); }
+            }
+        }).inject(browseHost);
+        browse.tooltipInfos = new TooltipModel({shortHelp: Nls.tooltip_browse});
+        facet.zcaBrowseButton = browse;
+        root.appendChild(status);
+
+        picker.elementsTree = function (text) {
+            var empty = new TreeDocument();
+            text = String(text || "").trim();
+            if (facet.zcaDisposed || session.disposed || !session.controller) {
+                return Promise.resolve(empty);
+            }
+            if (/[*+?()[\]\"]/.test(text)) {
+                picker.customFilterMessage = '특수문자 * + ? ( ) [ ] " 는 사용할 수 없습니다.';
+                return Promise.resolve(empty);
+            }
+            if (text.length < 3) {
+                picker.customFilterMessage = Nls.autoCompleteFilterMessage.minimum_3_characters_search;
+                return Promise.resolve(empty);
+            }
+            picker.customFilterMessage = Nls.autoCompleteFilterMessage.no_objects_found;
+            return adapter.search(text).then(function (nodes) {
+                if (facet.zcaDisposed || session.disposed) return empty;
+                var tree = new TreeDocument();
+                nodes.forEach(function (node) { tree.addRoot(node); });
+                return tree;
+            }).catch(function (error) {
+                if (!facet.zcaDisposed) setStatus(error.message || String(error));
+                return empty;
             });
-            input.addEventListener("input", function () {
-                clearTimeout(self.zcaSearchTimer);
-                var request = ++self.zcaRequest;
-                var text = input.value.trim();
-                results.replaceChildren();
-                if (text.length < 3) return;
-                self.zcaSearchTimer = setTimeout(function () {
-                    status.textContent = "검색 중…";
-                    adapter.search(text).then(function (nodes) {
-                        if (self.zcaDisposed || request !== self.zcaRequest) return;
-                        status.textContent = nodes.length ? "" : "검색 결과가 없습니다.";
-                        nodes.forEach(function (node) {
-                            var button = document.createElement("button");
-                            button.type = "button";
-                            button.className = "zca-library-result";
-                            button.textContent = node.getLabel();
-                            button.addEventListener("click", function () {
-                                button.disabled = true;
-                                adapter.add(node).then(function () {
-                                    if (self.zcaDisposed) return;
-                                    input.value = "";
-                                    ++self.zcaRequest;
-                                    results.replaceChildren();
-                                    status.textContent = "분류 탭에서 속성값을 입력하세요.";
-                                }).catch(function (error) {
-                                    if (self.zcaDisposed) return;
-                                    button.disabled = false;
-                                    status.textContent = error.message || String(error);
-                                });
-                            });
-                            results.appendChild(button);
-                        });
-                    }).catch(function (error) {
-                        if (!self.zcaDisposed && request === self.zcaRequest) {
-                            status.textContent = error.message || String(error);
-                        }
-                    });
-                }, 400);
+        };
+        facet.zcaChangeHandler = function () {
+            if (synchronizing || busy || facet.zcaDisposed ||
+                session.disposed || !session.controller) return;
+            var desired = (picker.selectedItems || []).slice();
+            var actual = session.selected().slice();
+            if (signature(desired) === signature(actual)) return;
+            var desiredIds = new Set(desired.map(nodeId));
+            var actualIds = new Set(actual.map(nodeId));
+            var added = desired.filter(function (node) { return !actualIds.has(nodeId(node)); });
+            var removed = actual.filter(function (node) { return !desiredIds.has(nodeId(node)); });
+            busy = true;
+            picker.disabled = browse.disabled = true;
+            // Serialize adds: the original path service cancels overlapping requests.
+            var work = Promise.resolve();
+            added.forEach(function (node) {
+                work = work.then(function () {
+                    if (!session.disposed) return adapter.add(node);
+                });
             });
+            work.then(function () {
+                if (session.disposed) return;
+                removed.forEach(function (node) { node.unselect(); });
+                setStatus("");
+            }).catch(function (error) {
+                if (!facet.zcaDisposed) setStatus(error.message || String(error));
+            }).finally(function () {
+                busy = false;
+                if (facet.zcaDisposed || session.disposed) return;
+                picker.disabled = browse.disabled = !session.controller;
+                syncFromController();
+            });
+        };
+        picker.addEventListener("change", facet.zcaChangeHandler);
+        facet.zcaUnsubscribe = session.subscribe(function (state) {
+            if (state.disposed) { zcaDestroyPropertiesPicker(facet); return; }
+            picker.disabled = browse.disabled = busy || !state.controller;
+            setStatus(state.error ? state.error.message : state.controller ? "" :
+                "분류 선택 화면을 준비하고 있습니다…");
+            syncFromController();
+        });
+    }, function (error) {
+        if (!facet.zcaDisposed) setStatus("기존 UI 컴포넌트 로딩 실패: " + error.message);
+    });
 }
+
 function zcaDestroyPropertiesPicker(facet) {
-
-            facet.zcaDisposed = true;
-            ++facet.zcaRequest;
-            clearTimeout(facet.zcaSearchTimer);
-            if (facet.zcaUnsubscribe) facet.zcaUnsubscribe();
-            if (facet.zcaRoot) facet.zcaRoot.remove();
-
+    if (facet.zcaDisposed) return;
+    facet.zcaDisposed = true;
+    if (facet.zcaUnsubscribe) facet.zcaUnsubscribe();
+    if (facet.zcaPicker) {
+        if (facet.zcaChangeHandler) {
+            facet.zcaPicker.removeEventListener("change", facet.zcaChangeHandler);
+        }
+        facet.zcaPicker.destroy();
+    }
+    if (facet.zcaBrowseButton) facet.zcaBrowseButton.destroy();
+    if (facet.zcaRoot) facet.zcaRoot.remove();
 }
 
 /* [3] 모듈: DS/ENONewWidget/ENONew/Controller/ENONewDialogController
@@ -277,3 +372,4 @@ function zcaDisposeDialogBridge(dialog) {
     });
     bridges.forEach(function (bridge) { bridge.dispose(); });
 }
+

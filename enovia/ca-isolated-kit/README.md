@@ -91,9 +91,27 @@ zcaInstallPropertiesPicker(this, options);
 
 참조 소스에서는 options 변수명이 `t`입니다. bridge가 없는 일반 위젯은 즉시 반환하여 UI를 추가하지 않습니다. 기존 destroy의 listview.destroy() 앞에서 zcaDestroyPropertiesPicker(this)를 호출합니다.
 
-검색/선택은 추가된 adapter가 수행하고 기존 라이브러리 컨트롤러 한 개에 결과를 반영합니다. 분류 속성 모델을 별도로 만들지 않습니다. 입력창과 결과 버튼은 기본 HTML 요소이며 OOTB 자동완성의 외형 전체를 복제한 것은 아닙니다. 클래스 선택 삭제는 기존 분류 탭에서 수행하며, 속성 탭의 선택 요약은 함께 갱신됩니다.
+검색/선택은 추가된 adapter가 수행하고 기존 라이브러리 컨트롤러 한 개에 결과를 반영합니다. 분류 속성 모델을 별도로 만들지 않습니다. 입력창은 기존 분류 탭과 같은 DS/WUXAutoComplete/AutoComplete를 사용합니다. 찾아보기는 DS/Controls/Button의 lite 아이콘 버튼을 사용하고, 원래 NLS와 ClassificationsFacet.css의 배치 클래스를 재사용합니다. 선택 항목은 기존처럼 칩으로 표시되며 속성 탭의 칩 삭제도 분류 탭에 반영됩니다. 두 화면의 TreeNodeModel 인스턴스는 복제하여 한쪽 UI의 선택 상태가 다른쪽 모델을 직접 바꾸지 않게 합니다.
 
-추가 CSS 파일을 만들지 않습니다. 프로젝트의 기존 폼 스타일을 사용합니다. 배치/간격 조정이 필요하면 이 입력창의 `.zca-library-picker` 범위로만 기존 스타일에 추가하세요.
+추가 CSS 파일은 만들지 않고 기존 ClassificationsFacet.css를 css! 로더로 가져옵니다. UI 컴포넌트도 zcaInstallPropertiesPicker 안에서 require하므로 기존 AMD factory의 의존성 배열/인자 순서를 바꿀 필요가 없습니다. 실제 설치 버전의 테마에 따른 최종 외형은 화면에서 확인하세요.
+
+이미 적용한 코드에서는 ENONewWidget.js의 [2] 영역에 있는 zcaInstallPropertiesPicker/zcaDestroyPropertiesPicker 두 함수를 교체합니다. ZcaLibraryAdapter, [1] bridge 구성, [3] 닫기 처리는 유지합니다. 특히 사용자가 테스트하면서 바꾼 Change Action 타입 조건을 이번 UI 변경 때문에 이전 ZCA Change Action 예시로 되돌리지 마세요.
+
+### 5-2-1. 클래스 선택창에 파라미터 전달
+
+기존 찾아보기 동작은 그대로 사용합니다. 필요한 경우 속성 facet의 options에 `zcaSelectorParameters` 객체와 `zcaOpenClassSelector` 함수를 연결할 수 있습니다. 둘 다 이번 추가 코드가 정의한 전달 지점이며 OOTB 옵션명이 아닙니다.
+
+```javascript
+properties.options.zcaSelectorParameters = {
+    libraryId: "전달할 라이브러리 ID",
+    classId: "전달할 클래스 ID"
+};
+properties.options.zcaOpenClassSelector = function (controller, parameters) {
+    // parameters를 기존 선택창 생성 옵션/검색 조건에 매핑하는 수신 로직
+};
+```
+
+위 설정은 zcaAttachBridge에서 properties를 찾은 뒤 넣습니다. 실제로 전달할 값과 사용 목적에 맞춰 수신 함수를 구현해야 합니다. 기본 onClickSelector는 인자를 처리하지 않으므로 `controller.onClickSelector(parameters)`만 호출해도 검색 범위/초기 선택이 바뀌는 것은 아닙니다. 수신 로직은 PLMNewLibraryActiveController.onClickSelector에서 LibraryActive 생성 옵션 또는 검색 서비스 요청 조건에 값을 반영해야 합니다. 옵션 지원 여부는 설치 버전에서 확인합니다. 파라미터만 지정하고 수신 함수를 연결하지 않으면 조용히 무시하지 않고 안내를 표시합니다.
 
 ### 5-3. ENONewDialogController
 
@@ -137,3 +155,4 @@ zcaConnectClassificationFacet(this, options);
 - https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js
 
 소스의 내부 메서드가 공식 확장 API로 보장되는 것은 아닙니다. minified 변수명은 버전에 따라 달라질 수 있습니다.
+
