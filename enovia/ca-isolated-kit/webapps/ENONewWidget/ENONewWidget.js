@@ -74,8 +74,6 @@ function zcaAttachBridge(data, facetList) {
     properties.options = properties.options || {};
     classification.options = classification.options || {};
     properties.options.zcaBridge = bridge;
-    // "move": fields only in Properties; "both": same form in the active tab.
-    properties.options.zcaClassFieldsMode = "move";
     classification.options.zcaBridge = bridge;
     classification.alwaysCalled = true;
 }
@@ -165,10 +163,6 @@ function zcaInstallPropertiesPicker(facet, options) {
     if (!options.zcaBridge) return;
     var session = options.zcaBridge;
     var adapter = new ZcaLibraryAdapter(session);
-    var fieldsMode = options.zcaClassFieldsMode || "move";
-    if (fieldsMode !== "move" && fieldsMode !== "both") {
-        throw new Error("zcaClassFieldsMode는 move 또는 both여야 합니다.");
-    }
     facet.zcaDisposed = false;
     var root = document.createElement("div");
     root.className = "classificationPLMNewContainer zca-library-picker";
@@ -346,7 +340,7 @@ function zcaInstallPropertiesPicker(facet, options) {
             picker.disabled = browse.disabled = busy || !state.controller;
             var fieldsError = null;
             if (state.controller) {
-                try { zcaRenderClassFields(facet, state, fieldsMode); }
+                try { zcaRenderClassFields(facet, state); }
                 catch (error) { fieldsError = error.message; }
             }
             setStatus(fieldsError || (state.error ? state.error.message : state.controller ? "" :
@@ -358,7 +352,7 @@ function zcaInstallPropertiesPicker(facet, options) {
     });
 }
 
-function zcaRenderClassFields(facet, session, mode) {
+function zcaRenderClassFields(facet, session) {
     if (facet.zcaDisposed || session.disposed || !session.controller) return;
     var ctrl = session.controller;
     // Existing live form containing ClassifPropWidget, including editable tweakers.
@@ -375,16 +369,13 @@ function zcaRenderClassFields(facet, session, mode) {
     } else if (binding.form !== form) {
         throw new Error("분류 폼이 재초기화되었습니다. 생성 화면을 다시 열어 주세요.");
     }
-    var inProperties = mode === "move" ||
-        !session.zcaActiveFacet || session.zcaActiveFacet === "ENOCreate";
-    if (inProperties) {
-        if (form.parentNode !== facet.zcaFieldsHost) {
-            var active = document.activeElement;
-            if (active && form.contains(active) && typeof active.blur === "function") active.blur();
-            facet.zcaFieldsHost.appendChild(form);
-        }
-    } else { zcaRestoreClassFields(facet); }
-    facet.zcaFieldsHost.style.display = inProperties && session.selected().length ? "" : "none";
+    // Single move behavior: the form stays in Properties until the dialog closes.
+    if (form.parentNode !== facet.zcaFieldsHost) {
+        var active = document.activeElement;
+        if (active && form.contains(active) && typeof active.blur === "function") active.blur();
+        facet.zcaFieldsHost.appendChild(form);
+    }
+    facet.zcaFieldsHost.style.display = session.selected().length ? "" : "none";
     clearTimeout(facet.zcaFieldsResizeTimer);
     facet.zcaFieldsResizeTimer = setTimeout(function () {
         if (!facet.zcaDisposed && !session.disposed &&
@@ -429,26 +420,10 @@ function zcaDestroyPropertiesPicker(facet) {
    기존 destroy() 첫 줄에:
        zcaDisposeDialogBridge(this);
    기존 myDialog/immersiveFrame 파괴 및 _parent 호출은 그대로 유지합니다.
-   both 모드를 위해 기존 onTabChange 콜백의 manageButtons 다음에 추가:
-       zcaSelectFieldsTab(n, e); // 참조 소스: n=DialogController, e=선택 facet
-   예: onTabChange: function(e) { n.manageButtons(e); zcaSelectFieldsTab(n, e); }
+   이번 버전은 onTabChange에 추가할 코드가 없습니다.
+   이전에 추가한 zcaSelectFieldsTab 호출/함수는 제거합니다.
+   기존 manageButtons 및 일반 탭 전환 처리는 유지합니다.
 */
-function zcaSelectFieldsTab(dialog, selectedFacet) {
-    var name = selectedFacet && selectedFacet.facet && selectedFacet.facet.name;
-    if (!name) return;
-    var facets = dialog.View && dialog.View.facets;
-    var bridges = new Set();
-    (facets || []).forEach(function (facet) {
-        if (facet.options && facet.options.zcaBridge) bridges.add(facet.options.zcaBridge);
-    });
-    bridges.forEach(function (bridge) {
-        if (!bridge.disposed) {
-            bridge.zcaActiveFacet = name;
-            bridge.notify();
-        }
-    });
-}
-
 function zcaDisposeDialogBridge(dialog) {
     var facets = dialog.View && dialog.View.facets;
     var bridges = new Set();
@@ -459,5 +434,6 @@ function zcaDisposeDialogBridge(dialog) {
     });
     bridges.forEach(function (bridge) { bridge.dispose(); });
 }
+
 
 
