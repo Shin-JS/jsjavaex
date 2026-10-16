@@ -111,7 +111,7 @@ function zcaApplyOrganizationClass(ctrl, session) {
                 session.notify();
             } catch (error) { session.fail(error); }
         },
-        onFailure: function () { session.fail(new Error("조직별 클래스 경로 조회에 실패했습니다.")); }
+        onFailure: function () { session.fail(new Error("지정 클래스 경로 조회에 실패했습니다.")); }
     });
 }
 

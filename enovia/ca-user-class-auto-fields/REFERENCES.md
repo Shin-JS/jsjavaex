@@ -22,3 +22,9 @@
 현재 문맥 취득은 ENONew 기존 데이터/이벤트를 사용합니다. 기본 사용자 문맥 조회를 현재 조직이라고 가정하지 않습니다.
 
 [ca-isolated-kit](../ca-isolated-kit/README.md)의 대화상자별 bridge, 폼 이동·복원을 참고했습니다. 새 폴더는 검색창 없는 자동 방식이며 이전 UI 설치 호출과 동시에 적용하지 않습니다.
+
+## 유형 고정 확인
+
+- ENONewWidget.js의 ENONewServices가 Type에 value/range/rangeNLS/persistData를 구성하는 부분과 ENONewController.onSubmit이 원래 subtype 정의를 선택하는 부분.
+- ENONewAttributeUtil._buildAttributesModel이 isReadOnly를 readOnly로, visible을 모델 표시 옵션으로 전달하는 부분.
+- [ENOChgGovernanceUX.js](https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js)의 ChgCreateChangeAction.launchCreateChangeActionDialog에서 초기 생성 옵션과 CreateNew(d), 사용자 기본 유형 저장을 확인했습니다. 참조 blob: bca4fca6e283453698ec2579da10c936fb4175d6.

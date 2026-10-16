@@ -22,14 +22,14 @@ const context = vm.createContext({console,document,Error,Map,Set,Promise,
  require(ids, done){assert.deepEqual(Array.from(ids),['DS/ClassificationProp/utils/AttributesUtils']);
   done({validateAttributes:()=>validateError?[{message:validateError}]:null});}
 });
-for (const file of ['ENONewWidget/ENONewWidget.js','ClassificationsFacet/ClassificationsFacet.js','ClassificationProp/ClassificationProp.js']) {
+for (const file of ['ENONewWidget/ENONewWidget.js','ClassificationsFacet/ClassificationsFacet.js','ClassificationProp/ClassificationProp.js','ENOChgGovernanceUX/ENOChgGovernanceUX.js']) {
  vm.runInContext(fs.readFileSync(path.join(root,'webapps',file),'utf8'),context);
 }
 function metadata(){return [{facet:{name:'ENOCreate'},options:{}},{facet:{name:'classificationFacet'},options:{}}];}
-function data(org='Engineering'){return {defaultAttributes:{Type:{value:'Change Action'},SecurityContext:{value:`ctx::Leader.${org}.Space`}}};}
-function makeSession(org='Engineering'){
- config={zcaEnableAutoClassByOrganization:true,zcaClassByOrganization:JSON.stringify({Engineering:{classId:'C1',libraryId:'L1'},Manufacturing:{classId:'C2'}})};
- const facets=metadata();context.zcaAttachAutoBridge(data(org),facets,{});return {session:facets[0].options.zcaAutoSession,facets};
+function data(org='Engineering'){return {defaultAttributes:{Type:{value:'Change Action',range:['Change Action','Other'],rangeNLS:['설계변경','다른 유형'],persistData:[{name:'Change Action',schema:'real'},{name:'Other'}]},SecurityContext:{value:`ctx::Leader.${org}.Space`}}};}
+function makeSession(classId='C1',mode='hidden'){
+ config={zcaEnableAutoClassByOrganization:true,zcaFixedClassId:classId,zcaFixedLibraryId:'L1',zcaTypeDisplay:mode};
+ const facets=metadata();context.zcaAttachAutoBridge(data(),facets,{});return {session:facets[0].options.zcaAutoSession,facets};
 }
 function makeController(session){
  const parent=new Element(), form=new Element(), sibling=new Element();parent.appendChild(form);parent.appendChild(sibling);form.nextSibling=sibling;
@@ -49,11 +49,12 @@ function makeController(session){
 // 비활성 위젯과 다른 타입의 공용 호출에는 세션을 추가하지 않습니다.
 config={};let facets=metadata();context.zcaAttachAutoBridge(data(),facets,{});assert.equal(facets[0].options.zcaAutoSession,undefined);
 config={zcaEnableAutoClassByOrganization:true};facets=metadata();const other=data();other.defaultAttributes.Type.value='Part';context.zcaAttachAutoBridge(other,facets,{});assert.equal(facets[0].options.zcaAutoSession,undefined);
-assert.equal(context.zcaOrganizationFromContext('ctx::Leader.Engineering.Space'),'Engineering');
-assert.throws(()=>context.zcaOrganizationFromContext('Role.Org.WithDot.Space'),/SecurityContext/);
-let {session,facets:activeFacets}=makeSession();const second=makeSession('Manufacturing').session;
+// 부서 조회와 조직 파싱 없이도 지정 클래스만으로 동작합니다.
+let {session,facets:activeFacets}=makeSession();const second=makeSession('C2').session;
 assert.notEqual(session,second);assert.equal(second.rule.classId,'C2');second.dispose();
-const ui=makeController(session), props={skeleton:new Element()};
+const ui=makeController(session), props={skeleton:new Element(),listview:{data:data(),propModel:{get(){return undefined}}}};
+context.zcaPrepareFixedType(props.listview.data,session);
+assert.equal(props.listview.data.defaultAttributes.Type.visible,false);
 context.zcaInstallAutoFields(props,{zcaAutoSession:session});
 const facet={initUI:{getController:()=>({plmNewLibraryActive:ui.ctrl})}};
 context.zcaConnectAutoClassification(facet,{zcaAutoSession:session,securityContext:session.context});timers.get(facet.zcaAutoTimer)();
@@ -66,14 +67,15 @@ context.zcaNotifyAutoClassAttributes(ui.ctrl.classifPropModels[0],{attribute:[]}
 assert.equal(session.status,'ready');assert.equal(props.zcaAutoHost.style.display,'');assert.equal(ui.form.parentNode,props.zcaAutoHost);
 let blurred=false;const input=new Element();input.blur=()=>blurred=true;ui.form.appendChild(input);document.activeElement=input;
 assert.equal(context.zcaCanSubmitAutoDialog(dialog),true);assert.equal(blurred,true);
+props.listview.data.defaultAttributes.Type.value='Other';assert.equal(context.zcaCanSubmitAutoDialog(dialog),false);props.listview.data.defaultAttributes.Type.value='Change Action';
 validateError='필수 속성';assert.equal(context.zcaCanSubmitAutoDialog(dialog),false);validateError=null;
 session.checkContext('ctx::Leader.Manufacturing.Space');assert.equal(session.status,'error');assert.equal(context.zcaCanSubmitAutoDialog(dialog),false);
 context.zcaDisconnectAutoClassification(facet);assert.equal(ui.form.parentNode,ui.parent);assert.equal(ui.parent.children[0],ui.form);assert.equal(ui.ctrl.zcaAutoSession,undefined);
 // 늦게 도착한 조회가 닫힌 화면을 변경하지 않아야 합니다.
 ({session}=makeSession());const late=makeController(session);late.ctrl.zcaAutoSession=session;session.controller=late.ctrl;
 context.zcaApplyOrganizationClass(late.ctrl,session);session.dispose();late.request().onComplete({});assert.equal(late.selectedCount(),0);
-// 매핑 없음/클래스 종류 오류/경로 불일치/응답 오류는 준비 완료가 되지 않아야 합니다.
-({session}=makeSession('Unknown'));assert.equal(session.status,'error');session.dispose();
+// 클래스 ID 없음/클래스 종류 오류/경로 불일치/응답 오류는 준비 완료가 되지 않아야 합니다.
+({session}=makeSession(''));assert.equal(session.status,'error');session.dispose();
 for(const [type,library] of [['General Library','L1'],['General Class','WRONG']]){
  ({session}=makeSession());const bad=makeController(session);bad.ctrl.zcaAutoSession=session;session.controller=bad.ctrl;
  context.zcaApplyOrganizationClass(bad.ctrl,session);
@@ -82,4 +84,22 @@ for(const [type,library] of [['General Library','L1'],['General Class','WRONG']]
 }
 ({session}=makeSession());session.classId='C1';context.zcaNotifyAutoClassAttributes({zcaAutoSession:session,zcaAutoClassId:'C1'},{});assert.equal(session.status,'error');session.dispose();
 ({session}=makeSession());timers.get(session.timer)();assert.equal(session.status,'error');session.dispose();
-console.log('PASS: widget/type isolation, organization mapping, asynchronous selection/loading, validation/blur, context change, form restore, late responses, mapping/type/library/response errors, timeout');
+// 타입 표시와 원래 생성 스키마가 함께 유지되는지 확인합니다.
+for(const mode of ['hidden','disabled']){
+ ({session}=makeSession('C1',mode));const typed=data();const descriptor=typed.defaultAttributes.Type.persistData[0];
+ context.zcaPrepareFixedType(typed,session);
+ assert.equal(typed.defaultAttributes.Type.isReadOnly,true);
+ assert.equal(typed.defaultAttributes.Type.visible,mode==='disabled');
+ assert.deepEqual(Array.from(typed.defaultAttributes.Type.range),['Change Action']);
+ assert.deepEqual(Array.from(typed.defaultAttributes.Type.rangeNLS),['설계변경']);
+ assert.equal(typed.defaultAttributes.Type.persistData[0],descriptor);
+ session.dispose();
+}
+({session}=makeSession());const wrong=data();wrong.defaultAttributes.Type.value='Other';context.zcaPrepareFixedType(wrong,session);assert.equal(session.status,'error');session.dispose();
+({session}=makeSession());const missing=data();missing.defaultAttributes.Type.persistData=[];context.zcaPrepareFixedType(missing,session);assert.equal(session.status,'error');session.dispose();
+({session}=makeSession('C1','invalid'));assert.equal(session.status,'error');session.dispose();
+config={};const normal={type:'Change Action',options:{preferedType:'Other'}};assert.equal(context.zcaConfigureFixedCreateType(normal),normal);assert.equal(normal.options.preferedType,'Other');
+config={zcaEnableAutoClassByOrganization:true,zcaAutoClassType:'Custom CA'};
+const launch={type:'Change Action',options:{preferedType:'Other',select:[]},context:{},facets:[]};
+const configured=context.zcaConfigureFixedCreateType(launch);assert.equal(configured,launch);assert.equal(launch.type,'Custom CA');assert.equal(launch.options.typeName,'Custom CA');assert.equal(launch.options.preferedType,'Custom CA');assert.equal(launch.options.select.length,0);
+console.log('PASS: widget/type isolation, fixed class without department lookup, asynchronous selection/loading, validation/blur, context change, form restore, late responses, config/type/library/response errors, timeout, hidden/read-only type with original schema, launch type isolation');

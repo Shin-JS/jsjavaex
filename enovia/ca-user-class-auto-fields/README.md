@@ -1,87 +1,89 @@
-# 조직별 클래스 속성 자동 표시 — OOTB 변경 조각
+# 지정 클래스 자동 표시와 생성 유형 고정 — OOTB 변경 조각
 
-새 Change Action 화면에서 현재 사용자가 선택한 권한 문맥의 조직으로 클래스를 결정하고, 검색창 없이 해당 클래스의 속성과 입력 필드를 속성 탭에 표시합니다. 기존 분류 모델·입력 폼·postCreation을 활용하는 move 방식입니다.
+현재 동작은 사용자 부서 조회 없이 **지정한 클래스 하나의 속성 정의와 입력 필드를 속성 탭에 자동 표시**하는 것입니다. 사용자 부서/general type 조회는 소스의 TODO 주석으로 보류했습니다.
 
-**전체 OOTB 파일 교체용이 아닙니다.** 각 파일의 주석에 적힌 factory 안에 추가 함수와 호출만 적용합니다. 새 AMD 모듈을 등록하지 않습니다. 기존 ca-isolated-kit의 검색창 방식과 별도로 적용하는 방식입니다.
+유형(Type)은 지정값으로 초기 조회하고, 화면에서는 숨기거나 읽기 전용으로 표시합니다. 기존 분류 폼·모델·postCreation을 활용하는 move 방식입니다. 클래스 속성의 기본값은 OOTB 로딩 결과를 사용하며 다른 업무 객체의 저장값을 복사하지 않습니다.
 
-## 파일과 적용 위치
+**전체 OOTB 파일 교체용이 아닙니다.** 파일별 주석의 factory 안에 수정·추가 부분만 적용합니다. 새 AMD 모듈은 만들지 않습니다.
 
-| 파일 | 수정할 OOTB 모듈 | 역할 |
-|---|---|---|
-| [ENONewWidget.js](webapps/ENONewWidget/ENONewWidget.js) [1] | ENONewFacetHelper | 위젯/타입 조건, 조직 매핑, 대화상자별 세션 |
-| 같은 파일 [2] | ENOListViewFacet | 검색 UI 없는 폼 영역, 폼 이동·복원, 속성 검증 |
-| 같은 파일 [3] | ENONewDialogController | 준비 전 생성 차단과 종료 |
-| [ClassificationsFacet.js](webapps/ClassificationsFacet/ClassificationsFacet.js) [1] | PLMNewClassificationFacet | 컨트롤러 준비, 클래스 조회와 자동 선택 |
-| 같은 파일 [2] | PLMNewCommomCmpUXController | 자동 대상 모델에 세션 표식 부착 |
-| [ClassificationProp.js](webapps/ClassificationProp/ClassificationProp.js) | ClassifPropController | 실제 속성 응답·폼 반영 뒤 완료 통지 |
-| [ENOChgGovernance.html](webapps/ENOChgGovernanceUX/ENOChgGovernance.html) | 대상 위젯 전용 onLoad | 활성화, 적용 타입, 조직별 클래스 ID 설정 |
+## 설정
 
-각 소스 첫 주석에 삽입 위치와 기존 코드에서 찾을 지점을 적었습니다. 미니파이된 지역 변수명은 설치 버전마다 다를 수 있습니다. PLMNewCommomCmpUXController 철자는 참조 소스 그대로입니다.
-
-## 실제 조직과 클래스 설정
-
-대상 위젯 전용 onLoad에 다음 형식으로 설정합니다. 이름과 ID는 실제 업무값으로 바꾸세요.
+대상 커스텀 위젯 전용 onLoad에 넣습니다.
 
 ```js
 widget.setValue("zcaEnableAutoClassByOrganization", true);
 widget.setValue("zcaAutoClassType", "Change Action");
-widget.setValue("zcaClassByOrganization", JSON.stringify({
-    "ORGANIZATION_NAME": {
-        classId: "CLASS_PHYSICALID",
-        libraryId: "LIBRARY_PHYSICALID"
-    }
-}));
+widget.setValue("zcaFixedClassId", "CLASS_PHYSICALID");
+widget.setValue("zcaTypeDisplay", "hidden");
 ```
 
-조직은 표시명이 아닌 SecurityContext의 실제 Organization 이름입니다. 조직 항목을 여러 개 등록할 수 있습니다. 조직 하나에 클래스 하나를 적용합니다. classId는 **General Class의 physicalid**이며 General Library ID이면 거부합니다. libraryId는 선택적인 경로 검사 항목이므로 필요 없으면 생략합니다.
+- `zcaFixedClassId`: 자동 적용할 General Class의 실제 physicalid. General Library ID가 아닙니다.
+- `zcaAutoClassType`: 실제 생성할 유형. subtype이면 실제 subtype 이름으로 바꿉니다.
+- `zcaTypeDisplay`: `hidden`은 유형 필드를 숨깁니다. `disabled`는 OOTB isReadOnly로 표시하되 편집을 막습니다. 실제 모양은 설치 버전 렌더러에 따라 비활성 드롭다운 또는 읽기 전용 값일 수 있습니다.
+- `zcaFixedLibraryId`: 선택적인 라이브러리 경로 검사. 필요한 경우에만 실제 General Library physicalid를 설정합니다.
 
-실제 조직명과 클래스 ID는 아직 제공받지 않아 임의의 업무값을 넣지 않았습니다. 매핑 누락·조회 실패 시 메시지를 표시하고 생성을 막습니다. 이 설정 이름들은 이번 코드에서 정의한 옵션이며 OOTB 옵션은 아닙니다.
+활성화 옵션 이름 `zcaEnableAutoClassByOrganization`은 이전 연결 호환을 위해 유지했습니다. 현재는 조직 매핑이 아니라 고정 클래스 옵션을 읽습니다. 기존 `zcaClassByOrganization`은 읽지 않습니다. 모두 이번 코드의 커스텀 옵션이며 OOTB 기본 설정명이 아닙니다.
 
-기존 Change Governance 생성 옵션의 classificationFacet와 isLibrary:true를 유지합니다. subtype을 사용한다면 zcaAutoClassType과 기존 type/typeName/preferedType을 실제 타입명으로 맞춥니다.
+실제 클래스 ID와 유형이 아직 제공되지 않아 임의의 업무값은 넣지 않았습니다. 클래스 ID 누락·조회 실패 시 메시지를 표시하고 생성을 막습니다.
 
-## 이전 선택창 방식에서 변경할 호출
+## 변경 파일과 순서
 
-기존 zcaAttachBridge(e,a)는 zcaAttachAutoBridge(e,a,i)로 바꿉니다. i는 getFacetList의 세 번째 인자인 settings입니다.
+| 파일 | OOTB 모듈/변경 지점 | 역할 |
+|---|---|---|
+| [ENOChgGovernanceUX.js](webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js) | ChgCreateChangeAction, CreateNew 호출 직전 | type/typeName/preferedType을 지정한 유형으로 일치시킴 |
+| [ENONewWidget.js](webapps/ENONewWidget/ENONewWidget.js) [1] | ENONewFacetHelper | 대상 위젯/유형 검사, 고정 클래스 읽기, 세션 연결 |
+| 같은 파일 [2] | ENOListViewFacet | 모델 생성 전 유형 표시/편집 제한, 검색창 없는 폼 이동·복원 |
+| 같은 파일 [3] | ENONewDialogController | 준비·입력값·현재 유형 검증, 생성 차단, 종료 정리 |
+| [ClassificationsFacet.js](webapps/ClassificationsFacet/ClassificationsFacet.js) [1] | PLMNewClassificationFacet | 컨트롤러 준비와 지정 클래스 자동 선택 |
+| 같은 파일 [2] | PLMNewCommomCmpUXController | 자동 대상 속성 모델에 세션 표식 부착 |
+| [ClassificationProp.js](webapps/ClassificationProp/ClassificationProp.js) | ClassifPropController | 실제 속성 응답·폼 반영 뒤 완료 통지 |
+| [ENOChgGovernance.html](webapps/ENOChgGovernanceUX/ENOChgGovernance.html) | 대상 위젯 전용 onLoad | 위 설정의 삽입 예시 |
 
-속성 facet의 zcaInstallPropertiesPicker/zcaDestroyPropertiesPicker 호출은 zcaInstallAutoFields/zcaDestroyAutoFields로 바꿉니다. 분류 facet의 연결·종료 호출도 새 소스의 자동 방식으로 바꿉니다. 두 방식의 설치 함수를 함께 실행하지 않습니다.
+각 파일 첫 주석에 삽입 위치와 원본에서 찾을 코드를 적었습니다. 미니파이된 지역 변수명은 설치 버전에 따라 다를 수 있습니다. PLMNewCommomCmpUXController 철자는 참조 소스 그대로입니다.
 
-기존 zcaEnableLibraryInProperties 활성화와 검색창 설치 호출은 제거합니다. 자동 방식에는 zcaOpenClassSelector 수신 함수나 사용자 조회 버튼이 필요하지 않습니다. 기존 함수 선언이 남아 있어도 이전 연결 호출은 제거해야 합니다.
+기존 Change Governance 생성 옵션의 classificationFacet와 isLibrary:true는 유지합니다. 대상 생성에서 CA_DEF_TYPE 저장을 건너뛰어 다른 화면의 사용자 기본 유형을 바꾸지 않도록 합니다.
 
-## 조직 취득과 자동 표시 흐름
+## 이전 조직별 자동 방식에서 추가로 바뀐 지점
 
-data.defaultAttributes.SecurityContext.value를 우선 사용하고, 없으면 settings.securityContext를 사용합니다. ctx::Role.Organization.CollaborativeSpace에서 조직을 얻습니다. 사용자의 기본 preferredCredentials를 현재 조직으로 대신 사용하지 않습니다. 따라서 zcaGetCurrentUserParameters가 호출되지 않아도 자동 방식은 실행됩니다.
+1. HTML에서 조직 매핑 대신 zcaFixedClassId를 설정합니다.
+2. ENOChgGovernanceUX.js의 생성 옵션을 CreateNew 호출 전에 고정하는 함수와 호출을 추가합니다.
+3. ENOListViewFacet.init(t)의 `_parent(t)` 뒤, `listview.buildModel(t.data)`보다 앞에 `zcaPrepareFixedType(t.data,t.zcaAutoSession)`을 넣습니다. 화면을 그린 뒤에 넣으면 첫 렌더링에는 적용되지 않습니다.
+4. updateFacet에서 호출하는 기존 `zcaCheckAutoFacetContext`도 유형 표시 제한을 다시 적용하도록 수정했습니다.
 
-이름에 점이 포함되어 세 부분으로 해석할 수 없는 문맥은 오류로 처리합니다. 해당 환경에서는 zcaOrganizationFromContext를 구조화된 문맥 정보에 맞춰 수정해야 합니다.
+예전 검색창 이동 방식(ca-isolated-kit)을 사용했다면 zcaAttachBridge는 zcaAttachAutoBridge로, zcaInstallPropertiesPicker/DestroyPropertiesPicker는 새 자동 방식 함수로 바꿉니다. 두 UI 설치 호출을 함께 실행하지 않습니다. 이전 분류 연결·종료 호출도 새 자동 방식으로 바꿉니다.
 
-1. 위젯 활성화와 타입을 함께 검사하고 조직 매핑을 읽습니다.
-2. 세션을 두 facet에 전달하고 기존 분류 컨트롤러를 기다립니다.
-3. OOTB getClassPaths로 클래스의 경로·ID·제목·타입을 조회합니다.
-4. OOTB 노드 생성 함수를 사용하고 기존 모델에 넣어 select를 실행합니다.
-5. 기존 change 처리가 ClassifPropModel과 속성 폼을 로딩합니다.
-6. 실제 폼 반영 완료와 검증 모듈 준비를 확인한 뒤 생성을 허용합니다.
+## 유형을 값만 바꾸지 않는 이유
 
-검색창과 찾아보기 버튼은 만들지 않습니다. 내부 AutoComplete 모델은 선택 이벤트와 저장에 필요하므로 유지합니다. 속성 입력 컨트롤과 표시 순서는 OOTB 처리를 사용합니다.
+CreateNew에 전달하는 type/typeName/preferedType을 먼저 설정하여 처음부터 그 유형의 속성 정의를 조회합니다. 이후 유형 필드의 값만 다른 유형으로 덮어쓰지 않습니다. 조회된 Type.value가 고정 유형과 다르면 설정/조회 경로 오류로 처리합니다.
 
-## ClassificationProp에도 완료 호출이 필요한 이유
+OOTB Type의 range와 persistData에 해당 유형이 실제로 있는지 확인하고, 선택지는 하나로 제한합니다. 원래 persistData의 타입 정의와 기본값은 유지합니다. 유형 필드를 숨겨도 defaultAttributes.Type 정보가 남아 생성 시 사용됩니다.
 
-클래스 선택 완료는 속성 로딩 완료가 아닙니다. 참조 소스의 전역 getAttributesDone 이벤트는 클래스 ID를 충분히 구분하지 않고 실제 폼 반영보다 먼저 발행됩니다.
+표시 제한은 OOTB 원본 메타데이터의 `visible`과 `isReadOnly`를 모델 생성 전에 설정합니다. 참조 ENONewAttributeUtil은 isReadOnly를 EditPropAttributeModel.readOnly로 변환합니다. CSS로만 감추거나 DOM의 disabled 속성만 바꾸는 방식은 사용하지 않았습니다.
 
-자동 대상 모델에만 표식을 붙이고 그 모델의 _onCompleteLoadModel 뒤 완료를 알립니다. 다른 모델은 표식이 없어 즉시 반환합니다. 빈 attribute 배열은 정상 완료이고 배열 누락은 오류입니다. 설치 버전의 콜백·응답 형태가 다르면 실제 폼 반영 완료 지점으로 옮겨야 합니다. 완료 호출이 빠지면 타임아웃으로 생성을 막습니다.
+사용자가 UI를 편집할 수 없더라도 제출 시 현재 Type.valueDB/원본 값이 세션의 고정 유형과 같은지 확인합니다. 클라이언트의 UI 제한은 서버의 타입 권한/업무 검증을 대체하지 않습니다.
 
-## 검증·저장·문맥 변경
+## 자동 표시 흐름
 
-onSubmitDialog의 시작에서 준비 상태와 선택한 클래스가 맞는지 검사합니다. 활성 입력에 blur를 호출하고 OOTB AttributesUtils.validateAttributes로 모델을 검증합니다. 실패하면 기존 resetButtons로 버튼/로딩 상태를 복원하고 서버 생성 호출로 넘어가지 않습니다.
+대상 위젯/유형 확인 → 고정 클래스 ID 읽기 → 기존 분류 컨트롤러 준비 → OOTB getClassPaths 조회 → OOTB 노드 생성과 select → 원래 change 처리의 속성 모델·폼 로딩 → 폼 이동·검증 준비 → 생성 허용 순서입니다.
 
-검증은 실제 OOTB 모델에 내려온 필수 여부·자료형·범위 메타데이터에 따릅니다. 설치 환경의 값 커밋·필수값 검사와 서버 검증은 확인해야 합니다.
+검색창과 찾아보기 버튼은 만들지 않습니다. 내부 AutoComplete 모델은 선택 이벤트와 저장에 필요하므로 유지합니다. 클래스 속성의 입력 컨트롤과 정렬은 OOTB 처리를 사용합니다.
 
-기존 postCreation을 유지합니다. 참조 저장 코드에는 비동기 속성 저장 완료/오류 전파가 완전히 보장되지 않는 부분이 있어 생성 성공 로그만으로 속성이 저장됐다고 판단하면 안 됩니다. 실제 클래스 연결과 값 저장은 통합 확인이 필요합니다.
+선택 완료는 속성 로딩 완료와 다릅니다. 전역 getAttributesDone만으로 판정하지 않고 자동 대상 모델의 _onCompleteLoadModel 뒤 완료를 알립니다. 다른 모델은 표식이 없어 추가 함수에서 즉시 반환합니다. 완료 호출이 빠지면 타임아웃으로 생성을 막습니다.
 
-화면을 연 뒤 타입이나 SecurityContext가 바뀌면 생성을 막고 다시 열도록 안내합니다. 입력값을 지우거나 다른 조직의 클래스를 임의로 적용하지 않습니다. 역할/Collaborative Space 변경에도 같은 정책을 적용합니다.
+## 부서 조회를 나중에 연결할 위치
 
-종료 시 타이머·구독을 해제하고 기존 폼을 원래 부모/순서로 복원합니다. 닫힌 화면의 늦은 응답은 무시합니다. 대상 설정 없는 위젯과 다른 타입에는 세션을 붙이지 않습니다.
+ENONewWidget.js의 zcaAttachAutoBridge 안에서 rule을 결정하는 try 블록에 TODO 주석을 남겼습니다. 향후 general type의 사용자 부서를 조회한 뒤 classId를 결정하는 흐름으로 바꿀 수 있습니다. 현재는 부서/조직 조회를 실행하지 않으며 사용자 기본 조직으로 대체하지 않습니다.
 
-## 검증과 참조
+SecurityContext는 기존 조회·생성·저장 권한 문맥으로 계속 사용합니다. 부서 매핑을 보류했다고 권한 문맥까지 제거하는 것은 아닙니다.
 
-[VALIDATION.md](VALIDATION.md)에 통과한 검사와 현장 확인 항목을, [REFERENCES.md](REFERENCES.md)에 참고 소스를 정리했습니다. 최초 검토 기록은 [DESIGN.md](DESIGN.md)에 보존했습니다.
+## 검증·저장과 알려진 한계
 
-참조 구현은 공개 R2024x 기준입니다. 설치된 2025x/2026x 내부 필드·콜백·응답과 같다고 보장하지 않습니다. 실제 플랫폼에서 실행한 완성 배포본이 아니라 적용 위치를 명시하고 대역 검사한 변경 조각입니다.
+준비 전 생성, 클래스 선택 불일치, 현재 유형 불일치를 onSubmitDialog에서 차단합니다. 활성 입력에 blur를 호출하고 OOTB AttributesUtils로 실제 모델의 속성을 검증합니다. 실패하면 resetButtons로 기존 로딩·버튼 상태를 복원합니다.
+
+기존 postCreation을 유지합니다. **커스터마이징 없는 서버에서도 재현된 ClassificationAttributeUtil.java:95의 분류 속성 저장 오류는 별도로 보류 중이며, 이 변경에서 수정하지 않았습니다.** 자동 표시/유형 제한이 해당 서버 오류를 해결하는 것은 아닙니다. 실제 저장 결과를 확인해야 합니다.
+
+타입이나 SecurityContext가 도중에 바뀌면 입력값을 임의로 지우지 않고 화면을 다시 열도록 안내합니다. 종료 시 구독·타이머를 정리하고 폼을 원래 부모/순서로 돌려놓습니다. 대상 설정 없는 위젯과 다른 유형에는 자동 세션을 붙이지 않습니다.
+
+[VALIDATION.md](VALIDATION.md)에 통과 검사와 현장 확인 항목, [REFERENCES.md](REFERENCES.md)에 참조 소스를 적었습니다. [DESIGN.md](DESIGN.md)는 최초 조직 기준 검토 기록이며 현재 실행 방식과 구분해서 읽습니다.
+
+참조 구현은 공개 R2024x 기준입니다. 설치된 2025x/2026x 내부 구조와 같다고 보장하지 않습니다. 실제 서버·WUX에서 실행한 배포본이 아니라 적용 위치를 명시하고 대역 검사한 OOTB 변경 조각입니다.
