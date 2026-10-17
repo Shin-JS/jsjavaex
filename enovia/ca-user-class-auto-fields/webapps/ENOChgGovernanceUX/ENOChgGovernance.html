@@ -1,8 +1,8 @@
-<!-- 전체 HTML 교체용이 아닙니다. 대상 커스텀 위젯 전용 onLoad에 넣는 설정입니다.
+<!-- 전체 HTML 교체용이 아닙니다. 대상 커스텀 위젯의 실제 실행되는 기존 스크립트 위치에 넣는 설정입니다.
 공용 OOTB HTML에서 모든 위젯에 설정하지 않습니다.
 
 widget.setValue("zcaEnableAutoClassByOrganization", true);
-widget.setValue("zcaAutoClassType", "Change Action");
+widget.setValue("zcaAutoClassType", "sdxEcChangeAction");
 widget.setValue("zcaFixedClassId", "CLASS_PHYSICALID");
 widget.setValue("zcaTypeDisplay", "hidden");
 
@@ -20,5 +20,7 @@ widget.setValue("zcaFixedLibraryId", "LIBRARY_PHYSICALID");
 활성화 옵션명 zcaEnableAutoClassByOrganization은 이전 연결 호환을 위해 유지했습니다.
 기존 zcaEnableLibraryInProperties=true 설정/검색창 설치 호출은 함께 활성화하지 않습니다.
 Change Governance의 classificationFacet와 isLibrary:true는 유지합니다.
-유형 고정은 ENOChgGovernanceUX.js의 CreateNew 전 호출과 ENONewWidget.js의 모델 생성 전 호출을 함께 적용합니다.
+유형 고정은 OOTB의 ZcaAutoClass.configureCreateType 호출과 prepareFixedType 호출을 함께 적용합니다.
+사용자 환경에서 이미 실행 확인한 스크립트 최상단 설정 위치를 유지합니다. 새 onLoad를 만들지 않습니다.
+실제 함수 본문은 webapps/ZCAAutoClass/ZCAAutoClass.js 전체 파일에 있습니다.
 -->

@@ -1,0 +1,458 @@
+/**
+ * 커스텀 AMD 모듈. 이 파일은 새로 배포하는 전체 파일입니다.
+ * OOTB 파일에는 이 모듈 의존성과 연결 호출만 추가합니다.
+ * 공유되는 것은 함수뿐이며 세션/선택 모델은 대화상자마다 생성합니다.
+ * OOTB 모듈을 정적 의존성으로 요구하지 않아 역방향 의존 순환을 피합니다.
+ * AttributesUtils는 화면 설치 시 factory의 지역 require로 지연 로딩합니다.
+ *
+ * [부서 조회 보류]
+ * 부서/general type 조회 코드는 실행하지 않습니다.
+ * attachBridge 내부 TODO에서 향후 부서 기준으로 rule을 결정할 수 있습니다.
+ * 현재는 zcaFixedClassId의 General Class를 자동 적용합니다.
+ *
+ * 구조만 분리한 변경입니다. 준비 중에 머무르는 현장 이슈와 서버 저장 오류가
+ * 이 분리로 해결되었다고 판단하지 않습니다. OOTB 연결 호출은 모두 필요합니다.
+ */
+define("DS/ZCAAutoClass/ZCAAutoClass", ["require"], function (require) {
+    "use strict";
+
+    /** 대화상자마다 별도 세션을 만들어 초기화·속성 로딩·UI·생성 검증을 연결합니다. */
+    function zcaCreateAutoSession(context, type, rule) {
+        var session = {
+            context: context, type: type, rule: rule, controller: null,
+            status: "loading", error: null, disposed: false, started: false,
+            attributesLoaded: false, fieldsMounted: false, validateFields: null,
+            classId: null, classTitle: null, typeDisplay: "hidden", readCurrentType: null, listeners: new Set(), timer: null,
+            cancelRequest: null
+        };
+        session.subscribe = function (listener) {
+            session.listeners.add(listener);
+            listener(session);
+            return function () { session.listeners.delete(listener); };
+        };
+        session.notify = function () {
+            if (!session.disposed) session.listeners.forEach(function (fn) { fn(session); });
+        };
+        session.fail = function (error) {
+            if (session.disposed) return;
+            session.status = "error";
+            session.error = error instanceof Error ? error : new Error(String(error));
+            clearTimeout(session.timer);
+            session.notify();
+        };
+        session.refreshReady = function () {
+            if (session.disposed || session.status === "error") return;
+            if (session.attributesLoaded && session.fieldsMounted && session.validateFields) {
+                session.status = "ready";
+                clearTimeout(session.timer);
+            }
+        };
+        session.markAttributesLoaded = function (classId) {
+            if (session.disposed || session.status === "error" || classId !== session.classId) return;
+            session.attributesLoaded = true;
+            session.refreshReady();
+            session.notify();
+        };
+        session.checkContext = function (value) {
+            // 입력한 값을 버리지 않도록 문맥 변경 시 다시 열도록 안내합니다.
+            if (value !== session.context) {
+                session.fail(new Error("권한 문맥이 변경되었습니다. 생성 화면을 닫고 다시 열어 주세요."));
+            }
+        };
+        session.checkType = function (value) {
+            if (value !== session.type) {
+                session.fail(new Error("생성 타입이 변경되었습니다. 생성 화면을 다시 열어 주세요."));
+            }
+        };
+        session.dispose = function () {
+            if (session.disposed) return;
+            session.disposed = true;
+            clearTimeout(session.timer);
+            if (session.cancelRequest) session.cancelRequest();
+            session.listeners.forEach(function (fn) { fn(session); });
+            session.listeners.clear();
+            if (session.controller && session.controller.zcaAutoSession === session) {
+                (session.controller.classifPropModels || []).forEach(function (model) {
+                    if (model.zcaAutoSession === session) {
+                        delete model.zcaAutoSession;
+                        delete model.zcaAutoClassId;
+                    }
+                });
+                delete session.controller.zcaAutoSession;
+            }
+            session.controller = null;
+            session.validateFields = null;
+            session.showMessage = null;
+            session.readCurrentType = null;
+        };
+        session.timer = setTimeout(function () {
+            session.fail(new Error("지정 클래스 속성 준비 시간이 초과되었습니다."));
+        }, 60000);
+        return session;
+    }
+
+    /** 대상 위젯에만 공유 세션을 전달합니다. 고정 클래스/유형은 전용 HTML에서 설정합니다. */
+    function zcaAttachAutoBridge(data, facetList, settings) {
+        if (typeof widget === "undefined") return;
+        var enabled = widget.getValue("zcaEnableAutoClassByOrganization");
+        if (!(enabled === true || enabled === "true")) return;
+        var attrs = data && data.defaultAttributes;
+        var type = attrs && attrs.Type && attrs.Type.value;
+        var targetType = widget.getValue("zcaAutoClassType") || "Change Action";
+        if (type !== targetType) return;
+        var properties = facetList.find(function (item) { return item.facet.name === "ENOCreate"; });
+        var classification = facetList.find(function (item) { return item.facet.name === "classificationFacet"; });
+        if (!properties || !classification) throw new Error("ENOCreate와 classificationFacet이 필요합니다.");
+        var context = attrs && attrs.SecurityContext && attrs.SecurityContext.value;
+        context = context || settings && settings.securityContext;
+        var rule = null, configError = null;
+        var typeDisplay = widget.getValue("zcaTypeDisplay") || "hidden";
+        try {
+            // TODO: 부서 기준 조회는 여기서 rule을 결정하도록 연결합니다. 현재는 실행하지 않습니다.
+            var classId = widget.getValue("zcaFixedClassId");
+            var libraryId = widget.getValue("zcaFixedLibraryId");
+            if (typeof classId !== "string" || !classId.trim()) {
+                throw new Error("zcaFixedClassId에 클래스 physicalid를 지정해 주세요.");
+            }
+            if (typeDisplay !== "hidden" && typeDisplay !== "disabled") {
+                throw new Error("zcaTypeDisplay는 hidden 또는 disabled로 지정해 주세요.");
+            }
+            rule = {classId: classId.trim(), libraryId: libraryId || null};
+        } catch (error) { configError = error; }
+        var session = zcaCreateAutoSession(context, type, rule);
+        session.typeDisplay = typeDisplay;
+        properties.options = properties.options || {};
+        classification.options = classification.options || {};
+        properties.options.zcaAutoSession = session;
+        classification.options.zcaAutoSession = session;
+        classification.alwaysCalled = true;
+        if (configError) session.fail(configError);
+    }
+
+    /** OOTB가 유형 모델을 만들기 전에 표시·편집 메타데이터를 제한합니다.
+     * 타입 값은 CreateNew 이전부터 지정해야 합니다. 여기서 다른 타입으로 값만 바꾸지 않습니다.
+     * OOTB isReadOnly는 편집을 막는 모델 옵션이며, disabled 모드의 실제 모양은 렌더러에 따릅니다.
+     */
+    function zcaPrepareFixedType(data, session) {
+        if (!session || session.disposed) return;
+        try {
+            var type = data && data.defaultAttributes && data.defaultAttributes.Type;
+            if (!type || type.value !== session.type) {
+                throw new Error("조회된 유형과 고정 유형이 다릅니다. CreateNew 전 타입 설정을 확인해 주세요.");
+            }
+            var index = Array.isArray(type.range) ? type.range.indexOf(session.type) : -1;
+            if (index < 0 || !Array.isArray(type.persistData) || !type.persistData.some(function (item) {
+                return item.name === session.type;
+            })) throw new Error("고정 유형의 range/persistData 정의를 조회하지 못했습니다.");
+            var label = type.rangeNLS && type.rangeNLS[index] || session.type;
+            type.range = [session.type];
+            type.rangeNLS = [label];
+            type.isReadOnly = true;
+            type.visible = session.typeDisplay === "disabled";
+            // defaultAttributes.Type.value/persistData를 유지하므로 숨겨도 생성 타입 정보는 남습니다.
+        } catch (error) { session.fail(error); }
+    }
+
+    /** 폼 영역만 준비하며 검색 UI는 만들지 않습니다. OOTB 폼을 이동합니다. */
+    function zcaInstallAutoFields(facet, options) {
+        var session = options.zcaAutoSession;
+        if (!session) return;
+        facet.zcaAutoSession = session;
+        facet.zcaAutoDisposed = false;
+        session.readCurrentType = function () {
+            var view = facet.listview;
+            var field = view && view.propModel && view.propModel.get("New-Type");
+            return field ? field.valueDB : view && view.data && view.data.defaultAttributes &&
+                view.data.defaultAttributes.Type && view.data.defaultAttributes.Type.value;
+        };
+        var root = document.createElement("div");
+        var status = document.createElement("div");
+        status.setAttribute("role", "status");
+        var host = document.createElement("div");
+        host.style.width = "100%";
+        host.style.height = "360px";
+        host.style.display = "none";
+        root.appendChild(status);
+        root.appendChild(host);
+        facet.skeleton.appendChild(root);
+        facet.zcaAutoRoot = root;
+        facet.zcaAutoHost = host;
+        session.showMessage = function (message) {
+            if (!facet.zcaAutoDisposed) status.textContent = message;
+        };
+        facet.zcaAutoUnsubscribe = session.subscribe(function (state) {
+            if (state.disposed) { zcaDestroyAutoFields(facet); return; }
+            if (state.controller && state.status !== "error") {
+                try { zcaMountAutoFields(facet, state); }
+                catch (error) { state.fail(error); return; }
+            }
+            state.refreshReady();
+            status.textContent = state.error ? state.error.message :
+                state.status === "ready" ? "" : "지정 클래스 속성을 준비하고 있습니다…";
+            host.style.display = state.attributesLoaded ? "" : "none";
+        });
+        require(["DS/ClassificationProp/utils/AttributesUtils"], function (AttributesUtils) {
+            if (session.disposed || facet.zcaAutoDisposed) return;
+            session.validateFields = function () {
+                var ctrl = session.controller;
+                if (!ctrl || !Array.isArray(ctrl.classifPropModels) || ctrl.classifPropModels.length !== 1) {
+                    throw new Error("자동 적용한 클래스 모델을 확인해 주세요.");
+                }
+                var model = ctrl.classifPropModels[0];
+                if (model.get("objectId") !== session.classId) throw new Error("클래스 모델이 일치하지 않습니다.");
+                var errors = AttributesUtils.validateAttributes(model, model.getAttributeFromField());
+                if (errors && errors.length) throw new Error(errors.map(function (item) { return item.message; }).join("\n"));
+            };
+            session.refreshReady();
+            session.notify();
+        }, function () { session.fail(new Error("OOTB 속성 검증 모듈을 로드할 수 없습니다.")); });
+    }
+
+    /** 기존 폼 객체를 한 번 이동하고, 종료 시 돌려놓을 원래 위치를 기억합니다. */
+    function zcaMountAutoFields(facet, session) {
+        var ctrl = session.controller, form = ctrl.accordeonCon;
+        if (!form || form.nodeType !== 1 || !ctrl.classifPropertiesView) {
+            throw new Error("분류 속성 폼의 accordeonCon이 없습니다.");
+        }
+        var binding = facet.zcaAutoBinding;
+        if (!binding) {
+            if (!form.parentNode) throw new Error("분류 속성 폼이 아직 연결되지 않았습니다.");
+            binding = facet.zcaAutoBinding = {form: form, parent: form.parentNode, next: form.nextSibling};
+        } else if (binding.form !== form) {
+            throw new Error("분류 폼이 재초기화되었습니다. 화면을 다시 열어 주세요.");
+        }
+        if (form.parentNode !== facet.zcaAutoHost) facet.zcaAutoHost.appendChild(form);
+        session.fieldsMounted = true;
+        clearTimeout(facet.zcaAutoResize);
+        facet.zcaAutoResize = setTimeout(function () {
+            if (!facet.zcaAutoDisposed && !session.disposed && ctrl.classifPropertiesView.onInnerResize) {
+                ctrl.classifPropertiesView.onInnerResize();
+            }
+        }, 0);
+    }
+
+    function zcaCheckAutoFacetContext(facet, options) {
+        var session = facet.zcaAutoSession;
+        var attrs = options.data && options.data.defaultAttributes;
+        if (!session || !attrs) return;
+        zcaPrepareFixedType(options.data, session);
+        if (attrs.SecurityContext) session.checkContext(attrs.SecurityContext.value);
+        if (attrs.Type) session.checkType(attrs.Type.value);
+    }
+
+    /** 폼을 이동 전 위치로 돌려놓습니다. 기존 폼과 모델은 파괴하지 않습니다. */
+    function zcaDestroyAutoFields(facet) {
+        if (facet.zcaAutoDisposed) return;
+        facet.zcaAutoDisposed = true;
+        clearTimeout(facet.zcaAutoResize);
+        if (facet.zcaAutoUnsubscribe) facet.zcaAutoUnsubscribe();
+        var binding = facet.zcaAutoBinding;
+        if (binding) {
+            if (binding.next && binding.next.parentNode === binding.parent) binding.parent.insertBefore(binding.form, binding.next);
+            else binding.parent.appendChild(binding.form);
+        }
+        if (facet.zcaAutoRoot && facet.zcaAutoRoot.parentNode) facet.zcaAutoRoot.parentNode.removeChild(facet.zcaAutoRoot);
+        if (facet.zcaAutoSession) facet.zcaAutoSession.dispose();
+    }
+
+    function zcaFindAutoSession(dialog) {
+        var facets = dialog.View && dialog.View.facets || dialog.facets || [];
+        for (var i = 0; i < facets.length; i++) {
+            if (facets[i].options && facets[i].options.zcaAutoSession) return facets[i].options.zcaAutoSession;
+        }
+        return null;
+    }
+
+    /** 클릭/Enter/반복 생성이 지나는 OOTB 공통 생성 입구에서 준비와 입력값을 검증합니다. */
+    function zcaCanSubmitAutoDialog(dialog) {
+        var session = zcaFindAutoSession(dialog);
+        if (!session) return true;
+        try {
+            if (session.disposed || session.status !== "ready") {
+                throw session.error || new Error("지정 클래스 속성 준비가 완료되지 않았습니다.");
+            }
+            if (!session.readCurrentType || session.readCurrentType() !== session.type) {
+                throw new Error("현재 유형이 지정한 고정 유형과 다릅니다. 화면을 다시 열어 주세요.");
+            }
+            var ctrl = session.controller;
+            var selected = ctrl.autoComplete.selectedItems || [];
+            if (selected.length !== 1 || selected[0].getID() !== session.classId) {
+                throw new Error("지정 클래스 선택 상태가 바뀌었습니다. 화면을 다시 열어 주세요.");
+            }
+            // blur는 입력값의 모델 반영을 유도합니다. 서버 저장을 뜻하지 않습니다.
+            var active = document.activeElement;
+            if (active && ctrl.accordeonCon.contains(active) && typeof active.blur === "function") active.blur();
+            session.validateFields();
+            return true;
+        } catch (error) {
+            if (session.showMessage) session.showMessage(error.message || String(error));
+            return false;
+        }
+    }
+
+    function zcaDisposeAutoDialog(dialog) {
+        var session = zcaFindAutoSession(dialog);
+        if (session) session.dispose();
+    }
+
+    /** 비동기 OOTB 컨트롤러가 준비되면 자동 선택을 시작합니다. 다른 위젯은 즉시 반환합니다. */
+    function zcaConnectAutoClassification(facet, options) {
+        var session = options.zcaAutoSession;
+        if (!session) return;
+        facet.zcaAutoSession = session;
+        facet.zcaAutoContext = options.securityContext || session.context;
+        session.checkContext(facet.zcaAutoContext);
+        var started = Date.now();
+        facet.zcaAutoTimer = setInterval(function () {
+            if (session.disposed || session.status === "error") { clearInterval(facet.zcaAutoTimer); return; }
+            var ui = facet.initUI && facet.initUI.getController();
+            var ctrl = ui && ui.plmNewLibraryActive;
+            if (ctrl && ctrl.autoComplete && ctrl.classifPropertiesView && ctrl.accordeonCon) {
+                clearInterval(facet.zcaAutoTimer);
+                try {
+                    if ((ctrl.autoComplete.selectedItems || []).length || (ctrl.classifPropModels || []).length) {
+                        throw new Error("이미 분류가 선택된 화면에는 자동 초기화를 적용하지 않습니다.");
+                    }
+                    // OOTB prototype의 Map을 대화상자별로 분리합니다. 신규 생성 초기 연결 때만 실행합니다.
+                    ctrl.classIdAndTitleMap = new Map();
+                    ctrl._classPathMap = new Map();
+                    ctrl._classNameMap = new Map();
+                    ctrl._classUsageMap = new Map();
+                    ctrl._attributeMap = new Map();
+                    ctrl.apiAttributesCall = [];
+                    ctrl._isProcessing = false;
+                    ctrl.zcaAutoSession = session;
+                    // 현재 대화상자 문맥으로 조회합니다. 분류 폼 자체를 제거하지 않습니다.
+                    ctrl.plmNewContextProvider = session.context;
+                    if (ctrl.container) ctrl.container.style.display = "none";
+                    session.controller = ctrl;
+                    session.notify();
+                    if (session.status !== "error" && !session.disposed) zcaApplyOrganizationClass(ctrl, session);
+                } catch (error) { session.fail(error); }
+            } else if (Date.now() - started > 30000) {
+                clearInterval(facet.zcaAutoTimer);
+                session.fail(new Error("기존 분류 컨트롤러 준비 시간이 초과되었습니다."));
+            }
+        }, 100);
+    }
+
+    /** OOTB getClassPaths 응답으로 클래스 노드를 만들고 원래 select/change 처리를 실행합니다.
+     * 검색 서비스나 존재를 확인하지 않은 별도 클래스 조회 API를 추가하지 않습니다.
+     * classId는 General Class의 physicalid입니다. General Library ID를 넣으면 거부합니다.
+     */
+    function zcaApplyOrganizationClass(ctrl, session) {
+        if (session.started || session.disposed || session.status === "error") return;
+        session.started = true;
+        var service = ctrl.PLMNewCommonWebService;
+        session.classId = session.rule.classId;
+        service.getClassPaths({
+            id: [session.classId],
+            plmNewContextProvider: session.context,
+            onComplete: function (response) {
+                if (session.disposed || session.status === "error") return;
+                try {
+                    var chains = service.constructPath(response, "idPathChainMap");
+                    var chain = chains.get(session.classId);
+                    var leaf = chain && chain[chain.length - 1];
+                    if (!leaf || leaf.physicalid !== session.classId || !ctrl.couldBeSelected(leaf.type)) {
+                        throw new Error("설정한 클래스가 없거나 선택 가능한 General Class가 아닙니다.");
+                    }
+                    if (session.rule.libraryId && !chain.some(function (item) {
+                        return item.physicalid === session.rule.libraryId;
+                    })) throw new Error("클래스가 설정한 라이브러리 경로에 포함되지 않습니다.");
+                    var path = service.extractPath(chain);
+                    session.classTitle = leaf.label;
+                    ctrl._classPathMap.set(session.classId, path);
+                    ctrl._classNameMap.set(session.classId, leaf.label);
+                    ctrl.classifPropertiesUI.setClassPath(ctrl.getClassPath());
+                    ctrl.classifPropertiesUI.setClassUsage(ctrl.getClassUsage());
+                    var data = {
+                        id: session.classId, label: leaf.label, plmType: leaf.type,
+                        value: {label: leaf.label, subLabel: path},
+                        icons: [ctrl._getIcon(leaf)]
+                    };
+                    // OOTB 노드 생성 함수가 요구하는 임시 TreeDocument입니다. 선택 UI를 만들지는 않습니다.
+                    var tree = ctrl.plmNewClassificationFacetData.createAutocompleteDataTree([]);
+                    var node = ctrl.plmNewClassificationFacetData._createTreeNodeModel(
+                        data, tree, ctrl.couldBeSelected.bind(ctrl)
+                    );
+                    ctrl.autoComplete._model.prepareUpdate();
+                    var inserted = ctrl.insertInAutocomplete(ctrl.autocompleteLibrary, node);
+                    if (!inserted) throw new Error("클래스 선택 노드를 추가할 수 없습니다.");
+                    ctrl._nodesData[session.classId] = inserted;
+                    ctrl.autoComplete._model.pushUpdate();
+                    inserted.select();
+                    // select 완료는 속성 로딩 완료가 아닙니다. 별도 ClassificationProp 완료 표식을 기다립니다.
+                    session.notify();
+                } catch (error) { session.fail(error); }
+            },
+            onFailure: function () { session.fail(new Error("지정 클래스 경로 조회에 실패했습니다.")); }
+        });
+    }
+
+    function zcaDisconnectAutoClassification(facet) {
+        clearInterval(facet.zcaAutoTimer);
+        if (facet.zcaAutoSession) facet.zcaAutoSession.dispose();
+    }
+
+    /** 현재 자동 대상 모델에만 세션을 붙입니다. 전역 이벤트만으로 완료를 판정하지 않습니다. */
+    function zcaTagAutoClassModel(controller, model, classId) {
+        var session = controller.zcaAutoSession;
+        if (session && !session.disposed && session.status !== "error" && session.classId === classId) {
+            model.zcaAutoSession = session;
+            model.zcaAutoClassId = classId;
+        }
+    }
+
+    /** 자동 대상 클래스 모델에만 완료를 알립니다. 다른 위젯 모델에는 표식이 없어 즉시 반환합니다.
+     * 빈 attribute 배열도 정상입니다. 배열 누락을 빈 폼 성공으로 취급하지 않습니다.
+     * OOTB 서버 호출 실패로 여기까지 오지 않으면 세션 타임아웃이 생성을 막습니다.
+     */
+    function zcaNotifyAutoClassAttributes(model, response) {
+        var session = model && model.zcaAutoSession;
+        if (!session || session.disposed || session.status === "error") return;
+        if (!response || !Array.isArray(response.attribute)) {
+            session.fail(new Error("클래스 속성 응답의 attribute 배열을 확인해 주세요."));
+            return;
+        }
+        session.markAttributesLoaded(model.zcaAutoClassId);
+    }
+
+    /** 기존 활성화 옵션명을 유지합니다. 현재 동작은 조직 매핑 대신 지정 클래스를 사용합니다. */
+    function zcaIsFixedClassWidget() {
+        if (typeof widget === "undefined") return false;
+        var enabled = widget.getValue("zcaEnableAutoClassByOrganization");
+        return enabled === true || enabled === "true";
+    }
+
+    /** 초기 typeInfo 조회부터 고정 타입으로 실행합니다. 다른 위젯의 옵션은 건드리지 않습니다.
+     * displayDialog 이후에 Type.value만 바꾸면 다른 타입의 속성 정의로 생성할 수 있어 금지합니다.
+     * OOTB 실제 철자는 preferedType입니다. 서버가 지원하고 생성 권한이 있는 타입을 지정해야 합니다.
+     */
+    function zcaConfigureFixedCreateType(createOptions) {
+        if (!zcaIsFixedClassWidget()) return createOptions;
+        var type = widget.getValue("zcaAutoClassType") || "Change Action";
+        createOptions.type = type;
+        createOptions.options = createOptions.options || {};
+        createOptions.options.typeName = type;
+        createOptions.options.preferedType = type;
+        return createOptions;
+    }
+
+    return {
+        attachBridge: zcaAttachAutoBridge,
+        prepareFixedType: zcaPrepareFixedType,
+        installFields: zcaInstallAutoFields,
+        destroyFields: zcaDestroyAutoFields,
+        checkFacetContext: zcaCheckAutoFacetContext,
+        canSubmitDialog: zcaCanSubmitAutoDialog,
+        disposeDialog: zcaDisposeAutoDialog,
+        connectClassification: zcaConnectAutoClassification,
+        disconnectClassification: zcaDisconnectAutoClassification,
+        applyClass: zcaApplyOrganizationClass,
+        tagClassModel: zcaTagAutoClassModel,
+        notifyAttributesLoaded: zcaNotifyAutoClassAttributes,
+        isEnabled: zcaIsFixedClassWidget,
+        configureCreateType: zcaConfigureFixedCreateType
+    };
+});
