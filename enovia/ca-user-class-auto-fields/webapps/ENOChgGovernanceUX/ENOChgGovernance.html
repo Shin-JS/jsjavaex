@@ -24,3 +24,11 @@ Change Governance의 classificationFacet와 isLibrary:true는 유지합니다.
 사용자 환경에서 이미 실행 확인한 스크립트 최상단 설정 위치를 유지합니다. 새 onLoad를 만들지 않습니다.
 실제 함수 본문은 webapps/sdxECCAAutoClass/sdxECCAAutoClass.js 전체 파일에 있습니다.
 -->
+
+<!-- 현재 fixed 모드 유지: 기존 대상 위젯의 실행 확인된 설정 위치에 추가합니다.
+widget.setValue("sdxECCAClassRuleMode", "fixed");
+
+향후 OrganizationProvider 두 조회 함수 구현 및 검증 후에만 다음으로 전환합니다.
+widget.setValue("sdxECCAClassRuleMode", "department");
+department 모드에서는 sdxECCAFixedClassId로 우회하지 않습니다.
+-->

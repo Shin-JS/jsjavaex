@@ -41,3 +41,11 @@
  * 함수 선언이 모듈로 이동해도 이 호출은 생략할 수 없습니다.
  * 기존 getAttributesDone 구독, initDatas, 삭제 처리는 유지합니다.
  */
+
+/* [문맥 검사 주의]
+ * checkContext는 securityContext 문자열을 받습니다. init 옵션 객체 전체를 넘기지 않습니다.
+ * 현재 설치 코드의 전달값이 옵션 객체인 경우 checkContext(options.securityContext)로 전달합니다.
+ * 이미 문자열을 넘기는 호출까지 일괄적으로 .securityContext를 붙이지 않습니다.
+ * tagClassModel은 이 파일의 공통 컨트롤러 모델 push 뒤에 둡니다. ClassificationProp.js가 아닙니다.
+ * 컨트롤러/모델의 속성명은 모두 sdxECCAAutoSession으로 대소문자까지 통일합니다.
+ */

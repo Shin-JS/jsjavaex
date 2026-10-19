@@ -6,6 +6,7 @@ const assert = require('assert/strict');
 const root = path.resolve(__dirname, '..');
 let config = {}, seq = 0, validateError = null;
 const timers = new Map();
+const loadedModules = [];
 class Element {
  constructor(){this.nodeType=1;this.children=[];this.parentNode=null;this.style={};this.textContent='';}
  appendChild(node){if(node.parentNode)node.parentNode.removeChild(node);this.children.push(node);node.parentNode=this;}
@@ -19,16 +20,18 @@ const context = vm.createContext({console,document,Error,Map,Set,Promise,
  widget:{getValue:key=>config[key]},
  setTimeout:fn=>{const id=++seq;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
  setInterval:fn=>{const id=++seq;timers.set(id,fn);return id;},clearInterval:id=>timers.delete(id),
- require(ids, done){assert.deepEqual(Array.from(ids),['DS/ClassificationProp/utils/AttributesUtils']);
+ require(ids, done){loadedModules.push(ids[0]);if(ids[0]==='DS/ClassificationProp/ClassifPropWidget'){done({});return;}
+  assert.deepEqual(Array.from(ids),['DS/ClassificationProp/utils/AttributesUtils']);
   done({validateAttributes:()=>validateError?[{message:validateError}]:null});}
 });
-let api;
+const modules = {};
 context.define = function (id, dependencies, factory) {
- assert.equal(id, 'DS/sdxECCAAutoClass/sdxECCAAutoClass');
- assert.deepEqual(Array.from(dependencies), ['require']);
- api = factory(context.require);
+ modules[id] = factory(...Array.from(dependencies, dep => dep === 'require' ? context.require : modules[dep]));
 };
-vm.runInContext(fs.readFileSync(path.join(root,'webapps/sdxECCAAutoClass/sdxECCAAutoClass.js'),'utf8'),context);
+for (const file of ['sdxECCAClassRuleService', 'sdxECCAOrganizationProvider', 'sdxECCAAutoClass']) {
+ vm.runInContext(fs.readFileSync(path.join(root, 'webapps/sdxECCAAutoClass', file + '.js'),'utf8'),context);
+}
+const api = modules['DS/sdxECCAAutoClass/sdxECCAAutoClass'];
 delete context.require; // 지역 require를 캡처했으므로 전역 require 없이도 이후 지연 로딩 가능
 assert.ok(api);assert.equal(timers.size,0); // AMD를 로드하는 것만으로 세션을 만들지 않음
 assert.equal(context.sdxECCAAttachAutoBridge,undefined); // 전역 함수로 노출되지 않음
@@ -64,6 +67,7 @@ const ui=makeController(session), props={skeleton:new Element(),listview:{data:d
 api.prepareFixedType(props.listview.data,session);
 assert.equal(props.listview.data.defaultAttributes.Type.visible,false);
 api.installFields(props,{sdxECCAAutoSession:session});
+assert.equal(loadedModules.length,0); // 컨트롤러 생성 전에 검증 모듈을 요청하지 않음
 const facet={initUI:{getController:()=>({plmNewLibraryActive:ui.ctrl})}};
 api.connectClassification(facet,{sdxECCAAutoSession:session,securityContext:session.context});timers.get(facet.sdxECCAAutoTimer)();
 const dialog={View:{facets:activeFacets}};
@@ -72,6 +76,7 @@ assert.equal(props.sdxECCAAutoRoot.children.length,2); // 상태와 폼뿐, 검�
 ui.request().onComplete({chains:new Map([['C1',[{physicalid:'L1',type:'General Library',label:'Library'},{physicalid:'C1',type:'General Class',label:'Class'}]]])});
 assert.equal(ui.selectedCount(),1);assert.equal(session.status,'loading');assert.equal(api.canSubmitDialog(dialog),false);
 api.notifyAttributesLoaded(ui.ctrl.classifPropModels[0],{attribute:[]});
+assert.deepEqual(loadedModules,['DS/ClassificationProp/ClassifPropWidget','DS/ClassificationProp/utils/AttributesUtils']); // 반복 알림에도 각 한 번
 assert.equal(session.status,'ready');assert.equal(props.sdxECCAAutoHost.style.display,'');assert.equal(ui.form.parentNode,props.sdxECCAAutoHost);
 let blurred=false;const input=new Element();input.blur=()=>blurred=true;ui.form.appendChild(input);document.activeElement=input;
 assert.equal(api.canSubmitDialog(dialog),true);assert.equal(blurred,true);
@@ -111,3 +116,55 @@ config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'Custom C
 const launch={type:'Change Action',options:{preferedType:'Other',select:[]},context:{},facets:[]};
 const configured=api.configureCreateType(launch);assert.equal(configured,launch);assert.equal(launch.type,'Custom CA');assert.equal(launch.options.typeName,'Custom CA');assert.equal(launch.options.preferedType,'Custom CA');assert.equal(launch.options.select.length,0);
 console.log('PASS: widget/type isolation, fixed class without department lookup, asynchronous selection/loading, validation/blur, context change, form restore, late responses, config/type/library/response errors, timeout, hidden/read-only type with original schema, launch type isolation');
+
+// 부서 서비스와 기존 폼 흐름의 연결: 두 대화상자 격리, 늦은 응답, 오류 시 우회 금지.
+(async function () {
+ const service=modules['DS/sdxECCAAutoClass/sdxECCAClassRuleService'];
+ const provider=modules['DS/sdxECCAAutoClass/sdxECCAOrganizationProvider'];
+ const scope={securityContext:'ctx::Leader.Engineering.Space',tenant:'OnPremise'};
+ await assert.rejects(service.resolveDepartment(scope,provider),/아직 연결되지/);
+ let calls=0;
+ const good={loadCurrentUser(s){assert.equal(s.tenant,'OnPremise');calls++;return {departmentCode:' D1 '};},
+  findDepartmentClasses(s){assert.equal(s.departmentCode,'D1');assert.equal(s.securityContext,scope.securityContext);
+   return [{departmentCode:'OTHER',classId:'WRONG'},{departmentCode:'D1',classId:'C1',libraryId:'L1'}];}};
+ assert.equal((await service.resolveDepartment(scope,good)).classId,'C1');assert.equal(calls,1);
+ for(const [user,rows,pattern] of [
+  [{},[],/부서 코드/],
+  [{departmentCode:'D1'},[],/클래스가 없습니다/],
+  [{departmentCode:'D1'},[{departmentCode:'D1',classId:'C1'},{departmentCode:'D1',classId:'C2'}],/여러 개/],
+  [{departmentCode:'D1'},null,/배열/]
+ ]) await assert.rejects(service.resolveDepartment(scope,{loadCurrentUser:()=>user,findDepartmentClasses:()=>rows}),pattern);
+ await assert.rejects(service.resolveDepartment(scope,{loadCurrentUser:()=>Promise.reject(new Error('조회 실패')),findDepartmentClasses:()=>[]}),/조회 실패/);
+ function dept(){
+  config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAClassRuleMode:'department'};
+  const facets=metadata();api.attachBridge(data(),facets,{});
+  const session=facets[0].options.sdxECCAAutoSession;
+  assert.equal(session.status,'loading');assert.equal(session.rule,null); // 고정 ID 없어도 설정 오류가 아님
+  const ui=makeController(session),props={skeleton:new Element(),listview:{data:data()}};
+  api.installFields(props,{sdxECCAAutoSession:session});
+  const facet={initUI:{getController:()=>({plmNewLibraryActive:ui.ctrl})}};
+  api.connectClassification(facet,{sdxECCAAutoSession:session,securityContext:session.context,tenant:'OnPremise'});
+  timers.get(facet.sdxECCAAutoTimer)();
+  return {session,ui,facet,props};
+ }
+ const flush=()=>new Promise(resolve=>setImmediate(resolve));
+ const pending=[];
+ provider.loadCurrentUser=()=>new Promise(resolve=>pending.push(resolve));
+ provider.findDepartmentClasses=req=>[{departmentCode:req.departmentCode,classId:req.departmentCode==='D1'?'C1':'C2'}];
+ const first=dept(),second=dept();await flush();
+ pending[1]({departmentCode:'D2'});await flush();
+ assert.equal(second.session.classId,'C2');assert.equal(first.ui.request(),undefined);
+ pending[0]({departmentCode:'D1'});await flush();assert.equal(first.session.classId,'C1');
+ first.ui.request().onComplete({chains:new Map([['C1',[{physicalid:'C1',type:'General Class',label:'Class'}]]])});
+ const model=first.ui.ctrl.classifPropModels[0];
+ api.notifyAttributesLoaded({attribute:[]},model);assert.equal(first.session.status,'loading'); // 잘못된 순서는 완료되지 않음
+ api.notifyAttributesLoaded(model,{attribute:[]});assert.equal(first.session.status,'ready');
+ first.session.dispose();second.session.dispose();
+ const closed=dept();await flush();closed.session.dispose();pending[2]({departmentCode:'D1'});await flush();assert.equal(closed.ui.request(),undefined);
+ const changed=dept();await flush();changed.session.checkContext('different');pending[3]({departmentCode:'D1'});await flush();assert.equal(changed.ui.request(),undefined);changed.session.dispose();
+ provider.loadCurrentUser=()=>({departmentCode:'D1'});provider.findDepartmentClasses=()=>[];
+ const missing=dept();await flush();assert.equal(missing.session.status,'error');assert.equal(missing.ui.request(),undefined);missing.session.dispose();
+ config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAClassRuleMode:'bad'};
+ const bad=metadata();api.attachBridge(data(),bad,{});assert.equal(bad[0].options.sdxECCAAutoSession.status,'error');bad[0].options.sdxECCAAutoSession.dispose();
+ console.log('PASS: department contract, tenant/context propagation, missing/duplicate/error handling, parallel dialog isolation, fixed-ID-free department mode, model/response order, closed/context-changed late response suppression, no fixed fallback');
+})().catch(error=>{console.error(error);process.exitCode=1;});

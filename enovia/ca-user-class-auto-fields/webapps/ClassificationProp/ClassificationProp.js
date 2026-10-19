@@ -18,3 +18,13 @@
  * getAttributesDone publish와 실제 _onCompleteLoadModel보다 뒤에서 통지합니다.
  * 기존 sdxECCANotifyAutoClassAttributes(e,t)를 위 호출로 바꾸며 중복 호출하지 않습니다.
  */
+
+/* [현재 설치 소스에서 확인한 인자 대응 — 2026-10-19]
+ * modelList:[i], onAttributesLoad:function(r){...} 구조이면 모델=i, 응답=r입니다.
+ * 기존 onCompleteLoadModel(r,{initTable:!e,buildBehavior:t?f.FORCE_DEFAULT:f.NO_CHANGES}) 뒤에:
+ *     sdxECCAAutoClass.notifyAttributesLoaded(i,r)
+ * 를 호출합니다. notifyAttributesLoaded(r,e)는 응답을 모델로 전달하므로 완료되지 않습니다.
+ * 위 R2024x 예시의 e,t를 현재 설치 코드에 그대로 복사하지 않습니다.
+ * 함수명 앞의 기존 컨트롤러 참조와 _ 유무 등 설치 소스의 원래 호출은 유지합니다.
+ * 첫 인자는 ClassificationsFacet에서 tagClassModel로 표시한 바로 그 ClassifPropModel입니다.
+ */

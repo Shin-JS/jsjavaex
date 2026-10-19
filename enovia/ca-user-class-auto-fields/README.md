@@ -1,8 +1,10 @@
-# 지정 클래스 자동 표시 · 유형 고정 — AMD 모듈 분리
+# 클래스 자동 표시 · 유형 고정 · 부서 조회 연결 준비
 
 기존 추가 함수 17개를 [sdxECCAAutoClass.js](webapps/sdxECCAAutoClass/sdxECCAAutoClass.js)의 `define("DS/sdxECCAAutoClass/sdxECCAAutoClass", ...)` 안으로 옮겼습니다. OOTB 파일에는 커스텀 모듈 의존성과 연결 호출만 남깁니다.
 
-이번 작업은 구조 분리입니다. 부서 조회는 주석으로 보류하고, 지정 클래스 자동 적용·유형 숨김/읽기 전용·대화상자별 세션의 기존 동작을 유지했습니다. **현장에서 “지정 클래스 속성을 준비하고 있습니다…”에 머무르던 문제는 해결 완료되지 않았습니다.** 모델 생성/속성 완료 연결 호출을 확인하는 작업이 남아 있습니다. 별도로 보류한 서버 저장 오류도 이번 변경에서 수정하지 않았습니다.
+2026-10-19 현장에서 지정 클래스의 속성 필드가 표시되는 것을 확인했습니다. 완료 알림에는 **클래스 모델과 응답을 이 순서로** 전달해야 합니다. 현재 설치 소스가 `modelList:[i]`, `onAttributesLoad:function(r)`이면 `notifyAttributesLoaded(i,r)`입니다. R2024x 예시의 축약 변수명을 그대로 사용하지 않습니다.
+
+기본값은 기존 고정 클래스 방식입니다. 향후 로그인 사용자 부서와 분류에 추가할 General Type의 부서 값을 매칭하도록 별도 조회 서비스와 Provider 연결 지점을 추가했습니다. 실제 General Type/속성/API는 미확정이므로 **실제 부서 조회 두 함수는 아직 연결하지 않았습니다.** [부서 조회 설명](DEPARTMENT.md)을 참고합니다. 서버 저장 오류는 별도 보류 상태입니다.
 
 ## 접두사 변경: zca → sdxECCA
 
@@ -27,13 +29,15 @@
 | 파일 | 용도 |
 |---|---|
 | [webapps/sdxECCAAutoClass/sdxECCAAutoClass.js](webapps/sdxECCAAutoClass/sdxECCAAutoClass.js) | 새로 배포할 전체 커스텀 AMD 모듈. 실제 추가 로직과 주석이 있음 |
+| [sdxECCAClassRuleService.js](webapps/sdxECCAAutoClass/sdxECCAClassRuleService.js) | 고정 클래스 또는 부서별 클래스 결정과 결과 검증 |
+| [sdxECCAOrganizationProvider.js](webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js) | 실제 사용자/General Type 조회를 연결할 두 함수 |
 | [ENONewWidget.js](webapps/ENONewWidget/ENONewWidget.js) | 기존 OOTB의 세 모듈에 넣을 의존성/인자/호출 변경 메모 |
 | [ClassificationsFacet.js](webapps/ClassificationsFacet/ClassificationsFacet.js) | 기존 분류 컨트롤러 연결과 모델 생성 호출 변경 메모 |
 | [ClassificationProp.js](webapps/ClassificationProp/ClassificationProp.js) | 실제 속성 로딩·폼 반영 뒤 완료 호출 변경 메모 |
 | [ENOChgGovernanceUX.js](webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js) | CreateNew 전 유형 지정과 사용자 기본 유형 저장 조건 변경 메모 |
 | [ENOChgGovernance.html](webapps/ENOChgGovernanceUX/ENOChgGovernance.html) | 대상 위젯의 기존 스크립트에 넣는 설정 예시 |
 
-**sdxECCAAutoClass.js만 새 전체 파일**입니다. 원래 OOTB 파일명으로 된 나머지 JS는 전체 교체용이 아닙니다. 각 파일에 설명한 해당 define의 헤더와 본문 호출만 바꿉니다. 기존 OOTB 모듈명은 유지합니다.
+**webapps/sdxECCAAutoClass 아래 세 JS가 새 전체 파일**입니다. 원래 OOTB 파일명으로 된 나머지 JS는 전체 교체용이 아닙니다. 각 파일에 설명한 해당 define의 헤더와 본문 호출만 바꿉니다. 기존 OOTB 모듈명은 유지합니다.
 
 ## 커스텀 의존성은 마지막에 추가
 
@@ -89,7 +93,7 @@ sdxECCACss를 빼면 sdxECCAAutoClass 인자가 CSS 결과를 받습니다. 다�
 
 ## 기존 로컬 함수 방식에서 옮기기
 
-1. 커스텀 모듈 전체 파일을 webapps/sdxECCAAutoClass/sdxECCAAutoClass.js로 배포합니다.
+1. webapps/sdxECCAAutoClass 아래 세 JS를 함께 배포합니다. main 모듈이 서비스와 Provider를 의존하므로 fixed 모드에서도 세 파일이 필요합니다.
 2. 일곱 OOTB define의 마지막 의존성/인자를 추가합니다. CSS 자리 인자가 필요한 두 곳을 확인합니다.
 3. 이 폴더에서 이전에 추가했던 sdxECCA... 함수 본문을 OOTB factory에서 제거하고 호출을 위 공개 메서드로 바꿉니다. 원래 OOTB 함수는 제거하지 않습니다.
 4. 기존 init/destroy/선택/완료 위치의 호출을 빠뜨리거나 중복 적용하지 않습니다.
@@ -105,6 +109,7 @@ sdxECCACss를 빼면 sdxECCAAutoClass 인자가 CSS 결과를 받습니다. 다�
 widget.setValue("sdxECCAEnableAutoClassByOrganization", true);
 widget.setValue("sdxECCAAutoClassType", "sdxEcChangeAction");
 widget.setValue("sdxECCAFixedClassId", "CLASS_PHYSICALID");
+widget.setValue("sdxECCAClassRuleMode", "fixed");
 widget.setValue("sdxECCATypeDisplay", "hidden");
 ```
 
@@ -113,7 +118,7 @@ CLASS_PHYSICALID는 실제 General Class physicalid로 바꿉니다. 자동으�
 - sdxECCATypeDisplay가 hidden이면 유형을 숨깁니다.
 - disabled이면 OOTB isReadOnly로 편집을 막습니다. 실제 모양은 렌더러에 따라 비활성 드롭다운 또는 읽기 전용 값입니다.
 - sdxECCAFixedLibraryId를 추가하면 선택한 라이브러리 경로에 해당 클래스가 포함되는지도 확인합니다.
-- 활성화 옵션의 ByOrganization 이름은 호환상 유지한 것이며 현재 부서/조직 조회는 실행하지 않습니다.
+- 활성화 옵션의 ByOrganization 이름은 유지합니다. fixed 모드에서는 사용자/부서 조회가 실행되지 않습니다. department 모드는 Provider를 구현한 뒤 사용합니다.
 
 유형은 CreateNew 전부터 지정하여 속성 정의와 실제 생성 타입을 일치시킵니다. 유형 모델 생성 전 표시/편집 옵션을 바꾸고, 원래 persistData 정의는 유지합니다.
 
@@ -133,11 +138,13 @@ require(["DS/sdxECCAAutoClass/sdxECCAAutoClass"], function (sdxECCAAutoClass) {
 
 function이면 모듈을 받은 것입니다. 이 확인만으로 OOTB 연결 호출까지 적용됐다는 뜻은 아닙니다. 새 파일 요청 실패나 RequireJS 오류가 있으면 배포 URL과 경로 매핑부터 확인합니다.
 
-모듈의 정적 의존성은 AMD의 지역 require뿐입니다. AttributesUtils는 화면 설치 때 지연 로드하여 OOTB 모듈과의 정적 의존 순환을 피했습니다. 공유 객체에 현재 세션을 저장하지 않으며, 각 대화상자의 options.sdxECCAAutoSession을 계속 사용합니다.
+main 모듈의 정적 의존성은 지역 require, ClassRuleService, OrganizationProvider입니다. OOTB 분류 컨트롤러가 준비되고 폼을 배치한 뒤 ClassifPropWidget을 먼저 로드하고, 그다음 AttributesUtils를 지연 로드합니다. 구독 알림마다 중복 로드하지 않도록 플래그를 둡니다. OOTB 번들을 main의 정적 의존성으로 추가하지 않습니다. 공유 객체에 현재 세션을 저장하지 않으며, 각 대화상자의 options.sdxECCAAutoSession을 계속 사용합니다.
 
 ## 보류 중인 확인과 검증 한계
 
-현장에서는 준비 메시지만 표시되고 네트워크 응답은 있으며, 이전 tag/완료 로그는 없었습니다. 이번 구조에서 다음 확인 지점은 ClassificationsFacet.js의 모델 push 뒤 `sdxECCAAutoClass.tagClassModel(r,o,e)` 호출입니다. 그다음 커스텀 모듈 안의 sdxECCATagAutoClassModel과 sdxECCANotifyAutoClassAttributes에서 실제 진입을 확인합니다.
+현장에서 표시 완료를 확인한 순서는 컨트롤러 세션 연결 → ClassificationsFacet의 tagClassModel → ClassificationProp의 notifyAttributesLoaded(동일 모델, 응답)입니다. 세션 속성명은 sdxECCAAutoSession으로 통일합니다. 문맥 검사에는 옵션 객체 전체가 아닌 securityContext 문자열을 전달합니다. 디버깅용 전역/모듈 공유 모델 참조나 console 로그는 배포 코드에 넣지 않았습니다.
+
+현재 설치 소스의 완료 콜백은 [ClassificationProp.js 적용 메모](webapps/ClassificationProp/ClassificationProp.js)의 2026-10-19 항목을 우선 참고합니다. 로컬에서 사용한 커스텀 경로 `DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService`를 유지한다면 main의 define ID와 모든 OOTB 의존성 ID를 그 경로로 함께 맞춥니다. 새 서비스 두 파일의 define ID와 main의 의존성도 실제 배포 경로와 일치해야 합니다.
 
 기존 postCreation을 유지하며 클래스 연결·값 저장을 새로 구현하지 않았습니다. 커스터마이징 없는 서버에서도 발생한 ClassificationAttributeUtil.java:95 오류는 계속 별도 확인 대상입니다.
 

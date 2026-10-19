@@ -3,17 +3,16 @@
  * OOTB 파일에는 이 모듈 의존성과 연결 호출만 추가합니다.
  * 공유되는 것은 함수뿐이며 세션/선택 모델은 대화상자마다 생성합니다.
  * OOTB 모듈을 정적 의존성으로 요구하지 않아 역방향 의존 순환을 피합니다.
- * AttributesUtils는 화면 설치 시 factory의 지역 require로 지연 로딩합니다.
+ * AttributesUtils는 분류 컨트롤러 준비 후 factory의 지역 require로 지연 로딩합니다.
  *
- * [부서 조회 보류]
- * 부서/general type 조회 코드는 실행하지 않습니다.
- * attachBridge 내부 TODO에서 향후 부서 기준으로 rule을 결정할 수 있습니다.
- * 현재는 sdxECCAFixedClassId의 General Class를 자동 적용합니다.
- *
- * 구조만 분리한 변경입니다. 준비 중에 머무르는 현장 이슈와 서버 저장 오류가
- * 이 분리로 해결되었다고 판단하지 않습니다. OOTB 연결 호출은 모두 필요합니다.
+ * 클래스 결정은 ClassRuleService, 실제 사용자/분류 조회 연결은 OrganizationProvider로 분리합니다.
+ * 기본 fixed 모드는 현재 정상 표시된 고정 클래스 방식을 유지합니다.
  */
-define("DS/sdxECCAAutoClass/sdxECCAAutoClass", ["require"], function (require) {
+define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
+    "require",
+    "DS/sdxECCAAutoClass/sdxECCAClassRuleService",
+    "DS/sdxECCAAutoClass/sdxECCAOrganizationProvider"
+], function (require, ClassRuleService, OrganizationProvider) {
     "use strict";
 
     /** 대화상자마다 별도 세션을 만들어 초기화·속성 로딩·UI·생성 검증을 연결합니다. */
@@ -108,19 +107,22 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", ["require"], function (require) {
         var rule = null, configError = null;
         var typeDisplay = widget.getValue("sdxECCATypeDisplay") || "hidden";
         try {
-            // TODO: 부서 기준 조회는 여기서 rule을 결정하도록 연결합니다. 현재는 실행하지 않습니다.
-            var classId = widget.getValue("sdxECCAFixedClassId");
-            var libraryId = widget.getValue("sdxECCAFixedLibraryId");
-            if (typeof classId !== "string" || !classId.trim()) {
-                throw new Error("sdxECCAFixedClassId에 클래스 physicalid를 지정해 주세요.");
+            var ruleMode = widget.getValue("sdxECCAClassRuleMode") || "fixed";
+            if (ruleMode !== "fixed" && ruleMode !== "department") {
+                throw new Error("sdxECCAClassRuleMode는 fixed 또는 department로 지정해 주세요.");
             }
+            // department 모드에는 고정 클래스 ID가 필요하지 않습니다. 조회 실패 시 고정값으로 우회하지 않습니다.
+            if (ruleMode === "fixed") rule = ClassRuleService.resolveFixed({
+                classId: widget.getValue("sdxECCAFixedClassId"),
+                libraryId: widget.getValue("sdxECCAFixedLibraryId")
+            });
             if (typeDisplay !== "hidden" && typeDisplay !== "disabled") {
                 throw new Error("sdxECCATypeDisplay는 hidden 또는 disabled로 지정해 주세요.");
             }
-            rule = {classId: classId.trim(), libraryId: libraryId || null};
         } catch (error) { configError = error; }
         var session = sdxECCACreateAutoSession(context, type, rule);
         session.typeDisplay = typeDisplay;
+        session.ruleMode = ruleMode;
         properties.options = properties.options || {};
         classification.options = classification.options || {};
         properties.options.sdxECCAAutoSession = session;
@@ -159,6 +161,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", ["require"], function (require) {
         if (!session) return;
         facet.sdxECCAAutoSession = session;
         facet.sdxECCAAutoDisposed = false;
+        facet.sdxECCAValidatorLoading = false;
         session.readCurrentType = function () {
             var view = facet.listview;
             var field = view && view.propModel && view.propModel.get("New-Type");
@@ -185,27 +188,35 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", ["require"], function (require) {
             if (state.controller && state.status !== "error") {
                 try { sdxECCAMountAutoFields(facet, state); }
                 catch (error) { state.fail(error); return; }
+                // 분류 컨트롤러 생성 후 OOTB 번들을 먼저 로드합니다. 반복 알림으로 중복 요청하지 않습니다.
+                if (!facet.sdxECCAValidatorLoading) {
+                    facet.sdxECCAValidatorLoading = true;
+                    require(["DS/ClassificationProp/ClassifPropWidget"], function () {
+                        if (session.disposed || facet.sdxECCAAutoDisposed || session.status === "error") return;
+                        require(["DS/ClassificationProp/utils/AttributesUtils"], function (AttributesUtils) {
+                            if (session.disposed || facet.sdxECCAAutoDisposed || session.status === "error") return;
+                            session.validateFields = function () {
+                                var ctrl = session.controller;
+                                if (!ctrl || !Array.isArray(ctrl.classifPropModels) || ctrl.classifPropModels.length !== 1) {
+                                    throw new Error("자동 적용한 클래스 모델을 확인해 주세요.");
+                                }
+                                var model = ctrl.classifPropModels[0];
+                                if (model.get("objectId") !== session.classId) throw new Error("클래스 모델이 일치하지 않습니다.");
+                                var errors = AttributesUtils.validateAttributes(model, model.getAttributeFromField());
+                                if (errors && errors.length) throw new Error(errors.map(function (item) { return item.message; }).join("\n"));
+                            };
+                            session.refreshReady();
+                            session.notify();
+                        }, function () { session.fail(new Error("OOTB 속성 검증 모듈을 로드할 수 없습니다.")); });
+                    }, function () { session.fail(new Error("OOTB 분류 모듈을 로드할 수 없습니다.")); });
+                }
             }
             state.refreshReady();
             status.textContent = state.error ? state.error.message :
                 state.status === "ready" ? "" : "지정 클래스 속성을 준비하고 있습니다…";
             host.style.display = state.attributesLoaded ? "" : "none";
         });
-        require(["DS/ClassificationProp/utils/AttributesUtils"], function (AttributesUtils) {
-            if (session.disposed || facet.sdxECCAAutoDisposed) return;
-            session.validateFields = function () {
-                var ctrl = session.controller;
-                if (!ctrl || !Array.isArray(ctrl.classifPropModels) || ctrl.classifPropModels.length !== 1) {
-                    throw new Error("자동 적용한 클래스 모델을 확인해 주세요.");
-                }
-                var model = ctrl.classifPropModels[0];
-                if (model.get("objectId") !== session.classId) throw new Error("클래스 모델이 일치하지 않습니다.");
-                var errors = AttributesUtils.validateAttributes(model, model.getAttributeFromField());
-                if (errors && errors.length) throw new Error(errors.map(function (item) { return item.message; }).join("\n"));
-            };
-            session.refreshReady();
-            session.notify();
-        }, function () { session.fail(new Error("OOTB 속성 검증 모듈을 로드할 수 없습니다.")); });
+
     }
 
     /** 기존 폼 객체를 한 번 이동하고, 종료 시 돌려놓을 원래 위치를 기억합니다. */
@@ -327,7 +338,21 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", ["require"], function (require) {
                     if (ctrl.container) ctrl.container.style.display = "none";
                     session.controller = ctrl;
                     session.notify();
-                    if (session.status !== "error" && !session.disposed) sdxECCAApplyOrganizationClass(ctrl, session);
+                    if (session.status === "error" || session.disposed) return;
+                    if (session.ruleMode === "department") {
+                        // 부서 조회는 현재 대화상자 문맥으로 매번 수행하며 전역 사용자/클래스 캐시를 두지 않습니다.
+                        ClassRuleService.resolveDepartment({
+                            securityContext: session.context, tenant: options.tenant
+                        }, OrganizationProvider).then(function (rule) {
+                            if (session.disposed || session.status === "error") return;
+                            session.rule = rule;
+                            sdxECCAApplyOrganizationClass(ctrl, session);
+                        }).catch(function (error) {
+                            if (!session.disposed && session.status !== "error") session.fail(error);
+                        });
+                    } else {
+                        sdxECCAApplyOrganizationClass(ctrl, session);
+                    }
                 } catch (error) { session.fail(error); }
             } else if (Date.now() - started > 30000) {
                 clearInterval(facet.sdxECCAAutoTimer);
