@@ -37,15 +37,15 @@
 
 | 기존 함수·객체 | 현재 역할 | 자동 표시에서의 활용 |
 |---|---|---|
-| zcaAttachBridge | 위젯·타입 검사와 facet 연결 | 적용 범위와 대화상자별 상태 유지 |
-| zcaGetCurrentUserParameters | 현재 로그인 사용자 조회 | 버튼 클릭 대신 화면 초기화에서 호출 |
-| zcaConnectClassificationFacet | 기존 컨트롤러 준비 확인 | 자동 선택을 시작할 준비 조건 |
-| ZcaLibraryAdapter.add | 클래스 노드를 기존 선택 모델에 추가 | 사용자의 선택 대신 프로그램에서 호출 |
+| sdxECCAAttachBridge | 위젯·타입 검사와 facet 연결 | 적용 범위와 대화상자별 상태 유지 |
+| sdxECCAGetCurrentUserParameters | 현재 로그인 사용자 조회 | 버튼 클릭 대신 화면 초기화에서 호출 |
+| sdxECCAConnectClassificationFacet | 기존 컨트롤러 준비 확인 | 자동 선택을 시작할 준비 조건 |
+| sdxECCALibraryAdapter.add | 클래스 노드를 기존 선택 모델에 추가 | 사용자의 선택 대신 프로그램에서 호출 |
 | 기존 클래스 선택 change 처리 | 속성 모델과 폼 생성 | 속성 정의·입력 컨트롤 재사용 |
-| zcaRenderClassFields | 기존 분류 폼을 속성 탭으로 이동 | move 단일 동작 유지 |
+| sdxECCARenderClassFields | 기존 분류 폼을 속성 탭으로 이동 | move 단일 동작 유지 |
 | 기존 postCreation | 생성된 객체의 분류 연결·속성 저장 | 기존 저장 경로 유지, 통합 확인 필요 |
 
-ZcaLibraryAdapter.add는 클래스 ID 문자열만 받는 함수가 아닙니다. getID(), getLabel(), plmType 등 기존 컨트롤러가 사용하는 정보를 갖춘 클래스 노드가 필요합니다.
+sdxECCALibraryAdapter.add는 클래스 ID 문자열만 받는 함수가 아닙니다. getID(), getLabel(), plmType 등 기존 컨트롤러가 사용하는 정보를 갖춘 클래스 노드가 필요합니다.
 
 add의 Promise 완료는 선택 반영을 뜻하며 클래스 속성 조회 완료나 서버 저장 완료를 뜻하지 않습니다. 자동 표시 준비 완료 판정에는 실제 속성 로딩 완료 조건을 별도로 연결해야 합니다.
 
@@ -69,7 +69,7 @@ add의 Promise 완료는 선택 반영을 뜻하며 클래스 속성 조회 완�
 
 현재 사용자 조회는 커스텀 수신 함수가 연결된 찾아보기 버튼 클릭 경로에 있습니다. 검색창과 버튼을 제거하면 이 경로가 실행되지 않습니다.
 
-자동 표시에서는 사용자 조회 함수를 화면 초기화에서 명시적으로 호출하고, 컨트롤러 준비와 합류시켜야 합니다. zcaOpenClassSelector는 버튼용 연결 함수이므로 자동 적용의 필수 경로로 삼을 필요가 없습니다.
+자동 표시에서는 사용자 조회 함수를 화면 초기화에서 명시적으로 호출하고, 컨트롤러 준비와 합류시켜야 합니다. sdxECCAOpenClassSelector는 버튼용 연결 함수이므로 자동 적용의 필수 경로로 삼을 필요가 없습니다.
 
 ### 화면 표시와 준비 상태
 

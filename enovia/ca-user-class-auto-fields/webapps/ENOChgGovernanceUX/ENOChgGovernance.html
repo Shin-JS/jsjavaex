@@ -1,26 +1,26 @@
 <!-- 전체 HTML 교체용이 아닙니다. 대상 커스텀 위젯의 실제 실행되는 기존 스크립트 위치에 넣는 설정입니다.
 공용 OOTB HTML에서 모든 위젯에 설정하지 않습니다.
 
-widget.setValue("zcaEnableAutoClassByOrganization", true);
-widget.setValue("zcaAutoClassType", "sdxEcChangeAction");
-widget.setValue("zcaFixedClassId", "CLASS_PHYSICALID");
-widget.setValue("zcaTypeDisplay", "hidden");
+widget.setValue("sdxECCAEnableAutoClassByOrganization", true);
+widget.setValue("sdxECCAAutoClassType", "sdxEcChangeAction");
+widget.setValue("sdxECCAFixedClassId", "CLASS_PHYSICALID");
+widget.setValue("sdxECCATypeDisplay", "hidden");
 
 CLASS_PHYSICALID는 자동 적용할 General Class의 실제 physicalid로 바꿉니다.
-zcaAutoClassType은 실제 생성할 타입 이름입니다. subtype을 생성하면 해당 타입명으로 바꿉니다.
-유형을 표시하되 편집하지 못하게 하려면 zcaTypeDisplay를 "disabled"로 지정합니다.
+sdxECCAAutoClassType은 실제 생성할 타입 이름입니다. subtype을 생성하면 해당 타입명으로 바꿉니다.
+유형을 표시하되 편집하지 못하게 하려면 sdxECCATypeDisplay를 "disabled"로 지정합니다.
 OOTB isReadOnly를 사용하는 모드이며, 렌더러에 따라 드롭다운 대신 읽기 전용 값으로 표시될 수 있습니다.
 
 선택적인 라이브러리 경로 검사:
-widget.setValue("zcaFixedLibraryId", "LIBRARY_PHYSICALID");
+widget.setValue("sdxECCAFixedLibraryId", "LIBRARY_PHYSICALID");
 
 [부서 조회 보류]
 사용자 부서 조회/general type 기반 매핑은 현재 실행하지 않습니다.
-기존 zcaClassByOrganization 설정은 이번 고정 클래스 방식에서 읽지 않습니다.
-활성화 옵션명 zcaEnableAutoClassByOrganization은 이전 연결 호환을 위해 유지했습니다.
-기존 zcaEnableLibraryInProperties=true 설정/검색창 설치 호출은 함께 활성화하지 않습니다.
+기존 sdxECCAClassByOrganization 설정은 이번 고정 클래스 방식에서 읽지 않습니다.
+활성화 옵션명 sdxECCAEnableAutoClassByOrganization은 이전 연결 호환을 위해 유지했습니다.
+기존 ca-isolated-kit의 zcaEnableLibraryInProperties=true 설정/검색창 설치 호출은 함께 활성화하지 않습니다.
 Change Governance의 classificationFacet와 isLibrary:true는 유지합니다.
-유형 고정은 OOTB의 ZcaAutoClass.configureCreateType 호출과 prepareFixedType 호출을 함께 적용합니다.
+유형 고정은 OOTB의 sdxECCAAutoClass.configureCreateType 호출과 prepareFixedType 호출을 함께 적용합니다.
 사용자 환경에서 이미 실행 확인한 스크립트 최상단 설정 위치를 유지합니다. 새 onLoad를 만들지 않습니다.
-실제 함수 본문은 webapps/ZCAAutoClass/ZCAAutoClass.js 전체 파일에 있습니다.
+실제 함수 본문은 webapps/sdxECCAAutoClass/sdxECCAAutoClass.js 전체 파일에 있습니다.
 -->

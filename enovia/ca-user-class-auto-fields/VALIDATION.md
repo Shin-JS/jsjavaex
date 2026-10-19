@@ -30,7 +30,7 @@ amd-headers.json은 참조 R2024x의 헤더와 변경 헤더만 저장한 fixtur
 
 ## 현장에서 아직 확인하지 못한 부분
 
-- DS/ZCAAutoClass/ZCAAutoClass가 실제 새 파일 URL로 해석되는지, 브라우저가 갱신된 OOTB 파일을 실행하는지.
+- DS/sdxECCAAutoClass/sdxECCAAutoClass가 실제 새 파일 URL로 해석되는지, 브라우저가 갱신된 OOTB 파일을 실행하는지.
 - 현재 설치 버전의 의존성/인자 개수 및 CSS 자리 인자 대응.
 - OOTB 모델 push 뒤 tagClassModel 호출과 실제 폼 반영 뒤 notifyAttributesLoaded 호출의 진입.
 - 준비 메시지에 머무르는 현재 현장 문제의 원인과 해결.
@@ -38,3 +38,9 @@ amd-headers.json은 참조 R2024x의 헤더와 변경 헤더만 저장한 fixtur
 - Enter/버튼/반복 생성, 새 CA의 분류 연결과 속성값 저장, 동시 대화상자, 다른 위젯의 기존 동작.
 
 커스터마이징 없는 서버에서도 재현된 ClassificationAttributeUtil.java:95 오류는 별도로 보류 중입니다. 이번 AMD 분리가 해당 저장 오류를 해결한 것은 아닙니다. OOTB 내부 공용 provider와 이벤트 상태까지 모두 분리한 것도 아닙니다.
+
+## sdxECCA 접두사 변경
+
+- 실제 AMD 모듈을 이름/설정 키/경로 치환 외에는 변경하지 않은 것을 원본과 대조했습니다.
+- 새 이름으로 AMD 로딩·회귀 검사와 일곱 OOTB 헤더 인자 대응 검사를 재실행하여 통과했습니다.
+- 문서 링크와 기존 경로 제거를 확인합니다. 실제 플랫폼에서의 로딩/표시/저장 검증은 별도입니다.

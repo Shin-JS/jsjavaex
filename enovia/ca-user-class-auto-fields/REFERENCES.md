@@ -31,6 +31,6 @@
 
 ## AMD 분리의 기준
 
-기존 커스텀 함수는 이 저장소의 98b1dc20e812a81ad50bf3a4227536af1dd460ee 커밋을 기준으로 그대로 이동했습니다. OOTB 7개 모듈의 실제 define 헤더를 대조했습니다. ClassificationsFacet의 두 모듈은 CSS 의존성보다 factory 인자가 하나 적어, 커스텀 의존성을 마지막에 놓으면서 CSS 자리 인자 zcaCss를 추가했습니다.
+기존 커스텀 함수는 이 저장소의 98b1dc20e812a81ad50bf3a4227536af1dd460ee 커밋을 기준으로 그대로 이동했습니다. OOTB 7개 모듈의 실제 define 헤더를 대조했습니다. ClassificationsFacet의 두 모듈은 CSS 의존성보다 factory 인자가 하나 적어, 커스텀 의존성을 마지막에 놓으면서 CSS 자리 인자 sdxECCACss를 추가했습니다.
 
 커스텀 모듈의 정적 의존성은 AMD 지역 require 하나입니다. OOTB 모듈들을 다시 정적으로 요구하지 않습니다. AttributesUtils 지연 로딩은 기존 함수 흐름을 유지했습니다. 이 파일들의 새로운 변경 방식은 현재 README와 OOTB 연결 메모를 따릅니다.

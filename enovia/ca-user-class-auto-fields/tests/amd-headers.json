@@ -15,13 +15,13 @@
       "DS/ENONewWidget/utils/ENONewFacetConstants",
       "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls",
       "i18n!DS/ENONewWidget/assets/nls/ENONewFacetNls",
-      "DS/ZCAAutoClass/ZCAAutoClass"
+      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
     ],
     "modifiedArguments": [
       "e",
       "t",
       "i",
-      "ZcaAutoClass"
+      "sdxECCAAutoClass"
     ]
   },
   {
@@ -46,7 +46,7 @@
       "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase",
       "DS/ENONewWidget/ENONew/View/ENOListView",
       "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper",
-      "DS/ZCAAutoClass/ZCAAutoClass"
+      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
     ],
     "modifiedArguments": [
       "e",
@@ -54,7 +54,7 @@
       "i",
       "n",
       "a",
-      "ZcaAutoClass"
+      "sdxECCAAutoClass"
     ]
   },
   {
@@ -100,7 +100,7 @@
       "DS/ENONewWidget/ENONew/View/ENOWizardView",
       "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper",
       "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls",
-      "DS/ZCAAutoClass/ZCAAutoClass"
+      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
     ],
     "modifiedArguments": [
       "e",
@@ -115,7 +115,7 @@
       "l",
       "u",
       "d",
-      "ZcaAutoClass"
+      "sdxECCAAutoClass"
     ]
   },
   {
@@ -154,7 +154,7 @@
       "DS/ClassificationsFacet/InitClassificationCmpUI",
       "DS/IPClassifyUtil/IPClassifyUtility",
       "css!DS/ClassificationsFacet/ClassificationsFacet.css",
-      "DS/ZCAAutoClass/ZCAAutoClass"
+      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
     ],
     "modifiedArguments": [
       "e",
@@ -166,8 +166,8 @@
       "a",
       "r",
       "l",
-      "zcaCss",
-      "ZcaAutoClass"
+      "sdxECCACss",
+      "sdxECCAAutoClass"
     ]
   },
   {
@@ -251,7 +251,7 @@
       "DS/IPClassifyUtil/IPClassifyPreference",
       "DS/IPClassifyUtil/IPClassifyAlert",
       "css!DS/ClassificationsFacet/ClassificationsFacet.css",
-      "DS/ZCAAutoClass/ZCAAutoClass"
+      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
     ],
     "modifiedArguments": [
       "e",
@@ -278,8 +278,8 @@
       "P",
       "I",
       "A",
-      "zcaCss",
-      "ZcaAutoClass"
+      "sdxECCACss",
+      "sdxECCAAutoClass"
     ]
   },
   {
@@ -346,7 +346,7 @@
       "DS/IPClassifyUtil/IPClassifyAlert",
       "i18n!DS/ClassificationProp/assets/nls/langEditProp",
       "DS/PlatformAPI/PlatformAPI",
-      "DS/ZCAAutoClass/ZCAAutoClass"
+      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
     ],
     "modifiedArguments": [
       "e",
@@ -368,7 +368,7 @@
       "g",
       "v",
       "_",
-      "ZcaAutoClass"
+      "sdxECCAAutoClass"
     ]
   },
   {
@@ -399,7 +399,7 @@
       "i18n!DS/ENOChgGovernanceUX/assets/nls/ENOChgGovernanceNLS",
       "DS/UIKIT/Mask",
       "require",
-      "DS/ZCAAutoClass/ZCAAutoClass"
+      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
     ],
     "modifiedArguments": [
       "e",
@@ -409,7 +409,7 @@
       "o",
       "a",
       "s",
-      "ZcaAutoClass"
+      "sdxECCAAutoClass"
     ]
   }
 ]
