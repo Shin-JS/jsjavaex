@@ -83,6 +83,8 @@ sdxECCACss를 빼면 sdxECCAAutoClass 인자가 CSS 결과를 받습니다. 다�
 
 변수명은 참조 소스 기준입니다. 문맥/유형 변경 검사와 인스턴스별 문맥 반환도 각 변경 파일의 주석대로 유지합니다.
 
+현재 설치 소스의 onChangeAttribute가 `for(var t in e){var n=e[t];i.publishAttributeInfo(n)}o(e)` 형태이면, [ENONewWidget.js 적용 메모](webapps/ENONewWidget/ENONewWidget.js)의 새 콜백 본문을 사용합니다. `publishAttributeInfo(n)` 앞에서 sdxECCAAutoSession의 문맥/유형 검사를 실행하고, 항목별 발행과 반복문 뒤의 원래 `o(e)` 호출은 유지합니다. 이벤트 키는 New-SecurityContext/New-Type, 실제 값은 n.valueDB 기준입니다. 예전 publishInfo 분기를 함께 넣지 않습니다.
+
 함수를 define으로 옮겨도 연결 호출이 자동 설치되지는 않습니다. 특히 모델 생성 뒤의 tagClassModel과 실제 속성 반영 뒤의 notifyAttributesLoaded는 여전히 OOTB 내부에 넣어야 합니다.
 
 ## 기존 로컬 함수 방식에서 옮기기

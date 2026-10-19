@@ -34,3 +34,7 @@
 기존 커스텀 함수는 이 저장소의 98b1dc20e812a81ad50bf3a4227536af1dd460ee 커밋을 기준으로 그대로 이동했습니다. OOTB 7개 모듈의 실제 define 헤더를 대조했습니다. ClassificationsFacet의 두 모듈은 CSS 의존성보다 factory 인자가 하나 적어, 커스텀 의존성을 마지막에 놓으면서 CSS 자리 인자 sdxECCACss를 추가했습니다.
 
 커스텀 모듈의 정적 의존성은 AMD 지역 require 하나입니다. OOTB 모듈들을 다시 정적으로 요구하지 않습니다. AttributesUtils 지연 로딩은 기존 함수 흐름을 유지했습니다. 이 파일들의 새로운 변경 방식은 현재 README와 OOTB 연결 메모를 따릅니다.
+
+## 설치 소스의 onChangeAttribute 구조 반영
+
+2026-10-19 사용자가 제공한 `e => {for(var t in e){var n=e[t];i.publishAttributeInfo(n)}o(e)}` 콜백을 기준으로 ENOListViewFacet의 적용 조각을 수정했습니다. 기존 publishAttributeInfo 앞에 세션 검사를 넣고, 원래 발행과 콜백 호출 순서를 유지합니다. 이벤트 키와 valueDB는 기존 구조를 가정하며 실제 설치 파일 전체를 확보해 검증한 것은 아닙니다.

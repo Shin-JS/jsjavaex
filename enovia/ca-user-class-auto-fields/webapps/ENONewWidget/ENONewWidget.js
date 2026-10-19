@@ -28,11 +28,36 @@
  *     sdxECCAAutoClass.checkFacetContext(this,e);
  * destroy()의 listview.destroy() 앞:
  *     sdxECCAAutoClass.destroyFields(this);
- * 기존 onChangeAttribute 콜백 안의 New-SecurityContext 분기(n=e[t] 뒤):
- *     if(i.sdxECCAAutoSession)i.sdxECCAAutoSession.checkContext(n.valueDB);
- * New-Type 분기(n=e[t] 뒤):
- *     if(i.sdxECCAAutoSession)i.sdxECCAAutoSession.checkType(n.valueDB);
- * 기존 publishInfo와 o(e)는 유지합니다. 세션은 여전히 facet 인스턴스의 값입니다.
+ */
+
+/* [onChangeAttribute — 현재 설치 소스의 publishAttributeInfo 방식]
+ * 사용자 제공 원본 콜백:
+ *     e => {for(var t in e){var n=e[t];i.publishAttributeInfo(n)}o(e)}
+ * 기존 onChangeAttribute 할당 대상은 그대로 두고, 우변 콜백을 아래처럼 변경합니다.
+ * i는 기존 ENOListViewFacet 인스턴스, o는 원래 onChangeAttribute 콜백입니다.
+ * for문의 t는 이벤트 키이며 바깥 init(t)의 옵션 인자와 구분해서 읽습니다.
+ *
+ * e => {
+ *     for (var t in e) {
+ *         var n = e[t];
+ *
+ *         if (i.sdxECCAAutoSession) {
+ *             if (t === "New-SecurityContext") {
+ *                 i.sdxECCAAutoSession.checkContext(n.valueDB);
+ *             } else if (t === "New-Type") {
+ *                 i.sdxECCAAutoSession.checkType(n.valueDB);
+ *             }
+ *         }
+ *
+ *         i.publishAttributeInfo(n);
+ *     }
+ *     o(e);
+ * }
+ *
+ * publishAttributeInfo(n)는 항목마다, o(e)는 반복문 뒤에 한 번 호출하도록 유지합니다.
+ * 세션이 없는 다른 위젯에서는 원래 두 호출만 실행됩니다.
+ * New-SecurityContext/New-Type 키와 n.valueDB가 유지되는 설치 소스 기준입니다.
+ * 이 방식에서는 예전 publishInfo 분기 코드를 추가로 중복 삽입하지 않습니다.
  */
 
 /* [의존성/인자] DS/ENONewWidget/ENONew/Controller/ENONewDialogController
