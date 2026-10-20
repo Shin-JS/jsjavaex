@@ -61,3 +61,19 @@ r=fields();assert.equal(api.prepareAttributes({},r),true);assert.equal(r.results
  await new Promise(resolve=>setImmediate(resolve));assert.equal(fail,null);
  console.log('PASS: class flag Y/N, strict object/value checks, bound class read, all class fields mandatory before rendering, base/other widget isolation, existing mandatory preservation, empty fields, missing hook/errors, late disposal');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
+// null/undefined/빈 배열도 생성 전 차단하고 0/false는 정상값으로 처리합니다.
+{
+ const session={mandatory:true,classId:'C1',mandatoryNames:['Length']};
+ let message;
+ function field(valueDB,value){const data={name:'Length',facet:'C1',label:'길이',valueDB,value};return {get:key=>data[key],setError:m=>{message=m;}};}
+ for(const value of [null,undefined,'','  ',[],[''],[null]]) {
+  assert.throws(()=>api.validateMandatoryFields(session,[field(value,value)]),/필수 입력/);
+  assert.match(message,/길이/);
+ }
+ for(const value of [0,false,'0','Steel',['A']]) api.validateMandatoryFields(session,[field(value,value)]);
+ api.validateMandatoryFields(session,[field(null,'Steel')]);
+ assert.throws(()=>api.validateMandatoryFields(session,[]),/속성 모델/);
+ api.validateMandatoryFields({mandatory:false},[]);
+ console.log('PASS: explicit required validation rejects null/undefined/blank/empty array and preserves 0/false');
+}

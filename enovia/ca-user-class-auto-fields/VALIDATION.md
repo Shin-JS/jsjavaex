@@ -53,3 +53,8 @@ node --check webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js
   AttributesUtils의 필수 검증 연결을 확인했습니다. 실제 브라우저 렌더링을 실행한 결과는 아닙니다.
 - 서버 확인 필요: General Class 자체의 제어 속성이 attributes/op/read의 results.data로 반환되는지,
   설치 버전의 동일 API/필드 계약, Y/N별 실제 표시와 생성 검증. 서버 저장 규칙을 추가한 변경은 아닙니다.
+
+
+2026-10-20 추가 보완: null/undefined/공백/빈 배열을 명시적으로 거부하고 0/false는 허용합니다.
+서비스 대역의 생성 공통 입구 canSubmitDialog에서 빈 값 거부 → 입력 후 통과 검사를 추가해 통과했습니다.
+실제 서버의 submit 연결 및 별표 중복 DOM/CSS는 확인하지 못했습니다.

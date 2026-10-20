@@ -83,6 +83,16 @@ assert.deepEqual(loadedModules,['DS/ClassificationProp/ClassifPropWidget','DS/Cl
 assert.equal(session.status,'ready');assert.equal(props.sdxECCAAutoHost.style.display,'');assert.equal(ui.form.parentNode,props.sdxECCAAutoHost);
 let blurred=false;const input=new Element();input.blur=()=>blurred=true;ui.form.appendChild(input);document.activeElement=input;
 assert.equal(api.canSubmitDialog(dialog),true);assert.equal(blurred,true);
+// 실제 생성 공통 입구가 null 필수값을 차단하는지 검사합니다.
+const requiredModel=ui.ctrl.classifPropModels[0];
+const originalFields=requiredModel.getAttributeFromField;
+let fieldValue=null;
+requiredModel.getAttributeFromField=()=>[{get:key=>({name:'Length',facet:'C1',label:'길이',valueDB:fieldValue,value:fieldValue})[key],setError(){}}];
+session.mandatory=true;session.mandatoryNames=['Length'];
+assert.equal(api.canSubmitDialog(dialog),false);
+fieldValue=0;assert.equal(api.canSubmitDialog(dialog),true);
+fieldValue='Steel';assert.equal(api.canSubmitDialog(dialog),true);
+session.mandatory=false;requiredModel.getAttributeFromField=originalFields;
 props.listview.data.defaultAttributes.Type.value='Other';assert.equal(api.canSubmitDialog(dialog),false);props.listview.data.defaultAttributes.Type.value='Change Action';
 validateError='필수 속성';assert.equal(api.canSubmitDialog(dialog),false);validateError=null;
 session.checkContext('ctx::Leader.Manufacturing.Space');assert.equal(session.status,'error');assert.equal(api.canSubmitDialog(dialog),false);

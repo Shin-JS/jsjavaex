@@ -21,7 +21,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var session = {
             context: context, type: type, rule: rule, controller: null,
             status: "loading", error: null, disposed: false, started: false,
-            mandatory: null, mandatoryPrepared: false, attributesLoaded: false, fieldsMounted: false, validateFields: null,
+            mandatory: null, mandatoryPrepared: false, mandatoryNames: [], attributesLoaded: false, fieldsMounted: false, validateFields: null,
             classId: null, classTitle: null, typeDisplay: "hidden", readCurrentType: null, listeners: new Set(), timer: null,
             cancelRequest: null
         };
@@ -204,7 +204,9 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                                 }
                                 var model = ctrl.classifPropModels[0];
                                 if (model.get("objectId") !== session.classId) throw new Error("클래스 모델이 일치하지 않습니다.");
-                                var errors = AttributesUtils.validateAttributes(model, model.getAttributeFromField());
+                                var fields = model.getAttributeFromField();
+                                sdxECCAValidateMandatoryFields(session, fields);
+                                var errors = AttributesUtils.validateAttributes(model, fields);
                                 if (errors && errors.length) throw new Error(errors.map(function (item) { return item.message; }).join("\n"));
                             };
                             session.refreshReady();
@@ -469,9 +471,40 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 if (found.size !== names.size) throw new Error("필수 표시를 적용할 클래스 속성이 폼에 없습니다.");
                 response.results = results;
             }
+            session.mandatoryNames = response.attribute.map(function (attr) { return attr.name; });
             session.mandatoryPrepared = true;
             return true;
         } catch (error) { session.fail(error); return false; }
+    }
+
+    /** OOTB validateAttributes가 null 값을 건너뛰어도 클래스 필수 규칙은 적용합니다.
+     * valueDB의 0/false는 정상값입니다. 기본 속성이나 다른 클래스는 검사하지 않습니다.
+     */
+    function sdxECCAValidateMandatoryFields(session, fields) {
+        if (!session.mandatory) return;
+        function valueOf(field, key) {
+            return typeof field.get === "function" ? field.get(key) : field[key];
+        }
+        function isEmpty(value) {
+            if (value === null || value === undefined) return true;
+            if (Array.isArray(value)) return value.length === 0 || value.every(isEmpty);
+            return typeof value === "string" && value.trim() === "";
+        }
+        var missing = [];
+        session.mandatoryNames.forEach(function (name) {
+            var matches = fields.filter(function (field) {
+                return valueOf(field, "name") === name && valueOf(field, "facet") === session.classId;
+            });
+            if (matches.length !== 1) throw new Error("필수 클래스 속성 모델을 확인해 주세요: " + name);
+            var field = matches[0], value = valueOf(field, "valueDB");
+            if (value === null || value === undefined) value = valueOf(field, "value");
+            if (isEmpty(value)) {
+                var message = (valueOf(field, "label") || name) + ": 필수 입력 항목입니다.";
+                if (typeof field.setError === "function") field.setError(message, "error");
+                missing.push(message);
+            }
+        });
+        if (missing.length) throw new Error(missing.join("\n"));
     }
 
     /** 자동 대상 클래스 모델에만 완료를 알립니다. 다른 위젯 모델에는 표식이 없어 즉시 반환합니다.
@@ -525,6 +558,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         disconnectClassification: sdxECCADisconnectAutoClassification,
         applyClass: sdxECCAApplyOrganizationClass,
         tagClassModel: sdxECCATagAutoClassModel,
+        validateMandatoryFields: sdxECCAValidateMandatoryFields,
         prepareAttributes: sdxECCAPrepareClassAttributes,
         notifyAttributesLoaded: sdxECCANotifyAutoClassAttributes,
         isEnabled: sdxECCAIsFixedClassWidget,

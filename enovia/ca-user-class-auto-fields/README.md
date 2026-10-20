@@ -180,3 +180,14 @@ R2024x `3DSpaceAjaxRequests.getListOfAttributes`에서 확인한
 
 검사: `node tests/test-auto-fields.cjs`, `node tests/test-class-mandatory.cjs`, `node tests/test-amd-headers.cjs`.
 실제 서버에서 플래그 조회, 필수 표시, 빈 값 생성 차단과 입력 후 생성은 별도 확인이 필요합니다.
+
+
+### 빈 값 생성 검증 보완
+
+OOTB `validateAttributes`는 valueDB/value가 null이면 검사를 건너뛰는 경로가 있습니다.
+클래스 플래그가 Y인 경우 생성 직전 현재 클래스 모델의 각 속성을 별도로 검사하여
+null, undefined, 빈 문자열/공백, 빈 배열을 차단합니다. 0과 false는 정상 입력입니다.
+이 검증은 ENONewDialogController의 기존 `canSubmitDialog(this)` 연결을 통해 실행됩니다.
+생성 버튼을 눌러도 검사 함수에 진입하지 않으면
+[ENONewWidget 연결 메모](webapps/ENONewWidget/ENONewWidget.js)의 onSubmitDialog 첫 줄 적용을 확인하세요.
+별표 두 개의 원인은 설치 화면의 DOM/CSS를 확인해야 하며 이번 보완에서 스타일을 변경하지 않았습니다.
