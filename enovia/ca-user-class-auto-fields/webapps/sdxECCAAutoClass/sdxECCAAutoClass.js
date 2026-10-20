@@ -3,7 +3,7 @@
  * OOTB 파일에는 이 모듈 의존성과 연결 호출만 추가합니다.
  * 공유되는 것은 함수뿐이며 세션/선택 모델은 대화상자마다 생성합니다.
  * OOTB 모듈을 정적 의존성으로 요구하지 않아 역방향 의존 순환을 피합니다.
- * AttributesUtils는 분류 컨트롤러 준비 후 factory의 지역 require로 지연 로딩합니다.
+ * 값 검증은 실제 분류 폼 UIController의 기본 validateModels를 사용합니다.
  *
  * 클래스 결정은 ClassRuleService, 실제 사용자/분류 조회 연결은 OrganizationProvider로 분리합니다.
  * 기본 fixed 모드는 현재 정상 표시된 고정 클래스 방식을 유지합니다.
@@ -163,7 +163,6 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (!session) return;
         facet.sdxECCAAutoSession = session;
         facet.sdxECCAAutoDisposed = false;
-        facet.sdxECCAValidatorLoading = false;
         session.readCurrentType = function () {
             var view = facet.listview;
             var field = view && view.propModel && view.propModel.get("New-Type");
@@ -190,30 +189,15 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             if (state.controller && state.status !== "error") {
                 try { sdxECCAMountAutoFields(facet, state); }
                 catch (error) { state.fail(error); return; }
-                // 분류 컨트롤러 생성 후 OOTB 번들을 먼저 로드합니다. 반복 알림으로 중복 요청하지 않습니다.
-                if (!facet.sdxECCAValidatorLoading) {
-                    facet.sdxECCAValidatorLoading = true;
-                    require(["DS/ClassificationProp/ClassifPropWidget"], function () {
-                        if (session.disposed || facet.sdxECCAAutoDisposed || session.status === "error") return;
-                        require(["DS/ClassificationProp/utils/AttributesUtils"], function (AttributesUtils) {
-                            if (session.disposed || facet.sdxECCAAutoDisposed || session.status === "error") return;
-                            session.validateFields = function () {
-                                var ctrl = session.controller;
-                                if (!ctrl || !Array.isArray(ctrl.classifPropModels) || ctrl.classifPropModels.length !== 1) {
-                                    throw new Error("자동 적용한 클래스 모델을 확인해 주세요.");
-                                }
-                                var model = ctrl.classifPropModels[0];
-                                if (model.get("objectId") !== session.classId) throw new Error("클래스 모델이 일치하지 않습니다.");
-                                var fields = model.getAttributeFromField();
-                                sdxECCAValidateMandatoryFields(session, fields);
-                                var errors = AttributesUtils.validateAttributes(model, fields);
-                                if (errors && errors.length) throw new Error(errors.map(function (item) { return item.message; }).join("\n"));
-                            };
-                            session.refreshReady();
-                            session.notify();
-                        }, function () { session.fail(new Error("OOTB 속성 검증 모듈을 로드할 수 없습니다.")); });
-                    }, function () { session.fail(new Error("OOTB 분류 모듈을 로드할 수 없습니다.")); });
-                }
+                // 분류 폼 자체의 UIController가 사용하는 실제 모델과 기본 검증을 연결합니다.
+                // getAttributeFromField()를 전체 속성 열거 API로 사용하지 않습니다.
+                session.validateFields = function () {
+                    var form = sdxECCAGetRenderedClassForm(session);
+                    var errors = form.ui.validateModels([form.model]);
+                    if (errors && errors.length) {
+                        throw new Error(errors.map(function (item) { return item.message; }).join("\n"));
+                    }
+                };
             }
             state.refreshReady();
             status.textContent = state.error ? state.error.message :
@@ -477,34 +461,26 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         } catch (error) { session.fail(error); return false; }
     }
 
-    /** OOTB validateAttributes가 null 값을 건너뛰어도 클래스 필수 규칙은 적용합니다.
-     * valueDB의 0/false는 정상값입니다. 기본 속성이나 다른 클래스는 검사하지 않습니다.
+    /** 화면이 사용하는 모델을 OOTB UIController에서 가져옵니다.
+     * 선택 시 생성했던 모델 배열만 보고 검증 대상을 추정하지 않습니다.
      */
-    function sdxECCAValidateMandatoryFields(session, fields) {
-        if (!session.mandatory) return;
-        function valueOf(field, key) {
-            return typeof field.get === "function" ? field.get(key) : field[key];
+    function sdxECCAGetRenderedClassForm(session) {
+        var ctrl = session.controller;
+        var skeleton = ctrl && ctrl.classifPropertiesView && ctrl.classifPropertiesView.controller &&
+            ctrl.classifPropertiesView.controller.skeleton;
+        // classifPropertiesUI는 별도 보조 인스턴스입니다. 실제 이동한 폼의 facet을 사용합니다.
+        var facet = skeleton && typeof skeleton.getFacetContent === "function" &&
+            skeleton.getFacetContent("classificationAttiProp");
+        var ui = facet && facet.editPropertiesUI && facet.editPropertiesUI.elements &&
+            facet.editPropertiesUI.elements.UIController;
+        if (!facet || typeof facet.getModel !== "function" || !ui || typeof ui.validateModels !== "function") {
+            throw new Error("실제 분류 폼의 OOTB facet/UIController를 확인해 주세요.");
         }
-        function isEmpty(value) {
-            if (value === null || value === undefined) return true;
-            if (Array.isArray(value)) return value.length === 0 || value.every(isEmpty);
-            return typeof value === "string" && value.trim() === "";
+        var model = facet.getModel();
+        if (!model || model.get("objectId") !== session.classId || typeof model.values !== "function") {
+            throw new Error("분류 폼에 표시된 클래스 모델을 확인해 주세요.");
         }
-        var missing = [];
-        session.mandatoryNames.forEach(function (name) {
-            var matches = fields.filter(function (field) {
-                return valueOf(field, "name") === name && valueOf(field, "facet") === session.classId;
-            });
-            if (matches.length !== 1) throw new Error("필수 클래스 속성 모델을 확인해 주세요: " + name);
-            var field = matches[0], value = valueOf(field, "valueDB");
-            if (value === null || value === undefined) value = valueOf(field, "value");
-            if (isEmpty(value)) {
-                var message = (valueOf(field, "label") || name) + ": 필수 입력 항목입니다.";
-                if (typeof field.setError === "function") field.setError(message, "error");
-                missing.push(message);
-            }
-        });
-        if (missing.length) throw new Error(missing.join("\n"));
+        return {model: model, ui: ui};
     }
 
     /** 자동 대상 클래스 모델에만 완료를 알립니다. 다른 위젯 모델에는 표식이 없어 즉시 반환합니다.
@@ -522,7 +498,23 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             session.fail(new Error("폼 생성 전 prepareAttributes 호출을 확인해 주세요."));
             return;
         }
-        session.markAttributesLoaded(model.sdxECCAAutoClassId);
+        try {
+            var rendered = sdxECCAGetRenderedClassForm(session).model;
+            // 필수값을 직접 판정하지 않습니다. 폼 생성 시 OOTB 모델에 전달됐는지만 확인합니다.
+            if (session.mandatory) {
+                var fields = rendered.values();
+                session.mandatoryNames.forEach(function (name) {
+                    var matches = fields.filter(function (field) {
+                        return field && typeof field.get === "function" &&
+                            field.get("name") === name && field.get("facet") === session.classId;
+                    });
+                    if (matches.length !== 1 || matches[0].get("mandatory") !== true) {
+                        throw new Error("OOTB 분류 속성 모델에 mandatory가 반영되지 않았습니다: " + name);
+                    }
+                });
+            }
+            session.markAttributesLoaded(model.sdxECCAAutoClassId);
+        } catch (error) { session.fail(error); }
     }
 
     /** 기존 활성화 옵션명을 유지합니다. 현재 동작은 조직 매핑 대신 지정 클래스를 사용합니다. */
@@ -558,7 +550,6 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         disconnectClassification: sdxECCADisconnectAutoClassification,
         applyClass: sdxECCAApplyOrganizationClass,
         tagClassModel: sdxECCATagAutoClassModel,
-        validateMandatoryFields: sdxECCAValidateMandatoryFields,
         prepareAttributes: sdxECCAPrepareClassAttributes,
         notifyAttributesLoaded: sdxECCANotifyAutoClassAttributes,
         isEnabled: sdxECCAIsFixedClassWidget,

@@ -53,10 +53,14 @@ function makeController(session){
  couldBeSelected:type=>type==='General Class',_getIcon:()=>({iconName:'library-class'}),
  plmNewClassificationFacetData:{createAutocompleteDataTree(){return {}},_createTreeNodeModel(opts){return {options:opts,getID:()=>opts.id}}},
  insertInAutocomplete(_,node){return {getID:node.getID,select(){selectedCount++;ctrl.autoComplete.selectedItems=[this];
- const model={get:key=>key==='objectId'?session.classId:undefined,getAttributeFromField:()=>[]};
+ const model={get:key=>key==='objectId'?session.classId:undefined,values:()=>[]};
  ctrl.classifPropModels.push(model);api.tagClassModel(ctrl,model,session.classId);}}},
  PLMNewCommonWebService:{get3DSpaceUrl:()=>Promise.resolve('https://example/3dspace'),getClassPaths(opts){request=opts},constructPath:response=>response.chains,extractPath:()=> 'Library > Class'}
  };
+ ctrl.classifPropertiesView.controller={skeleton:{getFacetContent(name){assert.equal(name,'classificationAttiProp');return {
+ getModel:()=>ctrl.renderedModel || ctrl.classifPropModels[0],
+ editPropertiesUI:{elements:{UIController:{validateModels(models){assert.equal(models[0],ctrl.renderedModel || ctrl.classifPropModels[0]);return validateError?[{message:validateError}]:null;}}}}
+ };}}};
  return {ctrl,parent,form,sibling,request:()=>request,selectedCount:()=>selectedCount};
 }
 // 비활성 위젯과 다른 타입의 공용 호출에는 세션을 추가하지 않습니다.
@@ -79,20 +83,15 @@ ui.request().onComplete({chains:new Map([['C1',[{physicalid:'L1',type:'General L
 await flush();assert.equal(ui.selectedCount(),1);assert.equal(session.status,'loading');assert.equal(api.canSubmitDialog(dialog),false);
 api.prepareAttributes(ui.ctrl.classifPropModels[0],{attribute:[]});
 api.notifyAttributesLoaded(ui.ctrl.classifPropModels[0],{attribute:[]});
-assert.deepEqual(loadedModules,['DS/ClassificationProp/ClassifPropWidget','DS/ClassificationProp/utils/AttributesUtils']); // 반복 알림에도 각 한 번
+assert.deepEqual(loadedModules,[]); // 반복 알림에도 각 한 번
 assert.equal(session.status,'ready');assert.equal(props.sdxECCAAutoHost.style.display,'');assert.equal(ui.form.parentNode,props.sdxECCAAutoHost);
 let blurred=false;const input=new Element();input.blur=()=>blurred=true;ui.form.appendChild(input);document.activeElement=input;
 assert.equal(api.canSubmitDialog(dialog),true);assert.equal(blurred,true);
-// 실제 생성 공통 입구가 null 필수값을 차단하는지 검사합니다.
-const requiredModel=ui.ctrl.classifPropModels[0];
-const originalFields=requiredModel.getAttributeFromField;
-let fieldValue=null;
-requiredModel.getAttributeFromField=()=>[{get:key=>({name:'Length',facet:'C1',label:'길이',valueDB:fieldValue,value:fieldValue})[key],setError(){}}];
-session.mandatory=true;session.mandatoryNames=['Length'];
-assert.equal(api.canSubmitDialog(dialog),false);
-fieldValue=0;assert.equal(api.canSubmitDialog(dialog),true);
-fieldValue='Steel';assert.equal(api.canSubmitDialog(dialog),true);
-session.mandatory=false;requiredModel.getAttributeFromField=originalFields;
+// 선택 시 모델과 화면 모델이 달라도 OOTB 폼의 현재 모델을 검증합니다.
+ui.ctrl.renderedModel={get:key=>key==='objectId'?'C1':undefined,values:()=>[]};
+validateError='OOTB 필수 입력 오류';assert.equal(api.canSubmitDialog(dialog),false);
+validateError=null;assert.equal(api.canSubmitDialog(dialog),true);
+delete ui.ctrl.renderedModel;
 props.listview.data.defaultAttributes.Type.value='Other';assert.equal(api.canSubmitDialog(dialog),false);props.listview.data.defaultAttributes.Type.value='Change Action';
 validateError='필수 속성';assert.equal(api.canSubmitDialog(dialog),false);validateError=null;
 session.checkContext('ctx::Leader.Manufacturing.Space');assert.equal(session.status,'error');assert.equal(api.canSubmitDialog(dialog),false);

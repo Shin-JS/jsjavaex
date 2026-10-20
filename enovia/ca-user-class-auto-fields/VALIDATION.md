@@ -4,13 +4,13 @@
 
 사용자가 실제 설치 환경에서 고정 클래스의 속성 필드 표시를 확인했습니다. 문맥 검사에 문자열을 전달하고, 세션 속성명을 맞추고, 속성 완료 알림의 인자를 실제 코드에 맞춘 뒤 표시됐습니다. 현재 설치 소스가 modelList:[i], onAttributesLoad:function(r)이면 notifyAttributesLoaded(i,r)입니다. 호출 위치는 ClassificationProp.js이며, 모델 세션을 붙이는 tagClassModel은 ClassificationsFacet.js입니다.
 
-검증 모듈은 기존 분류 컨트롤러 준비 후 ClassifPropWidget → AttributesUtils 순서로 지연 로드하도록 정리했습니다. debug용 공유 모델/컨트롤러 변수와 console 로그는 배포 코드에서 제외했습니다. 모듈 ID/경로는 사용자 로컬 이름이 아닌 이 폴더의 표준 경로로 유지하며, 다른 경로에 배포할 때 define ID와 의존성을 함께 변경해야 합니다.
+검증은 실제 분류 폼 facet의 UIController.validateModels로 연결했습니다. 별도 검증 모듈 로딩은 제거했습니다. debug용 공유 모델/컨트롤러 변수와 console 로그는 배포 코드에서 제외했습니다. 모듈 ID/경로는 사용자 로컬 이름이 아닌 이 폴더의 표준 경로로 유지하며, 다른 경로에 배포할 때 define ID와 의존성을 함께 변경해야 합니다.
 
 ## 이번에 통과한 대역 검사
 
 - 위젯 비활성/다른 타입에는 세션을 추가하지 않는 기존 적용 제한.
 - 고정 클래스 적용, 유형 숨김/읽기 전용과 원래 생성 스키마 유지.
-- 컨트롤러 준비 전 검증 모듈 요청 없음, 준비 후 올바른 로딩 순서, 반복 알림에도 각 모듈 한 번 요청.
+- 실제 분류 폼 모델을 OOTB UIController.validateModels에 전달하며 별도 검증 모듈 요청 없음.
 - 클래스 선택과 실제 속성 완료를 구분하며 잘못된 모델/응답 순서로 준비 완료되지 않음.
 - 부서 서비스의 tenant/문맥 전달, 부서 미설정/매핑 없음/중복/응답 형식/조회 실패 처리.
 - department 모드에서 고정 ID 없이 초기화하고, 조회 오류 시 고정 클래스로 우회하지 않음.
@@ -55,6 +55,12 @@ node --check webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js
   설치 버전의 동일 API/필드 계약, Y/N별 실제 표시와 생성 검증. 서버 저장 규칙을 추가한 변경은 아닙니다.
 
 
-2026-10-20 추가 보완: null/undefined/공백/빈 배열을 명시적으로 거부하고 0/false는 허용합니다.
-서비스 대역의 생성 공통 입구 canSubmitDialog에서 빈 값 거부 → 입력 후 통과 검사를 추가해 통과했습니다.
-실제 서버의 submit 연결 및 별표 중복 DOM/CSS는 확인하지 못했습니다.
+2026-10-20 OOTB 검증 연결 수정:
+
+- 별도 validateMandatoryFields 및 null/빈 값 판정 제거.
+- 선택 시 모델과 화면 모델을 다르게 만든 대역 검사에서도 실제 화면 모델로 OOTB 검증 호출 확인.
+- notifyAttributesLoaded는 실제 폼 모델에 mandatory가 전달되지 않았으면 오류 처리.
+- test-auto-fields, test-class-mandatory, test-amd-headers 모두 통과.
+- test-ootb-validation에 R2024x 실제 AttributesUtils 코드를 전달하여 실행: 빈 문자열/빈 배열의 필수 오류,
+  모델 setError 호출, 값 입력 후 통과와 선택 속성 허용 검사 통과. 공급사 코드는 저장소에 복사하지 않았습니다.
+- 실제 별표 DOM/중복 해결, 설치 서버의 API 및 생성·저장 동작은 미검증입니다.

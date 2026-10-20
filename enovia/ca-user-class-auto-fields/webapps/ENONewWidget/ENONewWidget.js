@@ -66,6 +66,9 @@
  * function(e,t,i,n,a,o,r,s,c,l,u,d,sdxECCAAutoClass){ ...기존 본문... }
  */
 /* onSubmitDialog(e) 첫 줄(기존 ServiceCallback 실행보다 앞):
+ * 이 연결은 준비 상태와 이동한 분류 폼의 OOTB 검증을 생성 흐름에 연결합니다.
+ * 별도 빈 값 판정은 하지 않습니다. 기본 ENOListView 검증은 기본 속성 모델만 처리하므로
+ * 실제 분류 facet의 UIController.validateModels 호출도 필요합니다.
  *     if(!sdxECCAAutoClass.canSubmitDialog(this)){this.resetButtons();return;}
  * destroy() 첫 줄:
  *     sdxECCAAutoClass.disposeDialog(this);

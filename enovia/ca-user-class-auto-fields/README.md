@@ -139,13 +139,13 @@ require(["DS/sdxECCAAutoClass/sdxECCAAutoClass"], function (sdxECCAAutoClass) {
 
 function이면 모듈을 받은 것입니다. 이 확인만으로 OOTB 연결 호출까지 적용됐다는 뜻은 아닙니다. 새 파일 요청 실패나 RequireJS 오류가 있으면 배포 URL과 경로 매핑부터 확인합니다.
 
-main 모듈의 정적 의존성은 지역 require, ClassRuleService, OrganizationProvider입니다. OOTB 분류 컨트롤러가 준비되고 폼을 배치한 뒤 ClassifPropWidget을 먼저 로드하고, 그다음 AttributesUtils를 지연 로드합니다. 구독 알림마다 중복 로드하지 않도록 플래그를 둡니다. OOTB 번들을 main의 정적 의존성으로 추가하지 않습니다. 공유 객체에 현재 세션을 저장하지 않으며, 각 대화상자의 options.sdxECCAAutoSession을 계속 사용합니다.
+main 모듈의 정적 의존성은 지역 require, ClassRuleService, OrganizationProvider, ClassAttributeService입니다. 검증 모듈을 별도로 로드하지 않고 이미 생성된 실제 분류 폼의 UIController를 사용합니다. OOTB 번들을 main의 정적 의존성으로 추가하지 않습니다. 공유 객체에 현재 세션을 저장하지 않으며, 각 대화상자의 options.sdxECCAAutoSession을 계속 사용합니다.
 
 ## 보류 중인 확인과 검증 한계
 
 현장에서 표시 완료를 확인한 순서는 컨트롤러 세션 연결 → ClassificationsFacet의 tagClassModel → ClassificationProp의 notifyAttributesLoaded(동일 모델, 응답)입니다. 세션 속성명은 sdxECCAAutoSession으로 통일합니다. 문맥 검사에는 옵션 객체 전체가 아닌 securityContext 문자열을 전달합니다. 디버깅용 전역/모듈 공유 모델 참조나 console 로그는 배포 코드에 넣지 않았습니다.
 
-현재 설치 소스의 완료 콜백은 [ClassificationProp.js 적용 메모](webapps/ClassificationProp/ClassificationProp.js)의 2026-10-19 항목을 우선 참고합니다. 로컬에서 사용한 커스텀 경로 `DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService`를 유지한다면 main의 define ID와 모든 OOTB 의존성 ID를 그 경로로 함께 맞춥니다. 새 서비스 두 파일의 define ID와 main의 의존성도 실제 배포 경로와 일치해야 합니다.
+현재 설치 소스의 완료 콜백은 [ClassificationProp.js 적용 메모](webapps/ClassificationProp/ClassificationProp.js)의 2026-10-19 항목을 우선 참고합니다. 로컬에서 사용한 커스텀 경로 `DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService`를 유지한다면 main의 define ID와 모든 OOTB 의존성 ID를 그 경로로 함께 맞춥니다. 서비스 파일들의 define ID와 main의 의존성도 실제 배포 경로와 일치해야 합니다.
 
 기존 postCreation을 유지하며 클래스 연결·값 저장을 새로 구현하지 않았습니다. 커스터마이징 없는 서버에서도 발생한 ClassificationAttributeUtil.java:95 오류는 계속 별도 확인 대상입니다.
 
@@ -182,12 +182,26 @@ R2024x `3DSpaceAjaxRequests.getListOfAttributes`에서 확인한
 실제 서버에서 플래그 조회, 필수 표시, 빈 값 생성 차단과 입력 후 생성은 별도 확인이 필요합니다.
 
 
-### 빈 값 생성 검증 보완
+### OOTB 모델·폼·검증 연결
 
-OOTB `validateAttributes`는 valueDB/value가 null이면 검사를 건너뛰는 경로가 있습니다.
-클래스 플래그가 Y인 경우 생성 직전 현재 클래스 모델의 각 속성을 별도로 검사하여
-null, undefined, 빈 문자열/공백, 빈 배열을 차단합니다. 0과 false는 정상 입력입니다.
-이 검증은 ENONewDialogController의 기존 `canSubmitDialog(this)` 연결을 통해 실행됩니다.
-생성 버튼을 눌러도 검사 함수에 진입하지 않으면
-[ENONewWidget 연결 메모](webapps/ENONewWidget/ENONewWidget.js)의 onSubmitDialog 첫 줄 적용을 확인하세요.
-별표 두 개의 원인은 설치 화면의 DOM/CSS를 확인해야 하며 이번 보완에서 스타일을 변경하지 않았습니다.
+별도로 추가했던 `validateMandatoryFields`와 빈 값 판정은 제거했습니다.
+필수 여부는 폼 생성 전의 `mandatory:true` 메타데이터로 전달하고,
+별표 DOM 추가, 라벨 문자열 변경, 별표를 숨기는 CSS는 사용하지 않습니다.
+
+분류 폼은 속성 탭으로 이동해도 기본 속성의 ENOListView.propModel과 별도 모델을 사용합니다.
+따라서 생성 직전 `canSubmitDialog`에서 **실제 이동한 분류 폼**의 기본 검증도 호출합니다.
+`classifPropertiesView.controller.skeleton.getFacetContent("classificationAttiProp")`로
+실제 facet을 가져오고, `facet.getModel()`을 `facet.editPropertiesUI.elements.UIController.validateModels([model])`에 전달합니다.
+선택 시의 classifPropModels 배열이나 별도 보조 classifPropertiesUI 인스턴스로 모델을 추정하지 않습니다.
+`getAttributeFromField()`도 전체 속성 열거 API로 사용하지 않습니다.
+오류 판정과 속성별 오류 설정은 OOTB가 담당하며 기존 생성 공통 입구는 그 결과로 생성을 중단합니다.
+
+속성 로딩 완료 시 실제 폼 모델의 각 대상 속성에 `mandatory === true`가 전달됐는지도 확인합니다.
+반영되지 않았으면 준비 오류로 처리하여 빈 모델을 검증하고 통과하는 일을 막습니다.
+기존 `prepareAttributes` → `_onCompleteLoadModel` → `notifyAttributesLoaded` 연결은 유지합니다.
+배포 시 main 파일을 최신 버전으로 교체하고 이전에 수동으로 넣은 별표·빈 값 검사 코드가 있다면 제거하세요.
+
+검사에는 `node tests/test-ootb-validation.cjs /실제/ClassificationProp.js`도 사용할 수 있습니다.
+R2024x의 실제 AttributesUtils 구현으로 빈 필수값 오류 설정과 입력 후 통과를 확인했습니다.
+이 검사는 브라우저 UI를 실행하지 않으며 서버 저장을 검증하지 않습니다.
+설치 서버에서 별표가 여전히 두 개라면 실제 라벨 DOM/CSS를 확인해야 합니다. 중복이 해결됐다고 검증한 상태는 아닙니다.

@@ -40,6 +40,18 @@ assert.equal(api.prepareAttributes(model,r),true);assert.deepEqual(r.results[0].
 r=fields();assert.equal(api.prepareAttributes({},r),true);assert.equal(r.results[0].data[0].mandatory,false);
 // after-only installation must not mark the session ready without the pre-render hook.
 ({session,model}=tagged(true));api.notifyAttributesLoaded(model,fields());assert.equal(session.status,'error');
+// 완료 통지는 실제 폼 모델의 mandatory 반영을 확인합니다. 선택 시 모델만으로 통과하지 않습니다.
+for(const applied of [true,false]) {
+ const taggedModel=tagged(true);const state=taggedModel.session;
+ api.prepareAttributes(taggedModel.model,fields());let loaded=false;
+ const rendered={get:key=>key==='objectId'?'C1':undefined,values:()=>['Length','Material'].map(name=>({get:key=>({name,facet:'C1',mandatory:applied})[key]}))};
+ state.controller={classifPropertiesView:{controller:{skeleton:{getFacetContent(name){assert.equal(name,'classificationAttiProp');return {
+ getModel:()=>rendered,editPropertiesUI:{elements:{UIController:{validateModels(){}}}}
+ };}}}}};
+ state.markAttributesLoaded=()=>{loaded=true;};
+ api.notifyAttributesLoaded(taggedModel.model,fields());
+ assert.equal(loaded,applied);assert.equal(state.status,applied?'loading':'error');
+}
 (async()=>{
  nextResponse=response(['Y']);
  const scope={classId:'C1',tenant:'OnPremise',securityContext:'ctx::Leader.MX.Space'};
@@ -62,18 +74,3 @@ r=fields();assert.equal(api.prepareAttributes({},r),true);assert.equal(r.results
  console.log('PASS: class flag Y/N, strict object/value checks, bound class read, all class fields mandatory before rendering, base/other widget isolation, existing mandatory preservation, empty fields, missing hook/errors, late disposal');
 })().catch(e=>{console.error(e);process.exitCode=1;});
 
-// null/undefined/빈 배열도 생성 전 차단하고 0/false는 정상값으로 처리합니다.
-{
- const session={mandatory:true,classId:'C1',mandatoryNames:['Length']};
- let message;
- function field(valueDB,value){const data={name:'Length',facet:'C1',label:'길이',valueDB,value};return {get:key=>data[key],setError:m=>{message=m;}};}
- for(const value of [null,undefined,'','  ',[],[''],[null]]) {
-  assert.throws(()=>api.validateMandatoryFields(session,[field(value,value)]),/필수 입력/);
-  assert.match(message,/길이/);
- }
- for(const value of [0,false,'0','Steel',['A']]) api.validateMandatoryFields(session,[field(value,value)]);
- api.validateMandatoryFields(session,[field(null,'Steel')]);
- assert.throws(()=>api.validateMandatoryFields(session,[]),/속성 모델/);
- api.validateMandatoryFields({mandatory:false},[]);
- console.log('PASS: explicit required validation rejects null/undefined/blank/empty array and preserves 0/false');
-}
