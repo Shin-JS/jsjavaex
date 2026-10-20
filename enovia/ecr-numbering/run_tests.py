@@ -13,3 +13,4 @@ with tempfile.TemporaryDirectory(prefix="ecr-tests-") as output:
     subprocess.run([java, "-m", "jdk.compiler/com.sun.tools.javac.Main", "--release", "8",
                     "-d", output, *sources], check=True)
     subprocess.run([java, "-cp", output, "com.sdx.enovia.ecr.EcrNumberingTest"], check=True)
+subprocess.run([__import__("sys").executable, str(root / "tests/test_source_patch.py")], check=True)

@@ -1,7 +1,8 @@
 package com.sdx.enovia.ecr;
 
-import com.matrixone.apps.domain.DomainObject;
+import matrix.db.BusinessObject;
 import matrix.db.Context;
+import matrix.db.CreateParameters;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -83,40 +84,40 @@ public final class EcrNumberingTest {
         PropertiesCounterResolver resolver = new PropertiesCounterResolver(properties);
         Context context = new Context();
         EnoviaNumberGeneratorSequence sequence = new EnoviaNumberGeneratorSequence(context, resolver, "eService Next Number");
-        DomainObject.values.put("test-W-day1", "9999");
-        DomainObject.values.put("test-N-day1", "1");
-        DomainObject.values.put("test-W-day2", "1");
-        DomainObject.calls.clear();
+        BusinessObject.values.put("test-W-day1", "9999");
+        BusinessObject.values.put("test-N-day1", "1");
+        BusinessObject.values.put("test-W-day2", "1");
+        BusinessObject.calls.clear();
         equal("ECR-W2610209999", service.nextName("MX", sequence));
-        equal("10000", DomainObject.values.get("test-W-day1"));
-        equal(Arrays.asList("lock:test-W-day1", "read:test-W-day1", "write:test-W-day1"), DomainObject.calls);
+        equal("10000", BusinessObject.values.get("test-W-day1"));
+        equal(Arrays.asList("lock:test-W-day1", "read:test-W-day1", "write:test-W-day1"), BusinessObject.calls);
         equal("ECR-W261020A001", service.nextName("MX", sequence));
         equal("ECR-N2610200001", service.nextName("NW", sequence));
         EcrNameService tomorrow = new EcrNameService(Clock.offset(clock, java.time.Duration.ofDays(1)));
         equal("ECR-W2610210001", tomorrow.nextName("MX", sequence));
-        DomainObject.values.put("test-W-day1", "35973");
+        BusinessObject.values.put("test-W-day1", "35973");
         equal("ECR-W261020Z999", service.nextName("MX", sequence));
-        equal("35974", DomainObject.values.get("test-W-day1"));
+        equal("35974", BusinessObject.values.get("test-W-day1"));
         fails(() -> service.nextName("MX", sequence));
-        equal("35974", DomainObject.values.get("test-W-day1"));
+        equal("35974", BusinessObject.values.get("test-W-day1"));
         for (String bad : Arrays.asList("", "A001", "-1", "1.0", "0000", "999999999999")) {
-            DomainObject.values.put("test-W-day1", bad);
+            BusinessObject.values.put("test-W-day1", bad);
             fails(() -> service.nextName("MX", sequence));
-            equal(bad, DomainObject.values.get("test-W-day1"));
+            equal(bad, BusinessObject.values.get("test-W-day1"));
         }
-        DomainObject.calls.clear();
+        BusinessObject.calls.clear();
         context.transactionType = 0;
         fails(() -> service.nextName("MX", sequence));
-        equal(0, DomainObject.calls.size());
+        equal(0, BusinessObject.calls.size());
         context.transactionType = 1; // Read-only is also rejected.
         fails(() -> service.nextName("MX", sequence));
         context.transactionType = Context.TRANSACTION_TYPE_UPDATE;
         fails(() -> service.nextName("VD", sequence)); // No fallback to any shared counter.
-        DomainObject.values.put("test-W-day1", "1");
-        DomainObject.failWrite = true;
+        BusinessObject.values.put("test-W-day1", "1");
+        BusinessObject.failWrite = true;
         fails(() -> service.nextName("MX", sequence));
-        equal("1", DomainObject.values.get("test-W-day1"));
-        DomainObject.failWrite = false;
+        equal("1", BusinessObject.values.get("test-W-day1"));
+        BusinessObject.failWrite = false;
         Properties duplicate = new Properties();
         duplicate.setProperty("ecr.counter.W.20261020", "same-id");
         duplicate.setProperty("ecr.counter.W.20261021", "same-id");
@@ -125,6 +126,39 @@ public final class EcrNumberingTest {
         invalidDate.setProperty("ecr.counter.W.20260230", "test-id");
         fails(() -> new PropertiesCounterResolver(invalidDate));
         fails(() -> new PropertiesCounterResolver(new Properties()));
+
+        // Real-source hook: exact type gate, existing manual name replaced, trusted server mapping.
+        CreateParameters parameters = new CreateParameters().setType("Change Action").setName("original-name");
+        BusinessObject.calls.clear();
+        SdxEcrNameHook.apply(context, parameters); // Missing resource does not affect a non-target type.
+        equal("original-name", parameters.getName());
+        equal(0, BusinessObject.calls.size());
+        parameters.setType("sdxEcChangeAction");
+        Properties hookProperties = new Properties();
+        hookProperties.putAll(properties);
+        hookProperties.setProperty("ecr.division.user.test-user", "MX");
+        BusinessObject.values.put("test-W-day1", "10000");
+        SdxEcrNameHook.applyConfigured(context, parameters, "sdxEcChangeAction", hookProperties, clock);
+        equal("ECR-W261020A001", parameters.getName());
+        equal("10001", BusinessObject.values.get("test-W-day1"));
+        parameters.setName("still-original");
+        Properties unmapped = new Properties();
+        unmapped.putAll(properties);
+        fails(() -> SdxEcrNameHook.applyConfigured(context, parameters, "sdxEcChangeAction", unmapped, clock));
+        equal("still-original", parameters.getName());
+        equal("10001", BusinessObject.values.get("test-W-day1"));
+        hookProperties.setProperty("ecr.division.role.test-role", "NW");
+        BusinessObject.values.put("test-N-day1", "1");
+        SdxEcrNameHook.applyConfigured(context, parameters, "sdxEcChangeAction", hookProperties, clock);
+        equal("ECR-N2610200001", parameters.getName());
+        hookProperties.setProperty("ecr.division.role.test-role", "INVALID");
+        fails(() -> SdxEcrNameHook.applyConfigured(context, parameters, "sdxEcChangeAction", hookProperties, clock));
+        equal("ECR-N2610200001", parameters.getName());
+        parameters.setType("OtherType").setName("other-name");
+        SdxEcrNameHook.applyConfigured(context, parameters, "sdxEcChangeAction", null, clock);
+        equal("other-name", parameters.getName());
+        BusinessObject.values.put("test-W-day1", "000000000000000000001");
+        equal("ECR-W2610200001", service.nextName("MX", sequence));
         System.out.println("PASS: " + assertions + " assertions; all 35,973 suffixes checked");
         System.out.println("ENOVIA API tests use doubles; real DB locking/rollback is not verified.");
     }

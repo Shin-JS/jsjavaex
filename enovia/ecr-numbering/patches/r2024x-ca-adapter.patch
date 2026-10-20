@@ -1,0 +1,7 @@
+--- a/com/dassault_systemes/enovia/changeaction/newservices/ENONewChangeActionApplicationAdapter.java
++++ b/com/dassault_systemes/enovia/changeaction/newservices/ENONewChangeActionApplicationAdapter.java
+@@ -227,2 +227,4 @@
+     private BusinessObject createBusinessObject(Context context, CreateParameters createParameters) throws ENONewAppException {
++        // SDX ECR: allocate the final name in the existing create transaction.
++        com.sdx.enovia.ecr.SdxEcrNameHook.apply(context, createParameters);
+         _log.trace("createBusinessObject starts");

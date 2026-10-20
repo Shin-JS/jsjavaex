@@ -1,9 +1,10 @@
 package com.sdx.enovia.ecr;
 
-import com.matrixone.apps.domain.DomainObject;
+import matrix.db.BusinessObject;
 import matrix.db.Context;
 
 import java.time.LocalDate;
+import java.math.BigInteger;
 import java.util.Objects;
 
 /**
@@ -56,18 +57,19 @@ public final class EnoviaNumberGeneratorSequence implements EcrNameService.Exist
         if (!binding.divisionCode.equals(divisionCode) || !binding.day.equals(day)) {
             throw new IllegalStateException("Counter binding does not match the requested ECR series");
         }
-        DomainObject counter = new DomainObject(binding.objectId);
+        BusinessObject counter = new BusinessObject(binding.objectId);
         // Transaction-level lock, not the persistent user lock/unlock API.
         counter.lockForUpdate(context);
         // A fresh read AFTER acquiring the lock is essential.
-        String raw = counter.getAttributeValue(context, nextNumberAttribute);
-        if (raw == null || !raw.matches("[0-9]{1,9}")) {
+        String raw = counter.getAttributeValues(context, nextNumberAttribute).getValue();
+        if (raw == null || !raw.matches("[0-9]+")) {
             throw new IllegalStateException("Existing next-number value is not a supported positive integer");
         }
-        int next = Integer.parseInt(raw);
-        if (next < 1 || next > maximum) {
+        BigInteger value = new BigInteger(raw);
+        if (value.signum() <= 0 || value.compareTo(BigInteger.valueOf(maximum)) > 0) {
             throw new IllegalStateException("ECR series exhausted or invalid; last supported suffix is Z999");
         }
+        int next = value.intValue();
         // Store the next ORDINAL, not the formatted alpha suffix.
         counter.setAttributeValue(context, nextNumberAttribute, Integer.toString(next + 1));
         return next;
