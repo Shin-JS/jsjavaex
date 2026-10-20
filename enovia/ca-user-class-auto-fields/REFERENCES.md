@@ -38,3 +38,11 @@
 ## 설치 소스의 onChangeAttribute 구조 반영
 
 2026-10-19 사용자가 제공한 `e => {for(var t in e){var n=e[t];i.publishAttributeInfo(n)}o(e)}` 콜백을 기준으로 ENOListViewFacet의 적용 조각을 수정했습니다. 기존 publishAttributeInfo 앞에 세션 검사를 넣고, 원래 발행과 콜백 호출 순서를 유지합니다. 이벤트 키와 valueDB는 기존 구조를 가정하며 실제 설치 파일 전체를 확보해 검증한 것은 아닙니다.
+
+
+2026-10-20 필수 표시 변경 근거: 위 ClassificationProp.js의
+`3DSpaceAjaxRequests.getListOfAttributes`(busIDs, attributes/op/read),
+`ClassifPropController.loadModels`(분류 응답 → results.data),
+`ClassifPropAttributeModel`의 mandatory 변환, Form의 `mandAttr`,
+`AttributesUtils`의 MandatoryAttribute 검증을 확인했습니다.
+이 소스 확인은 실제 설치 서버에서 해당 클래스의 sdxClassAttrMandatory 응답을 확인한 결과와 구별합니다.

@@ -81,6 +81,7 @@ sdxECCACss를 빼면 sdxECCAAutoClass 인자가 CSS 결과를 받습니다. 다�
 | PLMNewClassificationFacet.init, initUI/구독 설정 뒤 | `sdxECCAAutoClass.connectClassification(this,e)` |
 | 같은 destroy 첫 줄 | `sdxECCAAutoClass.disconnectClassification(this)` |
 | PLMNewCommomCmpUXController의 모델 push 직후 | `sdxECCAAutoClass.tagClassModel(r,o,e)` |
+| ClassifPropController의 실제 _onCompleteLoadModel 직전 | `if (!sdxECCAAutoClass.prepareAttributes(e,t)) return;` |
 | ClassifPropController의 실제 _onCompleteLoadModel 뒤 | `sdxECCAAutoClass.notifyAttributesLoaded(e,t)` |
 | ChgCreateChangeAction의 CreateNew 인자 | `sdxECCAAutoClass.configureCreateType(d)` |
 | 같은 onSuccess의 기본 유형 저장 조건 | `!sdxECCAAutoClass.isEnabled()` |
@@ -149,3 +150,33 @@ main 모듈의 정적 의존성은 지역 require, ClassRuleService, Organizatio
 기존 postCreation을 유지하며 클래스 연결·값 저장을 새로 구현하지 않았습니다. 커스터마이징 없는 서버에서도 발생한 ClassificationAttributeUtil.java:95 오류는 계속 별도 확인 대상입니다.
 
 [VALIDATION.md](VALIDATION.md)에 검사 결과를, [REFERENCES.md](REFERENCES.md)에 기준 소스를 정리했습니다. [DESIGN.md](DESIGN.md)는 최초 조직 기준 검토 기록입니다. 실제 플랫폼 실행과 저장이 검증된 완성 배포본은 아닙니다.
+
+
+## 클래스 값에 따른 전체 필수 표시 (2026-10-20)
+
+자동 선택한 **클래스 객체 자체**의 `sdxClassAttrMandatory` 값이 `Y`이면,
+해당 클래스에서 입력 폼으로 불러온 모든 Class Attributes를 필수로 표시합니다.
+상속되어 같은 클래스의 속성 응답에 포함된 항목도 대상입니다. 하위 클래스를 재귀 조회하는 기능은 아닙니다.
+값이 `N` 또는 빈 문자열이면 원래 속성의 필수 설정을 유지합니다. 비교는 공백을 제거한 대문자 `Y`입니다.
+CA 기본 속성이나 다른 위젯에는 추가 필수 설정을 적용하지 않습니다.
+
+`sdxECCAClassAttributeService.js`가 현재 클래스 ID와 권한 문맥으로 클래스 자체의 값을 읽습니다.
+R2024x `3DSpaceAjaxRequests.getListOfAttributes`에서 확인한
+`POST /resources/v1/collabServices/attributes/op/read`의 `busIDs` 조회를 사용합니다.
+`navigateToMain:false`로 클래스 객체를 조회하며 `getclassificationattributes`의 입력 기본값을 제어 값으로 사용하지 않습니다.
+응답에서 클래스 ID가 일치하는 `results[].data[]`의 속성 값을 확인합니다.
+속성이 응답에 없거나 조회에 실패하면 오류를 표시하고 생성을 막습니다.
+설치 환경에서 클래스의 해당 속성이 이 조회 응답에 노출되는지 확인해야 합니다.
+
+클래스 값을 먼저 읽고 기존 자동 선택을 진행합니다. 이후 OOTB가 속성 응답을
+`results[].data[]`로 변환한 뒤 `prepareAttributes(model,response)`를 호출하여 해당 클래스의
+분류 속성에 `mandatory:true`를 넣습니다. OOTB 모델/폼은 이를 통해 필수 표시와 기존 생성 시 검증을 사용합니다.
+현재 폼의 메타데이터만 바꾸며 서버 속성 정의를 수정하지 않습니다.
+
+**배포:** main 모듈 변경과 새 `sdxECCAClassAttributeService.js`를 함께 배포하고,
+[ClassificationProp 연결 메모](webapps/ClassificationProp/ClassificationProp.js)의
+폼 생성 전 `prepareAttributes` + 생성 후 `notifyAttributesLoaded` 쌍으로 기존 연결을 교체하세요.
+기존 완료 통지만 유지하면 준비 오류가 발생합니다. OOTB 파일들은 전체 파일 교체용이 아닌 변경 위치 메모입니다.
+
+검사: `node tests/test-auto-fields.cjs`, `node tests/test-class-mandatory.cjs`, `node tests/test-amd-headers.cjs`.
+실제 서버에서 플래그 조회, 필수 표시, 빈 값 생성 차단과 입력 후 생성은 별도 확인이 필요합니다.

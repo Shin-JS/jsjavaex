@@ -40,3 +40,16 @@ node --check webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js
 - 실제 입력값 커밋, 필수/범위 검증, Enter/버튼/반복 생성 및 새 CA의 분류/속성값 저장.
 
 커스터마이징 없는 서버에서도 재현된 ClassificationAttributeUtil.java:95 저장 오류는 별도로 보류 중입니다. 필드 표시 확인이 저장 성공까지 의미하지는 않습니다.
+
+
+## 2026-10-20 클래스 전체 필수 규칙
+
+- `test-class-mandatory.cjs`: 클래스 자체 플래그 Y/N/빈 값, 잘못된 객체/응답,
+  현재 클래스 전 속성 mandatory, 기본 속성/다른 클래스/비대상 모델 격리,
+  기존 필수값과 입력값 보존, 공유 데이터 복제, 폼 생성 전 연결 누락, 조회 실패, 종료 후 응답 검사 통과.
+- `test-auto-fields.cjs`: 클래스 플래그 조회가 추가된 비동기 선택, 기존 준비/생성 검증/복원/부서 흐름 검사 통과.
+- `test-amd-headers.cjs`: 기존 7개 OOTB 모듈 의존성/인자 매핑 검사 통과.
+- OOTB R2024x 소스에서 `mandatory:true` → 모델 mandatory → Form `mandAttr` 표시와
+  AttributesUtils의 필수 검증 연결을 확인했습니다. 실제 브라우저 렌더링을 실행한 결과는 아닙니다.
+- 서버 확인 필요: General Class 자체의 제어 속성이 attributes/op/read의 results.data로 반환되는지,
+  설치 버전의 동일 API/필드 계약, Y/N별 실제 표시와 생성 검증. 서버 저장 규칙을 추가한 변경은 아닙니다.

@@ -9,22 +9,26 @@
  * ["UWA/Class/Model", "UWA/Core", "DS/WidgetServices/securityContextServices/SecurityContextServices", "DS/WidgetServices/WidgetServices", "DS/ClassificationProp/comm/EventManager", "DS/ClassificationProp/facets/Common/ClassifFacetsBase", "DS/ClassificationProp/models/ClassifPropModel", "DS/ClassificationProp/models/ClassifPropModelMerge", "DS/ClassificationProp/models/ClassifPropAttributeModel", "DS/ClassificationProp/ajaxRequests/ClassifPropAjaxRequests", "DS/ClassificationProp/facets/Properties/Properties", "DS/ClassificationProp/constants/ClassifPropConstants", "DS/ClassificationProp/constants/ConstantsMapping", "DS/ClassificationProp/comm/DistantAjax", "DS/ClassificationProp/utils/ClassifPropUtils", "DS/ClassificationProp/utils/ClassifPropControl", "DS/IPClassifyUtil/IPClassifyAlert", "i18n!DS/ClassificationProp/assets/nls/langEditProp", "DS/PlatformAPI/PlatformAPI", "DS/sdxECCAAutoClass/sdxECCAAutoClass"]
  * function(e,t,i,n,s,a,o,r,l,c,u,d,h,f,p,m,g,v,_,sdxECCAAutoClass){ ...기존 본문... }
  */
-/* loadModels 안의 내부 v(e,t) -> onAttributesLoad(t)에서 기존 호출:
- *     n._onCompleteLoadModel(t,{initTable:!r,buildBehavior:l?d.FORCE_DEFAULT:d.NO_CHANGES})
- * 바로 뒤에 콤마로 추가:
- *     n._onCompleteLoadModel(t,{initTable:!r,buildBehavior:l?d.FORCE_DEFAULT:d.NO_CHANGES}),
- *     sdxECCAAutoClass.notifyAttributesLoaded(e,t)
- * e=현재 ClassifPropModel, t=속성 응답입니다.
- * getAttributesDone publish와 실제 _onCompleteLoadModel보다 뒤에서 통지합니다.
- * 기존 sdxECCANotifyAutoClassAttributes(e,t)를 위 호출로 바꾸며 중복 호출하지 않습니다.
- */
-
-/* [현재 설치 소스에서 확인한 인자 대응 — 2026-10-19]
- * modelList:[i], onAttributesLoad:function(r){...} 구조이면 모델=i, 응답=r입니다.
- * 기존 onCompleteLoadModel(r,{initTable:!e,buildBehavior:t?f.FORCE_DEFAULT:f.NO_CHANGES}) 뒤에:
- *     sdxECCAAutoClass.notifyAttributesLoaded(i,r)
- * 를 호출합니다. notifyAttributesLoaded(r,e)는 응답을 모델로 전달하므로 완료되지 않습니다.
- * 위 R2024x 예시의 e,t를 현재 설치 코드에 그대로 복사하지 않습니다.
- * 함수명 앞의 기존 컨트롤러 참조와 _ 유무 등 설치 소스의 원래 호출은 유지합니다.
- * 첫 인자는 ClassificationsFacet에서 tagClassModel로 표시한 바로 그 ClassifPropModel입니다.
+/* [필수 표시 + 로딩 완료 연결 — 두 호출을 함께 적용]
+ * onAttributesLoad 안에서 기존 코드가 response.attribute를 results[0].data로
+ * 변환한 뒤, 실제 _onCompleteLoadModel 호출 직전에 prepareAttributes를 호출합니다.
+ * 이 호출은 결과 메타데이터를 바꾸므로 반드시 폼 생성 전이어야 합니다.
+ *
+ * R2024x 예시: 모델=e, 응답=t
+ *     if (!sdxECCAAutoClass.prepareAttributes(e,t)) return;
+ *     n._onCompleteLoadModel(t,{initTable:!r,buildBehavior:l?d.FORCE_DEFAULT:d.NO_CHANGES});
+ *     sdxECCAAutoClass.notifyAttributesLoaded(e,t);
+ *
+ * 현재 설치 소스 예시: modelList:[i], onAttributesLoad:function(r){...}
+ * 모델=i, 응답=r이므로 다음처럼 연결합니다.
+ *     if (!sdxECCAAutoClass.prepareAttributes(i,r)) return;
+ *     기존컨트롤러.onCompleteLoadModel(r,{기존옵션유지});
+ *     sdxECCAAutoClass.notifyAttributesLoaded(i,r);
+ *
+ * 기존 콤마 표현식에 추가한다면 위 세 문장으로 나누고 앞선 publish/로그/handle 해제는 유지합니다.
+ * 함수명 앞의 컨트롤러 참조, _ 유무, 옵션은 설치 소스의 실제 원래 호출을 유지합니다.
+ * 두 함수의 첫 인자는 ClassificationsFacet에서 tagClassModel로 표시한 동일 모델입니다.
+ * notifyAttributesLoaded(r,e)처럼 모델/응답을 뒤집거나 prepare를 완료 호출 뒤에 두지 않습니다.
+ * 기존 after-only notify 연결을 위 before/after 쌍으로 교체하며 중복 호출하지 않습니다.
+ * 대상 위젯 외 모델에는 prepareAttributes가 true를 반환하고 응답을 변경하지 않습니다.
  */

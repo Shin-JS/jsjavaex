@@ -11,8 +11,9 @@
 define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     "require",
     "DS/sdxECCAAutoClass/sdxECCAClassRuleService",
-    "DS/sdxECCAAutoClass/sdxECCAOrganizationProvider"
-], function (require, ClassRuleService, OrganizationProvider) {
+    "DS/sdxECCAAutoClass/sdxECCAOrganizationProvider",
+    "DS/sdxECCAAutoClass/sdxECCAClassAttributeService"
+], function (require, ClassRuleService, OrganizationProvider, ClassAttributeService) {
     "use strict";
 
     /** 대화상자마다 별도 세션을 만들어 초기화·속성 로딩·UI·생성 검증을 연결합니다. */
@@ -20,7 +21,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var session = {
             context: context, type: type, rule: rule, controller: null,
             status: "loading", error: null, disposed: false, started: false,
-            attributesLoaded: false, fieldsMounted: false, validateFields: null,
+            mandatory: null, mandatoryPrepared: false, attributesLoaded: false, fieldsMounted: false, validateFields: null,
             classId: null, classTitle: null, typeDisplay: "hidden", readCurrentType: null, listeners: new Set(), timer: null,
             cancelRequest: null
         };
@@ -123,6 +124,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var session = sdxECCACreateAutoSession(context, type, rule);
         session.typeDisplay = typeDisplay;
         session.ruleMode = ruleMode;
+        session.tenant = settings && settings.tenant || "OnPremise";
         properties.options = properties.options || {};
         classification.options = classification.options || {};
         properties.options.sdxECCAAutoSession = session;
@@ -311,6 +313,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var session = options.sdxECCAAutoSession;
         if (!session) return;
         facet.sdxECCAAutoSession = session;
+        session.tenant = options.tenant || session.tenant;
         facet.sdxECCAAutoContext = options.securityContext || session.context;
         session.checkContext(facet.sdxECCAAutoContext);
         var started = Date.now();
@@ -385,30 +388,39 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                     if (session.rule.libraryId && !chain.some(function (item) {
                         return item.physicalid === session.rule.libraryId;
                     })) throw new Error("클래스가 설정한 라이브러리 경로에 포함되지 않습니다.");
-                    var path = service.extractPath(chain);
-                    session.classTitle = leaf.label;
-                    ctrl._classPathMap.set(session.classId, path);
-                    ctrl._classNameMap.set(session.classId, leaf.label);
-                    ctrl.classifPropertiesUI.setClassPath(ctrl.getClassPath());
-                    ctrl.classifPropertiesUI.setClassUsage(ctrl.getClassUsage());
-                    var data = {
-                        id: session.classId, label: leaf.label, plmType: leaf.type,
-                        value: {label: leaf.label, subLabel: path},
-                        icons: [ctrl._getIcon(leaf)]
-                    };
-                    // OOTB 노드 생성 함수가 요구하는 임시 TreeDocument입니다. 선택 UI를 만들지는 않습니다.
-                    var tree = ctrl.plmNewClassificationFacetData.createAutocompleteDataTree([]);
-                    var node = ctrl.plmNewClassificationFacetData._createTreeNodeModel(
-                        data, tree, ctrl.couldBeSelected.bind(ctrl)
-                    );
-                    ctrl.autoComplete._model.prepareUpdate();
-                    var inserted = ctrl.insertInAutocomplete(ctrl.autocompleteLibrary, node);
-                    if (!inserted) throw new Error("클래스 선택 노드를 추가할 수 없습니다.");
-                    ctrl._nodesData[session.classId] = inserted;
-                    ctrl.autoComplete._model.pushUpdate();
-                    inserted.select();
-                    // select 완료는 속성 로딩 완료가 아닙니다. 별도 ClassificationProp 완료 표식을 기다립니다.
-                    session.notify();
+                    // 클래스 자체의 플래그를 먼저 읽어야 OOTB 첫 렌더링부터 필수 표시됩니다.
+                    ClassAttributeService.load(service, {
+                        classId: session.classId, securityContext: session.context, tenant: session.tenant
+                    }).then(function (mandatory) {
+                        if (session.disposed || session.status === "error") return;
+                        session.mandatory = mandatory;
+                        var path = service.extractPath(chain);
+                        session.classTitle = leaf.label;
+                        ctrl._classPathMap.set(session.classId, path);
+                        ctrl._classNameMap.set(session.classId, leaf.label);
+                        ctrl.classifPropertiesUI.setClassPath(ctrl.getClassPath());
+                        ctrl.classifPropertiesUI.setClassUsage(ctrl.getClassUsage());
+                        var data = {
+                            id: session.classId, label: leaf.label, plmType: leaf.type,
+                            value: {label: leaf.label, subLabel: path},
+                            icons: [ctrl._getIcon(leaf)]
+                        };
+                        // OOTB 노드 생성 함수가 요구하는 임시 TreeDocument입니다. 선택 UI를 만들지는 않습니다.
+                        var tree = ctrl.plmNewClassificationFacetData.createAutocompleteDataTree([]);
+                        var node = ctrl.plmNewClassificationFacetData._createTreeNodeModel(
+                            data, tree, ctrl.couldBeSelected.bind(ctrl)
+                        );
+                        ctrl.autoComplete._model.prepareUpdate();
+                        var inserted = ctrl.insertInAutocomplete(ctrl.autocompleteLibrary, node);
+                        if (!inserted) throw new Error("클래스 선택 노드를 추가할 수 없습니다.");
+                        ctrl._nodesData[session.classId] = inserted;
+                        ctrl.autoComplete._model.pushUpdate();
+                        inserted.select();
+                        // select 완료는 속성 로딩 완료가 아닙니다. 별도 ClassificationProp 완료 표식을 기다립니다.
+                        session.notify();
+                    }).catch(function (error) {
+                        if (!session.disposed && session.status !== "error") session.fail(error);
+                    });
                 } catch (error) { session.fail(error); }
             },
             onFailure: function () { session.fail(new Error("지정 클래스 경로 조회에 실패했습니다.")); }
@@ -429,6 +441,39 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         }
     }
 
+    /** OOTB가 results.data로 변환한 직후, _onCompleteLoadModel 호출 전에 실행합니다.
+     * 공유 속성 정의/기본 필드를 변경하지 않고 현재 클래스의 분류 속성만 복제합니다.
+     */
+    function sdxECCAPrepareClassAttributes(model, response) {
+        var session = model && model.sdxECCAAutoSession;
+        if (!session) return true;
+        if (session.disposed || session.status === "error") return false;
+        try {
+            if (model.sdxECCAAutoClassId !== session.classId || typeof session.mandatory !== "boolean" ||
+                !response || !Array.isArray(response.attribute)) {
+                throw new Error("클래스 필수 속성 설정이 준비되지 않았습니다.");
+            }
+            if (session.mandatory) {
+                if (!Array.isArray(response.results)) throw new Error("분류 속성 폼 변환 결과가 없습니다.");
+                var names = new Set(response.attribute.map(function (attr) { return attr.name; }));
+                var found = new Set();
+                var results = response.results.map(function (row) {
+                    if (!Array.isArray(row.data)) return row;
+                    var data = row.data.map(function (attr) {
+                        if (attr.extension !== session.classId || !names.has(attr.name)) return attr;
+                        found.add(attr.name);
+                        return Object.assign({}, attr, {mandatory: true});
+                    });
+                    return Object.assign({}, row, {data: data});
+                });
+                if (found.size !== names.size) throw new Error("필수 표시를 적용할 클래스 속성이 폼에 없습니다.");
+                response.results = results;
+            }
+            session.mandatoryPrepared = true;
+            return true;
+        } catch (error) { session.fail(error); return false; }
+    }
+
     /** 자동 대상 클래스 모델에만 완료를 알립니다. 다른 위젯 모델에는 표식이 없어 즉시 반환합니다.
      * 빈 attribute 배열도 정상입니다. 배열 누락을 빈 폼 성공으로 취급하지 않습니다.
      * OOTB 서버 호출 실패로 여기까지 오지 않으면 세션 타임아웃이 생성을 막습니다.
@@ -438,6 +483,10 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (!session || session.disposed || session.status === "error") return;
         if (!response || !Array.isArray(response.attribute)) {
             session.fail(new Error("클래스 속성 응답의 attribute 배열을 확인해 주세요."));
+            return;
+        }
+        if (!session.mandatoryPrepared) {
+            session.fail(new Error("폼 생성 전 prepareAttributes 호출을 확인해 주세요."));
             return;
         }
         session.markAttributesLoaded(model.sdxECCAAutoClassId);
@@ -476,6 +525,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         disconnectClassification: sdxECCADisconnectAutoClassification,
         applyClass: sdxECCAApplyOrganizationClass,
         tagClassModel: sdxECCATagAutoClassModel,
+        prepareAttributes: sdxECCAPrepareClassAttributes,
         notifyAttributesLoaded: sdxECCANotifyAutoClassAttributes,
         isEnabled: sdxECCAIsFixedClassWidget,
         configureCreateType: sdxECCAConfigureFixedCreateType
