@@ -61,6 +61,12 @@ python3 apply_r2024x_adapter_patch.py PATH/ENONewChangeActionApplicationAdapter.
 
 기본 CA와 다른 타입은 설정 파일을 읽거나 카운터를 갱신하지 않습니다. 다만 같은 대상 커스텀 타입을 생성하는 다른 화면도 이 채번 규칙을 적용받습니다. 백엔드 타입 규칙이므로 위젯 ID에 의존하지 않습니다.
 
+## 기존 번호 조회와 카운터 보정
+
+실제 Hook이 `MqlExistingEcrNumbers`를 호출하도록 연결했습니다. 카운터의 `lockForUpdate` 뒤에 기존 번호를 조회하고, 그 결과와 저장값을 비교합니다. [EXISTING-NUMBERS.md](EXISTING-NUMBERS.md)에 MQL, 반환값 해석 및 경계값 예시를 적었습니다. CA adapter의 기존 삽입 한 줄은 그대로 사용합니다.
+
+기본 조회 범위는 `typePattern=*`, `vaultPattern=*`입니다. `ecr.query.typePattern`/`ecr.query.vaultPattern`으로 변경할 수 있지만 같은 번호 체계를 사용하는 기존 객체를 빠뜨리면 안 됩니다. 조회 Context에는 해당 번호 체계 전체를 읽을 권한이 필요합니다. 조회 실패를 빈 결과로 취급하지 않으며, 코드가 임의로 권한을 올리지는 않습니다.
+
 ## 실제 SDK 컴파일 확인
 
 ```bash

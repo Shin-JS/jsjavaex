@@ -35,13 +35,20 @@ public final class EnoviaNumberGeneratorSequence implements EcrNameService.Exist
     private final Context context;
     private final ExistingCounterResolver resolver;
     private final String nextNumberAttribute;
+    private final MqlExistingEcrNumbers existingNumbers;
 
     public EnoviaNumberGeneratorSequence(Context context, ExistingCounterResolver resolver,
                                          String nextNumberAttribute) {
+        this(context, resolver, nextNumberAttribute, new MqlExistingEcrNumbers("*", "*"));
+    }
+
+    public EnoviaNumberGeneratorSequence(Context context, ExistingCounterResolver resolver,
+                                         String nextNumberAttribute, MqlExistingEcrNumbers existingNumbers) {
         this.context = Objects.requireNonNull(context, "context");
         this.resolver = Objects.requireNonNull(resolver, "resolver");
         this.nextNumberAttribute = Objects.requireNonNull(nextNumberAttribute, "nextNumberAttribute").trim();
         if (this.nextNumberAttribute.isEmpty()) throw new IllegalArgumentException("Missing next-number attribute");
+        this.existingNumbers = Objects.requireNonNull(existingNumbers, "existingNumbers");
     }
 
     @Override
@@ -62,14 +69,21 @@ public final class EnoviaNumberGeneratorSequence implements EcrNameService.Exist
         counter.lockForUpdate(context);
         // A fresh read AFTER acquiring the lock is essential.
         String raw = counter.getAttributeValues(context, nextNumberAttribute).getValue();
-        if (raw == null || !raw.matches("[0-9]+")) {
+        // Blank/zero means an uninitialized existing counter; seed it from real names below.
+        if (raw == null || raw.isEmpty()) raw = "0";
+        if (!raw.matches("[0-9]+")) {
             throw new IllegalStateException("Existing next-number value is not a supported positive integer");
         }
         BigInteger value = new BigInteger(raw);
-        if (value.signum() <= 0 || value.compareTo(BigInteger.valueOf(maximum)) > 0) {
+        if (value.compareTo(BigInteger.valueOf(maximum)) > 0) {
             throw new IllegalStateException("ECR series exhausted or invalid; last supported suffix is Z999");
         }
-        int next = value.intValue();
+        // Scan AFTER taking the shared series lock. Keep issued high-water if names were deleted.
+        int lastExisting = existingNumbers.lastOrdinal(context, divisionCode, day);
+        int next = Math.max(Math.max(1, value.intValue()), lastExisting + 1);
+        if (next > maximum) {
+            throw new IllegalStateException("Existing ECR series has reached Z999");
+        }
         // Store the next ORDINAL, not the formatted alpha suffix.
         counter.setAttributeValue(context, nextNumberAttribute, Integer.toString(next + 1));
         return next;

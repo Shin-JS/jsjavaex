@@ -25,3 +25,9 @@ JAR의 서명과 바이트코드는 javap로 확인하고, 관련 CA adapter 메
 - [About Autonaming Business Objects](https://help-3dexperience.aesvietnam.com/English/DteAdminMap/dte-c-autoname.htm): Object/Number Generator 개념의 참고. 이번 실제 수정 지점의 근거는 위 JAR입니다.
 - [Dassault Support Q&A 목록](https://3dswym.3dexperience.3ds.com/post/enovia-user-community/the-best-of-q3-2017-enovia-support-q-a_8223): CA 번호 관련 KB 항목의 존재만 확인. 개별 KB 해결책을 구현 근거로 삼지 않았습니다.
 - [Java 8 Clock](https://docs.oracle.com/javase/8/docs/api/java/time/Clock.html): 시간대 및 고정 시각 테스트.
+
+## 기존 번호 MQL 조회 추가
+
+실제 eMatrixServletRMI.jar의 `MQLCommand.exec(Context, String, List<String>)` 서명을 확인했고, 인자 바인딩 및 예외 계약에 맞춰 구현하고 실제 SDK 컴파일을 수행했습니다. 생성된 카운터 객체의 갱신 API만 있던 이전 구현에 business object name 조회를 추가했습니다.
+
+[Select Clauses in Queries](https://help-3dexperience.aesvietnam.com/English/MqlReferenceMap/mql-r-query-command-selectclauses.htm)의 temp query/select 개념을 참고했습니다. 이번 파서의 실제 설치 서버 출력과 조회 권한은 서버 실행으로 확인해야 합니다.

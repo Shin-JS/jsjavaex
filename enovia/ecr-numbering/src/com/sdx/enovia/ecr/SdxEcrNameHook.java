@@ -45,7 +45,11 @@ public final class SdxEcrNameHook {
         }
         PropertiesCounterResolver resolver = new PropertiesCounterResolver(properties);
         String nextAttribute = properties.getProperty("ecr.nextNumberAttribute", "eService Next Number");
-        EnoviaNumberGeneratorSequence sequence = new EnoviaNumberGeneratorSequence(context, resolver, nextAttribute);
+        MqlExistingEcrNumbers existingNumbers = new MqlExistingEcrNumbers(
+                properties.getProperty("ecr.query.typePattern", "*"),
+                properties.getProperty("ecr.query.vaultPattern", "*"));
+        EnoviaNumberGeneratorSequence sequence = new EnoviaNumberGeneratorSequence(
+                context, resolver, nextAttribute, existingNumbers);
         String name = new EcrNameService(clock).nextName(division, sequence);
         // Both are verified R2024x CreateParametersBase methods. Never rename a persisted object.
         parameters.setName(name);

@@ -90,7 +90,7 @@ public final class EcrNumberingTest {
         BusinessObject.calls.clear();
         equal("ECR-W2610209999", service.nextName("MX", sequence));
         equal("10000", BusinessObject.values.get("test-W-day1"));
-        equal(Arrays.asList("lock:test-W-day1", "read:test-W-day1", "write:test-W-day1"), BusinessObject.calls);
+        equal(Arrays.asList("lock:test-W-day1", "read:test-W-day1", "query:ECR-W261020*", "write:test-W-day1"), BusinessObject.calls);
         equal("ECR-W261020A001", service.nextName("MX", sequence));
         equal("ECR-N2610200001", service.nextName("NW", sequence));
         EcrNameService tomorrow = new EcrNameService(Clock.offset(clock, java.time.Duration.ofDays(1)));
@@ -100,7 +100,7 @@ public final class EcrNumberingTest {
         equal("35974", BusinessObject.values.get("test-W-day1"));
         fails(() -> service.nextName("MX", sequence));
         equal("35974", BusinessObject.values.get("test-W-day1"));
-        for (String bad : Arrays.asList("", "A001", "-1", "1.0", "0000", "999999999999")) {
+        for (String bad : Arrays.asList("A001", "-1", "1.0", "999999999999")) {
             BusinessObject.values.put("test-W-day1", bad);
             fails(() -> service.nextName("MX", sequence));
             equal(bad, BusinessObject.values.get("test-W-day1"));

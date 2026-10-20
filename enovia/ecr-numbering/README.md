@@ -4,6 +4,10 @@
 
 이전 범용 연결 예시는 [INTEGRATION.md](INTEGRATION.md)의 실제 R2024x 수정 지점으로 대체했습니다. `enoECMChangeActionBase`의 autoName 코드는 주석이며 활성 코드가 아니라는 점도 정정했습니다. 실제 SDK JAR에 대한 사용자 작성 소스의 컴파일을 통과했습니다. 벤더 Java 전체 수정/서버 배포 완료본은 아니며, [적용 문서](INTEGRATION.md)에 범위를 명시했습니다.
 
+## 기존 번호 조회 반영
+
+현재 수정본은 카운터만 읽지 않습니다. 카운터의 트랜잭션 잠금을 잡은 뒤 `MqlExistingEcrNumbers`가 해당 사업부·날짜의 실제 business object name을 MQL로 조회합니다. 기존 번호의 마지막 순번과 저장된 다음 순번을 비교해 이어서 발급합니다. 상세 코드는 [MqlExistingEcrNumbers.java](src/com/sdx/enovia/ecr/MqlExistingEcrNumbers.java), 동작 예시는 [EXISTING-NUMBERS.md](EXISTING-NUMBERS.md)에 있습니다.
+
 ## 확정 규칙
 
 `ECR-` + 사업부 1자리 + `yyMMdd` 6자리 + 순번 4자리 = 15자리. 저장 대상은 business object의 **name**입니다.
@@ -38,7 +42,8 @@
 - `SdxEcrNameHook.java`: 실제 CA adapter에서 부르는 타입 제한 Hook. 서버 credential/user 매핑과 기존 카운터를 연결하고 CreateParameters.name 설정.
 - `apply_r2024x_adapter_patch.py`: 기존 Java 메서드에 Hook을 삽입.
 - `patches/r2024x-ca-adapter.patch`: 조회한 메서드 구조 기준 최소 diff.
-- `EnoviaNumberGeneratorSequence.java`: 기존 Number Generator 객체의 다음 순번 속성에 대해 트랜잭션 잠금→조회→검증→증가 수행.
+- `MqlExistingEcrNumbers.java`: MQL로 기존 ECR name 조회, 숫자/알파벳 순번을 정수로 변환해 마지막 순번 계산.
+- `EnoviaNumberGeneratorSequence.java`: 카운터 잠금→저장값 읽기→기존 번호 MQL 조회→더 큰 다음 순번 발급→카운터 증가.
 - `PropertiesCounterResolver.java`: 기존 사업부·날짜별 카운터 ID의 명시적 매핑. 동일 객체의 여러 시리즈 재사용과 누락을 거부.
 - [INTEGRATION.md](INTEGRATION.md): 기존 소스의 교체 지점과 코드 조각.
 - [REFERENCES.md](REFERENCES.md): 실제 조회 자료와 확인 한계.
@@ -60,11 +65,11 @@
 
 **실제 생성 메서드에 넣을 패치는 제공하며, 설치 환경의 카운터 ID·사업부 매핑과 서버 배포는 아직 완료되지 않았습니다.** 날짜에 맞는 기존 카운터가 없으면 코드는 생성을 거부합니다. 카운터를 자동 생성하거나 공용 카운터를 1로 리셋하지 않습니다. 기존 시스템이 일자별 카운터를 제공하지 않는다면 기존 영속 채번 구현에서 날짜별 시리즈를 지원하도록 수정해야 하며, 이 자료만으로 매일 자동 초기화가 완성된다고 볼 수 없습니다.
 
-기존 발급번호가 있는 날짜는 1로 재설정하지 않습니다. 예를 들어 마지막 번호가 A999이면 다음 정수값은 10999입니다. 기존 객체 전체와 기존 채번 이력을 확인해 시작값을 이관해야 하며, 검색 색인의 마지막 번호만 보고 초기화하지 않습니다.
+기존 발급번호가 있으면 MQL 조회 결과로 초기값을 보정합니다. 예를 들어 마지막 번호가 A999이고 카운터가 1이면 B001(정수 10999)을 발급합니다. 카운터가 빈 값/0인 경우에도 같은 조회로 시작값을 결정합니다. 카운터가 더 앞서 있으면 낮추지 않습니다. 이미 삭제된 과거 번호는 객체 조회만으로 복원할 수 없으므로 해당 채번 이력의 다음 값은 별도로 이관해야 합니다.
 
 ## 트랜잭션과 동시성
 
-ENOVIA 어댑터는 기존 **update 트랜잭션 안에서만** 실행됩니다. 기존 트랜잭션을 별도 commit/abort하지 않습니다. 카운터의 `lockForUpdate` 후 속성을 읽고, Z999 초과를 검사한 다음 증가시킵니다. CA 생성과 분류 저장까지 성공한 뒤 기존 호출자가 commit합니다. 실패 시 기존 호출자는 전체 트랜잭션을 abort해야 합니다. 예외를 잡고 계속 생성하면 안 됩니다.
+ENOVIA 어댑터는 기존 **update 트랜잭션 안에서만** 실행됩니다. 기존 트랜잭션을 별도 commit/abort하지 않습니다. 카운터의 `lockForUpdate` 후 속성과 기존 ECR 번호를 조회하고, `max(1, 저장된 다음 순번, 기존 최대 순번 + 1)`을 발급한 다음 카운터를 증가시킵니다. Z999 초과 시에는 갱신하지 않고 실패시킵니다. CA 생성과 분류 저장까지 성공한 뒤 기존 호출자가 commit합니다. 실패 시 기존 호출자는 전체 트랜잭션을 abort해야 합니다. 예외를 잡고 계속 생성하면 안 됩니다.
 
 현재 날짜는 잠금 대기 전에 한 번 확정합니다. 자정에 걸친 요청은 해당 확정 날짜를 일관되게 사용합니다. 사업부는 서버 Context의 정확한 credential/user 값에 매핑합니다. 클라이언트의 날짜·사업부 값이나 임의로 분해한 조직 문자열은 사용하지 않습니다. 실제 조직 조회 규칙이 따로 있다면 검증된 서버 조회를 연결합니다.
 
