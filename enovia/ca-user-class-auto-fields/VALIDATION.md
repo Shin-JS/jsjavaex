@@ -64,3 +64,15 @@ node --check webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js
 - test-ootb-validation에 R2024x 실제 AttributesUtils 코드를 전달하여 실행: 빈 문자열/빈 배열의 필수 오류,
   모델 setError 호출, 값 입력 후 통과와 선택 속성 허용 검사 통과. 공급사 코드는 저장소에 복사하지 않았습니다.
 - 실제 별표 DOM/중복 해결, 설치 서버의 API 및 생성·저장 동작은 미검증입니다.
+
+
+2026-10-20 입력 중 생성 버튼 상태 연결:
+
+- 모델 변경 → OOTB validateModels → classificationFacet.setFacetValidation 연결.
+- 대역 검사: 로딩 비활성, 필수 오류 비활성, 값 수정 후 활성, 다른 facet 무효 시 계속 비활성,
+  resetButtons 이후 무효 상태 보존, 종료 시 onChangeAttributes 구독 해제 통과.
+- test-ootb-button-state: R2024x ENONewFacetBase와 ENONewDialogController의 실제 코드를 실행하여
+  setFacetValidation → evaluateValidationStatus → 생성 버튼 전체 비활성/활성,
+  다른 facet 무효 상태 보존과 취소 버튼 유지 검사 통과.
+- 필수 별표는 기존 mandatory 메타데이터만 사용합니다. 별도 표시 코드는 추가하지 않았습니다.
+- 서버의 실제 버튼/별표 중복 및 입력값 저장은 실행하지 못했습니다.

@@ -70,6 +70,9 @@
  * 별도 빈 값 판정은 하지 않습니다. 기본 ENOListView 검증은 기본 속성 모델만 처리하므로
  * 실제 분류 facet의 UIController.validateModels 호출도 필요합니다.
  *     if(!sdxECCAAutoClass.canSubmitDialog(this)){this.resetButtons();return;}
+ * resetButtons()의 기존 처리 마지막(함수 안):
+ *     sdxECCAAutoClass.preserveValidationState(this);
+ * 이 호출은 OOTB가 버튼을 복원한 뒤 분류/다른 facet이 무효하면 생성 버튼만 다시 비활성화합니다.
  * destroy() 첫 줄:
  *     sdxECCAAutoClass.disposeDialog(this);
  * 기존 생성, 취소, postCreation 처리는 그대로 유지합니다.

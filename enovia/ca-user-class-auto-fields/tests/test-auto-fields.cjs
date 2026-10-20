@@ -44,6 +44,17 @@ function makeSession(classId='C1',mode='hidden'){
  config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAFixedClassId:classId,sdxECCAFixedLibraryId:'L1',sdxECCATypeDisplay:mode};
  const facets=metadata();api.attachBridge(data(),facets,{});return {session:facets[0].options.sdxECCAAutoSession,facets};
 }
+function eventModel(model){
+ const events=new Map();
+ model.addEvent=(name,fn)=>{if(!events.has(name))events.set(name,new Set());events.get(name).add(fn);};
+ model.removeEvent=(name,fn)=>{if(events.has(name))events.get(name).delete(fn);};
+ model.emit=name=>{if(events.has(name))for(const fn of events.get(name))fn();};
+ model.listenerCount=()=>Array.from(events.values()).reduce((sum,set)=>sum+set.size,0);
+ return model;
+}
+function classificationFacet(ui){return {facetValidation:true,states:[],baseValid:true,
+ setFacetValidation(value){this.facetValidation=value;this.states.push(value);this.buttonDisabled=!(value&&this.baseValid);},
+ initUI:{getController:()=>({plmNewLibraryActive:ui.ctrl})}};}
 function makeController(session){
  const parent=new Element(), form=new Element(), sibling=new Element();parent.appendChild(form);parent.appendChild(sibling);form.nextSibling=sibling;
  let request, selectedCount=0;
@@ -53,7 +64,7 @@ function makeController(session){
  couldBeSelected:type=>type==='General Class',_getIcon:()=>({iconName:'library-class'}),
  plmNewClassificationFacetData:{createAutocompleteDataTree(){return {}},_createTreeNodeModel(opts){return {options:opts,getID:()=>opts.id}}},
  insertInAutocomplete(_,node){return {getID:node.getID,select(){selectedCount++;ctrl.autoComplete.selectedItems=[this];
- const model={get:key=>key==='objectId'?session.classId:undefined,values:()=>[]};
+ const model=eventModel({get:key=>key==='objectId'?session.classId:undefined,values:()=>[]});
  ctrl.classifPropModels.push(model);api.tagClassModel(ctrl,model,session.classId);}}},
  PLMNewCommonWebService:{get3DSpaceUrl:()=>Promise.resolve('https://example/3dspace'),getClassPaths(opts){request=opts},constructPath:response=>response.chains,extractPath:()=> 'Library > Class'}
  };
@@ -74,10 +85,10 @@ api.prepareFixedType(props.listview.data,session);
 assert.equal(props.listview.data.defaultAttributes.Type.visible,false);
 api.installFields(props,{sdxECCAAutoSession:session});
 assert.equal(loadedModules.length,0); // 컨트롤러 생성 전에 검증 모듈을 요청하지 않음
-const facet={initUI:{getController:()=>({plmNewLibraryActive:ui.ctrl})}};
+const facet=classificationFacet(ui);
 api.connectClassification(facet,{sdxECCAAutoSession:session,securityContext:session.context});timers.get(facet.sdxECCAAutoTimer)();
 const dialog={View:{facets:activeFacets}};
-assert.equal(api.canSubmitDialog(dialog),false);assert.equal(ui.ctrl.container.style.display,'none');
+assert.equal(api.canSubmitDialog(dialog),false);assert.equal(facet.buttonDisabled,true);assert.equal(ui.ctrl.container.style.display,'none');
 assert.equal(props.sdxECCAAutoRoot.children.length,2); // 상태와 폼뿐, 검색 컴포넌트 없음
 ui.request().onComplete({chains:new Map([['C1',[{physicalid:'L1',type:'General Library',label:'Library'},{physicalid:'C1',type:'General Class',label:'Class'}]]])});
 await flush();assert.equal(ui.selectedCount(),1);assert.equal(session.status,'loading');assert.equal(api.canSubmitDialog(dialog),false);
@@ -85,6 +96,24 @@ api.prepareAttributes(ui.ctrl.classifPropModels[0],{attribute:[]});
 api.notifyAttributesLoaded(ui.ctrl.classifPropModels[0],{attribute:[]});
 assert.deepEqual(loadedModules,[]); // 반복 알림에도 각 한 번
 assert.equal(session.status,'ready');assert.equal(props.sdxECCAAutoHost.style.display,'');assert.equal(ui.form.parentNode,props.sdxECCAAutoHost);
+// 버튼을 누르기 전 모델 변경으로 OOTB facet validation을 갱신합니다.
+function flushButton(){for(const fn of Array.from(timers.values())){if(fn.name==='')fn();}}
+assert.equal(facet.buttonDisabled,false);
+const watched=ui.ctrl.classifPropModels[0];
+assert.equal(watched.listenerCount(),1);
+validateError='필수';watched.emit('onChangeAttributes');flushButton();
+assert.equal(facet.buttonDisabled,true);
+validateError=null;watched.emit('onChangeAttributes');flushButton();
+assert.equal(facet.buttonDisabled,false);
+// 기본 속성이 유효하지 않으면 분류가 유효해져도 생성 버튼을 활성화하지 않습니다.
+facet.baseValid=false;validateError='필수';watched.emit('onChangeAttributes');flushButton();
+validateError=null;watched.emit('onChangeAttributes');flushButton();assert.equal(facet.buttonDisabled,true);
+facet.baseValid=true;
+// resetButtons 복원 후에도 무효 상태는 생성 버튼만 다시 차단합니다.
+const recovery={View:{facets:activeFacets},disableFormSubmit(disabled,noOverlay){assert.equal(noOverlay,true);this.disabled=disabled;}};
+session.fieldsValid=false;api.preserveValidationState(recovery);assert.equal(recovery.disabled,true);
+session.fieldsValid=true;recovery.disabled=undefined;api.preserveValidationState(recovery);assert.equal(recovery.disabled,undefined);
+
 let blurred=false;const input=new Element();input.blur=()=>blurred=true;ui.form.appendChild(input);document.activeElement=input;
 assert.equal(api.canSubmitDialog(dialog),true);assert.equal(blurred,true);
 // 선택 시 모델과 화면 모델이 달라도 OOTB 폼의 현재 모델을 검증합니다.
@@ -95,7 +124,7 @@ delete ui.ctrl.renderedModel;
 props.listview.data.defaultAttributes.Type.value='Other';assert.equal(api.canSubmitDialog(dialog),false);props.listview.data.defaultAttributes.Type.value='Change Action';
 validateError='필수 속성';assert.equal(api.canSubmitDialog(dialog),false);validateError=null;
 session.checkContext('ctx::Leader.Manufacturing.Space');assert.equal(session.status,'error');assert.equal(api.canSubmitDialog(dialog),false);
-api.disconnectClassification(facet);assert.equal(ui.form.parentNode,ui.parent);assert.equal(ui.parent.children[0],ui.form);assert.equal(ui.ctrl.sdxECCAAutoSession,undefined);
+api.disconnectClassification(facet);assert.equal(ui.form.parentNode,ui.parent);assert.equal(ui.parent.children[0],ui.form);assert.equal(ui.ctrl.sdxECCAAutoSession,undefined);assert.equal(watched.listenerCount(),0);
 // 늦게 도착한 조회가 닫힌 화면을 변경하지 않아야 합니다.
 ({session}=makeSession());const late=makeController(session);late.ctrl.sdxECCAAutoSession=session;session.controller=late.ctrl;
 api.applyClass(late.ctrl,session);session.dispose();late.request().onComplete({});assert.equal(late.selectedCount(),0);
@@ -154,7 +183,7 @@ await (async function () {
   assert.equal(session.status,'loading');assert.equal(session.rule,null); // 고정 ID 없어도 설정 오류가 아님
   const ui=makeController(session),props={skeleton:new Element(),listview:{data:data()}};
   api.installFields(props,{sdxECCAAutoSession:session});
-  const facet={initUI:{getController:()=>({plmNewLibraryActive:ui.ctrl})}};
+  const facet=classificationFacet(ui);
   api.connectClassification(facet,{sdxECCAAutoSession:session,securityContext:session.context,tenant:'OnPremise'});
   timers.get(facet.sdxECCAAutoTimer)();
   return {session,ui,facet,props};

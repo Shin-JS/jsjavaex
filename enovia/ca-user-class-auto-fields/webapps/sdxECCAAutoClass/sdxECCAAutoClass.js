@@ -69,6 +69,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             session.disposed = true;
             clearTimeout(session.timer);
             if (session.cancelRequest) session.cancelRequest();
+            if (session.cleanupValidation) session.cleanupValidation();
             session.listeners.forEach(function (fn) { fn(session); });
             session.listeners.clear();
             if (session.controller && session.controller.sdxECCAAutoSession === session) {
@@ -284,8 +285,25 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             session.validateFields();
             return true;
         } catch (error) {
+            if (session.refreshValidation) session.refreshValidation();
             if (session.showMessage) session.showMessage(error.message || String(error));
             return false;
+        }
+    }
+
+    /** OOTB resetButtons가 준비/입력 오류 상태를 덮어쓰지 않도록 마지막에 적용합니다.
+     * 활성화는 OOTB evaluateValidationStatus에 맡기며 취소 버튼은 건드리지 않습니다.
+     */
+    function sdxECCAPreserveValidationState(dialog) {
+        var session = sdxECCAFindAutoSession(dialog);
+        if (!session || session.disposed) return;
+        var facets = dialog.View && dialog.View.facets || dialog.facets || [];
+        var invalid = session.status !== "ready" || session.fieldsValid !== true || facets.some(function (entry) {
+            return entry.content && entry.content.facetValidation === false;
+        });
+        if (invalid) {
+            dialog.permanentDisable = true;
+            dialog.disableFormSubmit(true, true);
         }
     }
 
@@ -294,11 +312,70 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (session) session.dispose();
     }
 
+    /** 분류 facet의 유효성을 OOTB 대화상자 버튼 상태 판단에 전달합니다.
+     * 버튼을 직접 enable하거나 resetButtons를 호출하지 않습니다.
+     */
+    function sdxECCAInstallValidationState(facet, session) {
+        if (facet.sdxECCAValidationInstalled) return;
+        facet.sdxECCAValidationInstalled = true;
+        var watchedModel = null, pending = null, unsubscribe = null, validating = false;
+        function unwatch() {
+            if (watchedModel) watchedModel.removeEvent("onChangeAttributes", onChange);
+            watchedModel = null;
+        }
+        function onChange() {
+            if (session.disposed || validating) return;
+            clearTimeout(pending);
+            // OOTB tweaker가 모델 값을 반영한 뒤 같은 모델의 기본 검증을 실행합니다.
+            pending = setTimeout(function () { pending = null; refresh(); }, 0);
+        }
+        function refresh() {
+            if (session.disposed) return;
+            var valid = false;
+            if (session.status === "ready") {
+                try {
+                    var form = sdxECCAGetRenderedClassForm(session);
+                    if (watchedModel !== form.model) {
+                        unwatch();
+                        if (typeof form.model.addEvent !== "function" || typeof form.model.removeEvent !== "function") {
+                            throw new Error("OOTB 분류 속성 모델 변경 이벤트를 확인해 주세요.");
+                        }
+                        watchedModel = form.model;
+                        watchedModel.addEvent("onChangeAttributes", onChange);
+                    }
+                    validating = true;
+                    try { session.validateFields(); } finally { validating = false; }
+                    valid = true;
+                } catch (error) {
+                    // 입력 오류는 준비 실패로 만들지 않습니다. 값을 고치면 다시 검증됩니다.
+                    session.validationError = error;
+                }
+            }
+            session.fieldsValid = valid;
+            if (valid) session.validationError = null;
+            if (facet.facetValidation !== valid) facet.setFacetValidation(valid);
+        }
+        if (typeof facet.setFacetValidation !== "function") {
+            session.fail(new Error("OOTB setFacetValidation 연결을 확인해 주세요."));
+            return;
+        }
+        session.cleanupValidation = function () {
+            clearTimeout(pending);
+            unwatch();
+            if (unsubscribe) unsubscribe();
+            session.cleanupValidation = null;
+            session.refreshValidation = null;
+        };
+        session.refreshValidation = refresh;
+        unsubscribe = session.subscribe(refresh);
+    }
+
     /** 비동기 OOTB 컨트롤러가 준비되면 자동 선택을 시작합니다. 다른 위젯은 즉시 반환합니다. */
     function sdxECCAConnectAutoClassification(facet, options) {
         var session = options.sdxECCAAutoSession;
         if (!session) return;
         facet.sdxECCAAutoSession = session;
+        sdxECCAInstallValidationState(facet, session);
         session.tenant = options.tenant || session.tenant;
         facet.sdxECCAAutoContext = options.securityContext || session.context;
         session.checkContext(facet.sdxECCAAutoContext);
@@ -545,6 +622,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         destroyFields: sdxECCADestroyAutoFields,
         checkFacetContext: sdxECCACheckAutoFacetContext,
         canSubmitDialog: sdxECCACanSubmitAutoDialog,
+        preserveValidationState: sdxECCAPreserveValidationState,
         disposeDialog: sdxECCADisposeAutoDialog,
         connectClassification: sdxECCAConnectAutoClassification,
         disconnectClassification: sdxECCADisconnectAutoClassification,

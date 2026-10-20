@@ -49,3 +49,11 @@
  * tagClassModel은 이 파일의 공통 컨트롤러 모델 push 뒤에 둡니다. ClassificationProp.js가 아닙니다.
  * 컨트롤러/모델의 속성명은 모두 sdxECCAAutoSession으로 대소문자까지 통일합니다.
  */
+
+/* 필수 입력에 따른 생성 버튼 상태:
+ * connectClassification(this,e)가 OOTB setFacetValidation에 자동 연결합니다.
+ * 숨긴 classificationFacet 자체와 getOccurrence/setValidation 연결은 유지해야 합니다.
+ * 모델 onChangeAttributes 구독과 종료 시 해제는 main 모듈이 처리합니다.
+ * 필수 별표는 prepareAttributes의 mandatory 메타데이터로 OOTB 폼에서 생성합니다.
+ * 별표 HTML이나 필수 표시용 CSS를 추가하지 않습니다.
+ */

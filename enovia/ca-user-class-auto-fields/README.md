@@ -205,3 +205,31 @@ R2024x `3DSpaceAjaxRequests.getListOfAttributes`에서 확인한
 R2024x의 실제 AttributesUtils 구현으로 빈 필수값 오류 설정과 입력 후 통과를 확인했습니다.
 이 검사는 브라우저 UI를 실행하지 않으며 서버 저장을 검증하지 않습니다.
 설치 서버에서 별표가 여전히 두 개라면 실제 라벨 DOM/CSS를 확인해야 합니다. 중복이 해결됐다고 검증한 상태는 아닙니다.
+
+
+## 입력 중 생성 버튼 활성화 (2026-10-20)
+
+분류 폼 준비가 끝나기 전과 OOTB 검증 오류가 있는 동안에는 생성 버튼을 비활성화합니다.
+필수값을 모두 입력한 뒤 OOTB 모델의 `onChangeAttributes`가 발생하면 같은 폼 모델을 다시 검증하고,
+분류 facet의 `setFacetValidation(valid)`에 결과를 전달합니다.
+이 값은 OOTB `evaluateValidationStatus`로 연결되므로 다른 facet이 무효하면 생성 버튼도 계속 비활성화됩니다.
+생성/생성 후 닫기/생성 옵션 버튼의 처리는 OOTB가 담당하며 취소 버튼을 따로 막지 않습니다.
+입력 컨트롤의 모델 반영 시점은 OOTB tweaker의 change/debounce 동작을 따릅니다.
+별도 DOM 입력값 판정이나 주기적 polling은 하지 않습니다.
+
+필수 표시도 폼 생성 전에 `mandatory:true`를 전달하여 OOTB Form/tweaker에 맡깁니다.
+별표 문자열/HTML/CSS는 추가하지 않습니다. 기존 수동 별표 코드가 있다면 제거하세요.
+기존 화면의 중복 별표가 제거됐는지는 서버 DOM 확인 없이 확정할 수 없습니다.
+
+### 이번 배포 변경
+
+1. `sdxECCAAutoClass.js`를 최신 버전으로 교체합니다.
+2. [ENONewWidget.js 연결 메모](webapps/ENONewWidget/ENONewWidget.js)의 DialogController
+   `resetButtons()` 기존 처리 마지막에 `sdxECCAAutoClass.preserveValidationState(this);`를 추가합니다.
+   원래 reset 처리로 잠시 복원되는 버튼도 필수값이 없으면 다시 비활성화합니다.
+3. 기존 ClassificationProp before/after, ClassificationsFacet connect/disconnect, onSubmitDialog 연결은 유지합니다.
+   숨긴 classificationFacet의 getOccurrence/setValidation 연결을 제거하지 않습니다.
+
+분류 모델 변경 구독과 지연 작업은 화면 종료 시 해제합니다. 세션이 없는 다른 위젯은 변경하지 않습니다.
+검사: 기존 세 검사와 실제 OOTB 소스를 입력하는 test-ootb-validation/test-ootb-button-state를 실행했습니다.
+실제 서버 브라우저의 버튼 상태/필수 표시/저장은 별도 확인이 필요합니다.

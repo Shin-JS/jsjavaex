@@ -52,3 +52,9 @@
 ClassifPropWidget과 IDCardSkeleton.getFacetContent, ClassifPropController.getModel/editPropertiesUI,
 ClassifPropUIController.validateModels → AttributesUtils.validateModels → model.values를 확인했습니다.
 ClassificationsFacet의 별도 classifPropertiesUI 보조 인스턴스와 구별합니다.
+
+
+버튼 상태 근거: R2024x ENONewWidget.js의 ENONewFacetBase.setFacetValidation,
+ENOTabView sharedContext.setValidation → refreshValidationStatus,
+ENONewDialogController.evaluateValidationStatus/disableFormSubmit/resetButtons를 확인했습니다.
+ClassifPropModel의 onChangeAttributes 이벤트를 사용하고 화면 종료 시 removeEvent로 해제합니다.
