@@ -174,7 +174,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         };
         var root = document.createElement("div");
         var style = document.createElement("style");
-        style.textContent = ".sdxECCAClassFields .flexLine .formLabel .mandIcon { font-size: 7px; font-family: DSFontIcon; }";
+        style.textContent = ".sdxECCAClassFields .flexLine .formLabel .mandIcon { font-size: 7px; font-family: DSFontIcon; color: rgb(234, 79, 55) !important; }";
         root.appendChild(style);
         var status = document.createElement("div");
         status.setAttribute("role", "status");

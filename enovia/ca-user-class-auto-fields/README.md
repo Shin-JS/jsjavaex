@@ -302,11 +302,12 @@ bindDialog 시점에 최신 상태를 버튼 집계로 전달합니다.
 .sdxECCAClassFields .flexLine .formLabel .mandIcon {
     font-size: 7px;
     font-family: DSFontIcon;
+    color: rgb(234, 79, 55) !important;
 }
 ```
 
 사용자 환경의 정상 OOTB 필수 아이콘에서 확인한 7px / DSFontIcon을 적용합니다.
-색상 강제 상속을 제거하여 기존 OOTB 색상 규칙을 따릅니다. 필수 여부와 버튼 상태는 변경하지 않습니다.
+색상은 사용자 환경의 정상 OOTB 아이콘에서 확인한 rgb(234, 79, 55)를 대상 폼에만 적용합니다. 필수 여부와 버튼 상태는 변경하지 않습니다.
 별도 CSS 파일을 배포할 필요 없이 최신 main 모듈에 포함되어 있습니다.
 종료 시 삽입한 스타일과 추가한 폼 클래스를 정리합니다.
 
