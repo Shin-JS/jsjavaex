@@ -142,9 +142,14 @@ facet.baseValid=false;validateError='필수';watched.emit('onChangeAttributes');
 validateError=null;watched.emit('onChangeAttributes');flushButton();assert.equal(facet.buttonDisabled,true);
 facet.baseValid=true;
 // resetButtons 복원 후에도 무효 상태는 생성 버튼만 다시 차단합니다.
-const recovery={View:{facets:activeFacets},disableFormSubmit(disabled,noOverlay){assert.equal(noOverlay,true);this.disabled=disabled;}};
-session.fieldsValid=false;api.preserveValidationState(recovery);assert.equal(recovery.disabled,true);
-session.fieldsValid=true;recovery.disabled=undefined;api.preserveValidationState(recovery);assert.equal(recovery.disabled,undefined);
+let recoveryCalls=0;
+const recovery={View:{facets:activeFacets},evaluateValidationStatus(){recoveryCalls++;api.preserveValidationState(this);}};
+assert.equal(typeof recovery.disableFormSubmit,'undefined');
+session.fieldsValid=false;api.preserveValidationState(recovery);assert.equal(recoveryCalls,1);
+assert.equal(facet.facetValidation,false);
+session.fieldsValid=true;api.preserveValidationState(recovery);assert.equal(recoveryCalls,1);
+assert.equal(facet.facetValidation,true);
+
 
 let blurred=false;const input=new Element();input.blur=()=>blurred=true;ui.form.appendChild(input);document.activeElement=input;
 assert.equal(api.canSubmitDialog(dialog),true);assert.equal(blurred,true);

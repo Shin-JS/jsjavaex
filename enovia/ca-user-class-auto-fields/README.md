@@ -316,3 +316,12 @@ bindDialog는 setup 콜백 안에서 즉시 OOTB 버튼 갱신을 호출하지 �
 화면 종료 시 아직 실행되지 않은 연결 작업은 취소합니다.
 설치 버전에 evaluateValidationStatus가 없으면 준비 상태에 명시적인 오류를 남깁니다.
 기존 setup의 bindDialog 위치는 유지하고 최신 main으로 교체하세요.
+
+
+### 설치 버전의 버튼 집계 함수 사용
+
+사용자 환경에서 확인한 evaluateValidationStatus()만 호출합니다. 커스텀 코드의
+disableFormSubmit() 직접 호출과 permanentDisable 직접 변경은 제거했습니다.
+필수 검증 결과는 facetValidation에 반영하고 OOTB가 전체 버튼 상태를 집계합니다.
+resetButtons 훅으로 재진입하면 중복 집계를 차단합니다. 기존 bindDialog 훅을 유지하고
+최신 sdxECCAAutoClass.js를 교체하세요.

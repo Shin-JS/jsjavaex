@@ -103,3 +103,11 @@ node --check webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js
 bindDialog 지연 연결 보완: 동기 버튼 집계 호출 없음, 같은 dialog 중복 연결 방지,
 집계 중 bindDialog 재호출 무시, 연결 대기 중 화면 종료 후 늦은 작업 무시 검사 통과.
 사용자 환경의 팝업 표시 정상화는 재배포 후 확인이 필요합니다.
+
+
+설치 버전 버튼 API 차이 보완:
+
+- disableFormSubmit이 없고 evaluateValidationStatus만 있는 대역에서 필수 오류/정상 전환 통과.
+- 네이티브 집계가 preserveValidationState로 재진입해도 한 번만 집계하는 검사 통과.
+- auto-fields, class-mandatory, amd-headers 및 R2024x 원본 기반 validation/button-state 검사 통과.
+- 실제 설치 서버의 버튼 상태와 생성 응답은 재배포 후 확인이 필요합니다.

@@ -350,9 +350,10 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         }, 0);
     }
 
-    function sdxECCAPublishButtonValidation(session) {
-        var dialog = session.dialog;
-        if (!dialog || !dialog.myDialog || session.updatingButtons || session.disposed) return;
+    function sdxECCAPublishButtonValidation(session, currentDialog) {
+        var dialog = currentDialog || session.dialog;
+        if (!dialog || typeof dialog.evaluateValidationStatus !== "function" ||
+            session.updatingButtons || session.disposed) return;
         session.updatingButtons = true;
         try {
             // OOTB 집계는 모든 facetValidation을 확인합니다. 탭 아이콘 변경 함수를 호출하지 않습니다.
@@ -366,13 +367,15 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     function sdxECCAPreserveValidationState(dialog) {
         var session = sdxECCAFindAutoSession(dialog);
         if (!session || session.disposed) return;
+        if (session.validationFacet) {
+            session.validationFacet.facetValidation = session.status === "ready" && session.fieldsValid === true;
+        }
         var facets = dialog.View && dialog.View.facets || dialog.facets || [];
         var invalid = session.status !== "ready" || session.fieldsValid !== true || facets.some(function (entry) {
             return entry.content && entry.content.facetValidation === false;
         });
         if (invalid) {
-            dialog.permanentDisable = true;
-            dialog.disableFormSubmit(true, true);
+            sdxECCAPublishButtonValidation(session, dialog);
         }
     }
 
@@ -387,6 +390,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     function sdxECCAInstallValidationState(facet, session) {
         if (facet.sdxECCAValidationInstalled) return;
         facet.sdxECCAValidationInstalled = true;
+        session.validationFacet = facet;
         var watchedModel = null, pending = null, unsubscribe = null, validating = false;
         function unwatch() {
             if (watchedModel) watchedModel.removeEvent("onChangeAttributes", onChange);
@@ -433,6 +437,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             session.cleanupValidation = null;
             session.refreshValidation = null;
             session.dialog = null;
+            session.validationFacet = null;
         };
         session.refreshValidation = refresh;
         unsubscribe = session.subscribe(refresh);
