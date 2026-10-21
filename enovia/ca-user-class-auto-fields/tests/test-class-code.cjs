@@ -8,14 +8,17 @@ vm.runInContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass
 const service={get3DSpaceUrl:()=>Promise.resolve('https://example.test/3dspace/')};
 const scope={classCode:'EC_MX',securityContext:'ctx::Leader.Org.Space',tenant:'OnPremise'};
 const attr=(name,value)=>({name,value});
-const library=id=>({attributes:[attr('physicalid',id),attr('type','General Library')]});
-const cls=(id,code='EC_MX',current='Active')=>({attributes:[attr('physicalid',id),attr('type','General Class'),attr('current',current),attr('attribute[sdxClassCode]',code)]});
+const library=id=>({attributes:[attr('physicalid',id),attr('ds6w:type','General Library')]});
+const cls=(id,code='EC_MX',current='Active')=>({attributes:[attr('physicalid',id),attr('ds6w:type','General Class'),attr('current',current),attr('attribute[sdxClassCode]',code)]});
 function fixture(roots,graph){
  requests=[];
  handler=({url,body,options})=>{
   assert.ok(url.includes('/IPClassificationReuse/Search/search?'));
   assert.equal(body.query,body.root_physicalid?'type == "General Class"':'type == "General Library"');
   assert.equal(body.query.includes('flattenedtaxonomies'),false);
+  assert.equal(body.order_field,'ds6w:modified');assert.equal(body.order_by,'desc');
+  assert.equal(body.select_predicate.includes('ds6w:type'),true);assert.equal(body.select_predicate.includes('type'),false);
+  if(!body.root_physicalid)assert.deepEqual(body.select_predicate,['physicalid','ds6w:type']);
   assert.equal(body.states_to_fetch,undefined); // 비활성 중간 클래스 아래의 활성 클래스를 누락하지 않음
   if(body.root_physicalid)assert.deepEqual(body.rels_to_fetch,['Subclass']);
   const rows=body.root_physicalid?(graph[body.root_physicalid]||[]):roots.map(library);

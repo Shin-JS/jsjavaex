@@ -118,9 +118,11 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
                     var payload = {
                         label: "sdxECCAClassCode_" + Date.now() + "_" + Math.random().toString(36).slice(2), tenant: tenant,
                         query: rootId ? 'type == "General Class"' : 'type == "General Library"',
-                        select_predicate: rootId ? ["physicalid", "type", "current", "attribute[sdxClassCode]"] : ["physicalid", "type"],
+                        // type은 서버가 자동 추가하는 ds6w:type으로 통일해 중복 DB 선택을 피합니다.
+                        select_predicate: rootId ? ["physicalid", "ds6w:type", "current", "attribute[sdxClassCode]"] : ["physicalid", "ds6w:type"],
                         person_predicate: [], select_file: [], start: start, nresults: 100,
-                        order_field: "physicalid", order_by: "asc"
+                        // 정렬은 OOTB authoring 조회에서 사용하는 기본 modified 정렬을 유지합니다.
+                        order_field: "ds6w:modified", order_by: "desc"
                     };
                     if (rootId) {
                         payload.root_physicalid = rootId;
@@ -154,13 +156,13 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
             }
             // 루트 ID가 없으면 이 API는 General Library만 조회합니다.
             await readChildren(null, function (row, id) {
-                if (value(row, ["type"]) !== "General Library") throw new Error("루트 라이브러리 유형을 확인해 주세요.");
+                if (value(row, ["ds6w:type", "type"]) !== "General Library") throw new Error("루트 라이브러리 유형을 확인해 주세요.");
                 enqueue(id);
             });
             for (var node = 0; node < queue.length; node++) {
                 if (node >= 20000) throw new Error("클래스 경로 조회 제한을 초과했습니다.");
                 await readChildren(queue[node], function (row, id) {
-                    if (value(row, ["type"]) !== "General Class") throw new Error("조회한 클래스 유형을 확인해 주세요.");
+                    if (value(row, ["ds6w:type", "type"]) !== "General Class") throw new Error("조회한 클래스 유형을 확인해 주세요.");
                     var state = value(row, ["current"]), code = value(row, ["attribute[sdxClassCode]"]);
                     if (state === null || code === null) throw new Error("클래스의 current·sdxClassCode 조회값을 확인해 주세요.");
                     if (state === "Active" && code === scope.classCode) matches.add(id);

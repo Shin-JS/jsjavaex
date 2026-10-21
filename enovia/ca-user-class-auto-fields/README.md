@@ -30,7 +30,7 @@ code가 현재 기본 모드입니다. 이 모드에는 `sdxECCAFixedClassId`가
    `type == "General Library"`를 전달하여 사용자 권한으로 보이는 루트 라이브러리를 읽습니다.
 2. 각 라이브러리/클래스를 `root_physicalid`로 지정하고 `rels_to_fetch: ["Subclass"]`,
    `query: 'type == "General Class"'`로 바로 아래 클래스를 조회합니다. 하위 클래스를 따라 반복합니다.
-3. `select_predicate`에 raw DB 선택자인 `physicalid`, `type`, `current`, `attribute[sdxClassCode]`를 넣습니다.
+3. `select_predicate`에 `physicalid`, `ds6w:type`, `current`, `attribute[sdxClassCode]`를 넣습니다.
    `current === "Active"`이고 코드가 `EC_MX`와 정확히 같은 클래스만 남깁니다.
    비활성 중간 클래스 아래의 활성 클래스를 놓치지 않도록 중간 단계에는 활성 필터를 걸지 않습니다.
 4. 서버의 `infos.next_start`와 `nhits`로 각 단계의 모든 페이지를 확인합니다.
@@ -41,6 +41,10 @@ code가 현재 기본 모드입니다. 이 모드에는 `sdxECCAFixedClassId`가
 문법을 보내면 `RESULT_FETCH_ERROR`가 발생할 수 있습니다. 또한 root_physicalid를 생략한 호출은
 전역 General Class 검색이 아니라 루트 라이브러리 조회입니다. 이 두 계약을 반영했습니다.
 조회 범위는 사용자 권한에서 보이는 라이브러리와 그 아래 Subclass로 연결된 클래스입니다.
+루트 조회의 `RESULT_SETPROCESSING_ERROR` 확인 후, 정렬은 OOTB 기본값인
+`order_field: "ds6w:modified"`, `order_by: "desc"`로 맞췄습니다.
+유형은 서버가 자동 추가하는 `ds6w:type`으로 통일하여 raw `type`과의 중복 선택을 피합니다.
+이 변경이 설치 서버의 오류를 해소하는지는 실제 요청으로 확인해야 합니다.
 상태는 번역된 ds6w:status가 아닌 raw `current = Active`로 비교합니다.
 권한 문맥과 tenant는 팝업 세션에서 가져오며 다른 팝업의 설정을 공유하지 않습니다.
 팝업이 닫히거나 문맥이 바뀌면 이후 페이지를 요청하지 않습니다.
