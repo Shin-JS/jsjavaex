@@ -114,8 +114,11 @@ assert.equal(facet.facetValidation,false);assert.equal(facet.states.length,0);
 timers.get(facet.sdxECCAAutoTimer)();assert.equal(ui.request(),undefined); // ctrl ready, occurrence not ready
 facet.occurrenceReady=true;timers.get(facet.sdxECCAAutoTimer)();
 assert.equal(facet.states.length,0);
-const dialog={View:{facets:activeFacets},myDialog:{},evaluateValidationStatus(){facet.states.push(facet.facetValidation);facet.buttonDisabled=!(facet.facetValidation&&facet.baseValid);}};
-api.bindDialog(dialog);assert.equal(facet.icon,'classification-book');
+const dialog={View:{facets:activeFacets},myDialog:{},evaluateValidationStatus(){api.bindDialog(this);facet.states.push(facet.facetValidation);facet.buttonDisabled=!(facet.facetValidation&&facet.baseValid);}};
+api.bindDialog(dialog);api.bindDialog(dialog);assert.equal(session.dialog,undefined);
+assert.equal(facet.states.length,0);
+const bindingTask=session.dialogBindTimer;timers.get(bindingTask)();timers.delete(bindingTask);
+assert.equal(facet.states.length,1);assert.equal(facet.icon,'classification-book');
 assert.equal(api.canSubmitDialog(dialog),false);assert.equal(facet.buttonDisabled,true);assert.equal(ui.ctrl.container.style.display,'none');
 assert.equal(props.sdxECCAAutoRoot.children.length,3); // 범위 제한 스타일, 상태, 폼. 검색 컴포넌트 없음
 assert.match(props.sdxECCAAutoRoot.children[0].textContent,/\.sdxECCAClassFields .*color: inherit !important/);
@@ -167,6 +170,13 @@ for(const [type,library] of [['General Library','L1'],['General Class','WRONG']]
 }
 ({session}=makeSession());session.classId='C1';api.notifyAttributesLoaded({sdxECCAAutoSession:session,sdxECCAAutoClassId:'C1'},{});assert.equal(session.status,'error');session.dispose();
 ({session}=makeSession());timers.get(session.timer)();assert.equal(session.status,'error');session.dispose();
+// 늦춘 dialog 연결은 닫힌 화면에 적용하지 않습니다.
+{
+ const closed=makeSession();let calls=0;
+ const dialog={View:{facets:closed.facets},myDialog:{},evaluateValidationStatus(){calls++;}};
+ api.bindDialog(dialog);const deferred=timers.get(closed.session.dialogBindTimer);
+ closed.session.dispose();deferred();assert.equal(calls,0);
+}
 // 타입 표시와 원래 생성 스키마가 함께 유지되는지 확인합니다.
 for(const mode of ['hidden','disabled']){
  ({session}=makeSession('C1',mode));const typed=data();const descriptor=typed.defaultAttributes.Type.persistData[0];

@@ -68,6 +68,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             if (session.disposed) return;
             session.disposed = true;
             clearTimeout(session.timer);
+            clearTimeout(session.dialogBindTimer);
+            session.bindingDialog = null;
             if (session.cancelRequest) session.cancelRequest();
             if (session.cleanupValidation) session.cleanupValidation();
             session.listeners.forEach(function (fn) { fn(session); });
@@ -329,10 +331,23 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     /** 대화상자 생성이 끝난 뒤 한 번 연결합니다. 탭 아이콘 상태와 버튼 유효성을 분리합니다. */
     function sdxECCABindDialog(dialog) {
         var session = sdxECCAFindAutoSession(dialog);
-        if (!session || session.disposed) return;
-        session.dialog = dialog;
-        if (session.refreshValidation) session.refreshValidation();
-        else sdxECCAPreserveValidationState(dialog);
+        if (!session || session.disposed || session.bindingDialog === dialog) return;
+        session.bindingDialog = dialog;
+        clearTimeout(session.dialogBindTimer);
+        // setup/Promise 콜백 스택이 끝난 뒤 연결합니다. 초기화 안에서 버튼 복원으로 재진입하지 않습니다.
+        session.dialogBindTimer = setTimeout(function () {
+            session.dialogBindTimer = null;
+            if (session.disposed || session.bindingDialog !== dialog) return;
+            session.dialog = dialog;
+            if (typeof dialog.evaluateValidationStatus !== "function") {
+                session.fail(new Error("설치된 DialogController의 evaluateValidationStatus 함수를 확인해 주세요."));
+                return;
+            }
+            try {
+                if (session.refreshValidation) session.refreshValidation();
+                else sdxECCAPreserveValidationState(dialog);
+            } catch (error) { session.fail(error); }
+        }, 0);
     }
 
     function sdxECCAPublishButtonValidation(session) {

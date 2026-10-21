@@ -98,3 +98,8 @@ node --check webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js
 - bindDialog 후 OOTB evaluateValidationStatus로 버튼만 갱신하며, 분류 facetValidation은 실제 결과를 유지.
 - 실제 R2024x DialogController.evaluateValidationStatus에서도 무효/유효에 따른 버튼 상태와 아이콘 속성 유지 검사 통과.
 - 이번 수정은 생성 API 오류를 처리하지 않습니다. 실제 서버의 탭 표시/생성은 미검증입니다.
+
+
+bindDialog 지연 연결 보완: 동기 버튼 집계 호출 없음, 같은 dialog 중복 연결 방지,
+집계 중 bindDialog 재호출 무시, 연결 대기 중 화면 종료 후 늦은 작업 무시 검사 통과.
+사용자 환경의 팝업 표시 정상화는 재배포 후 확인이 필요합니다.
