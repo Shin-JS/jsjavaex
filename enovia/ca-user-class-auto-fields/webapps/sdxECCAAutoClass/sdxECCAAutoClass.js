@@ -320,6 +320,25 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         }
     }
 
+    /** 대화상자 생성이 끝난 뒤 한 번 연결합니다. 탭 아이콘 상태와 버튼 유효성을 분리합니다. */
+    function sdxECCABindDialog(dialog) {
+        var session = sdxECCAFindAutoSession(dialog);
+        if (!session || session.disposed) return;
+        session.dialog = dialog;
+        if (session.refreshValidation) session.refreshValidation();
+        else sdxECCAPreserveValidationState(dialog);
+    }
+
+    function sdxECCAPublishButtonValidation(session) {
+        var dialog = session.dialog;
+        if (!dialog || !dialog.myDialog || session.updatingButtons || session.disposed) return;
+        session.updatingButtons = true;
+        try {
+            // OOTB 집계는 모든 facetValidation을 확인합니다. 탭 아이콘 변경 함수를 호출하지 않습니다.
+            dialog.evaluateValidationStatus();
+        } finally { session.updatingButtons = false; }
+    }
+
     /** OOTB resetButtons가 준비/입력 오류 상태를 덮어쓰지 않도록 마지막에 적용합니다.
      * 활성화는 OOTB evaluateValidationStatus에 맡기며 취소 버튼은 건드리지 않습니다.
      */
@@ -347,7 +366,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     function sdxECCAInstallValidationState(facet, session) {
         if (facet.sdxECCAValidationInstalled) return;
         facet.sdxECCAValidationInstalled = true;
-        var watchedModel = null, pending = null, unsubscribe = null, validating = false, needsPublish = false;
+        var watchedModel = null, pending = null, unsubscribe = null, validating = false;
         function unwatch() {
             if (watchedModel) watchedModel.removeEvent("onChangeAttributes", onChange);
             watchedModel = null;
@@ -382,21 +401,9 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             }
             session.fieldsValid = valid;
             if (valid) session.validationError = null;
-            var occurrence = typeof facet.getOccurrence === "function" ? facet.getOccurrence() : null;
-            if (!occurrence || typeof occurrence.setValidation !== "function") {
-                // facet init 중에는 occurrence가 아직 없습니다. 값만 보존하고 이벤트는 준비 후 발행합니다.
-                facet.facetValidation = valid;
-                needsPublish = true;
-                return;
-            }
-            if (needsPublish || facet.facetValidation !== valid) {
-                needsPublish = false;
-                facet.setFacetValidation(valid);
-            }
-        }
-        if (typeof facet.setFacetValidation !== "function") {
-            session.fail(new Error("OOTB setFacetValidation 연결을 확인해 주세요."));
-            return;
+            // 값은 집계에 반영하되 탭 아이콘을 오류 상태로 바꾸는 setFacetValidation은 호출하지 않습니다.
+            facet.facetValidation = valid;
+            sdxECCAPublishButtonValidation(session);
         }
         session.cleanupValidation = function () {
             clearTimeout(pending);
@@ -404,6 +411,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             if (unsubscribe) unsubscribe();
             session.cleanupValidation = null;
             session.refreshValidation = null;
+            session.dialog = null;
         };
         session.refreshValidation = refresh;
         unsubscribe = session.subscribe(refresh);
@@ -665,6 +673,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         destroyFields: sdxECCADestroyAutoFields,
         checkFacetContext: sdxECCACheckAutoFacetContext,
         canSubmitDialog: sdxECCACanSubmitAutoDialog,
+        bindDialog: sdxECCABindDialog,
         preserveValidationState: sdxECCAPreserveValidationState,
         disposeDialog: sdxECCADisposeAutoDialog,
         connectClassification: sdxECCAConnectAutoClassification,

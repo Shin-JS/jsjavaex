@@ -65,6 +65,14 @@
  * ["UWA/Controls/Abstract", "DS/Windows/ImmersiveFrame", "DS/Controls/ComboBox", "DS/Controls/Button", "DS/Windows/Dialog", "DS/Controls/ModalLoader", "DS/ENONewWidget/ENONew/Events", "DS/ENONewWidget/ENONew/View/ENOListView", "DS/ENONewWidget/ENONew/View/ENOTabView", "DS/ENONewWidget/ENONew/View/ENOWizardView", "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper", "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls", "DS/sdxECCAAutoClass/sdxECCAAutoClass"]
  * function(e,t,i,n,a,o,r,s,c,l,u,d,sdxECCAAutoClass){ ...기존 본문... }
  */
+/* setup() 안에서 buildContent/buildToolbar 완료 후 myDialog 생성과 footer 버튼 구성이 끝난 위치:
+ *     sdxECCAAutoClass.bindDialog(o);
+ * o는 이 then 콜백이 캡처한 ENONewDialogController입니다. 실제 설치 코드의 변수명에 맞춥니다.
+ * R2024x의 setup에서는 o.myDialog=o.buildDialog(a),o.manageButtons(),... 처리 다음,
+ * UWA.Promise.all([l,c]).then(function(e){ ... }) 콜백의 마지막에 추가합니다.
+ * this.View와 this.myDialog가 준비되기 전에 넣지 않습니다.
+ * 이 연결은 필수 검증 결과를 생성 버튼에 전달하며 분류 탭의 오류 아이콘 변경은 호출하지 않습니다.
+ */
 /* onSubmitDialog(e) 첫 줄(기존 ServiceCallback 실행보다 앞):
  * 이 연결은 준비 상태와 이동한 분류 폼의 OOTB 검증을 생성 흐름에 연결합니다.
  * 별도 빈 값 판정은 하지 않습니다. 기본 ENOListView 검증은 기본 속성 모델만 처리하므로

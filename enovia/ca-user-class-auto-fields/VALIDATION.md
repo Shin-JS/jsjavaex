@@ -90,3 +90,11 @@ node --check webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js
 - 대상 폼의 구형 필수 라벨 요소만 mandIcon/wux-ui3ds/wux-ui-3ds-new-create span으로 교체.
 - 반복 렌더링 시 중복 생성하지 않고 검증 모델/버튼 경로를 변경하지 않는 검사 통과.
 - 실제 서버의 두 별표 소멸 여부와 분류 빨간 X 원인/해결은 미검증입니다.
+
+
+분류 탭 오류 아이콘 변경 제거:
+
+- setFacetValidation을 호출하면 예외를 던지도록 만든 대역에서 초기 로딩/오류/유효 상태 테스트 통과.
+- bindDialog 후 OOTB evaluateValidationStatus로 버튼만 갱신하며, 분류 facetValidation은 실제 결과를 유지.
+- 실제 R2024x DialogController.evaluateValidationStatus에서도 무효/유효에 따른 버튼 상태와 아이콘 속성 유지 검사 통과.
+- 이번 수정은 생성 API 오류를 처리하지 않습니다. 실제 서버의 탭 표시/생성은 미검증입니다.

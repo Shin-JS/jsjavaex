@@ -21,4 +21,11 @@ classification.setFacetValidation(true);assert.equal(dialog.footerButtons.Ok.dis
 property.facetValidation=false;classification.setFacetValidation(false);classification.setFacetValidation(true);
 assert.equal(dialog.footerButtons.Ok.disabled,true); // 기본 facet의 무효 상태 유지
 property.facetValidation=true;dialog.evaluateValidationStatus();assert.equal(dialog.footerButtons.Ok.disabled,false);
+// 변경 후 경로: 탭 표시 함수를 거치지 않고 실제 OOTB 버튼 집계만 호출합니다.
+classification.icon='classification-book';
+classification.setFacetValidation=()=>{throw new Error('tab error icon update must not run');};
+classification.facetValidation=false;dialog.evaluateValidationStatus();
+assert.equal(dialog.footerButtons.Ok.disabled,true);assert.equal(classification.icon,'classification-book');
+classification.facetValidation=true;dialog.evaluateValidationStatus();
+assert.equal(dialog.footerButtons.Ok.disabled,false);assert.equal(classification.icon,'classification-book');
 console.log('PASS: actual OOTB setFacetValidation -> evaluateValidationStatus disables all create buttons, preserves cancel and other facet validity');

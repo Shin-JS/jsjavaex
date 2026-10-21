@@ -55,7 +55,7 @@ function eventModel(model){
 }
 function classificationFacet(ui){return {facetValidation:true,states:[],baseValid:true,occurrenceReady:true,
  getOccurrence(){return this.occurrenceReady?{setValidation(){}}:null;},
- setFacetValidation(value){assert.ok(this.getOccurrence(),'setValidation must not run without occurrence');this.facetValidation=value;this.states.push(value);this.buttonDisabled=!(value&&this.baseValid);},
+ icon:'classification-book',setFacetValidation(){throw new Error('Do not update classification-tab error presentation');},
  initUI:{getController:()=>({plmNewLibraryActive:ui.ctrl})}};}
 function makeController(session){
  const parent=new Element(), form=new Element(), sibling=new Element();parent.appendChild(form);parent.appendChild(sibling);form.nextSibling=sibling;
@@ -113,8 +113,9 @@ api.connectClassification(facet,{sdxECCAAutoSession:session,securityContext:sess
 assert.equal(facet.facetValidation,false);assert.equal(facet.states.length,0);
 timers.get(facet.sdxECCAAutoTimer)();assert.equal(ui.request(),undefined); // ctrl ready, occurrence not ready
 facet.occurrenceReady=true;timers.get(facet.sdxECCAAutoTimer)();
-assert.equal(facet.states[0],false); // initial state must be published even though the boolean already matches
-const dialog={View:{facets:activeFacets}};
+assert.equal(facet.states.length,0);
+const dialog={View:{facets:activeFacets},myDialog:{},evaluateValidationStatus(){facet.states.push(facet.facetValidation);facet.buttonDisabled=!(facet.facetValidation&&facet.baseValid);}};
+api.bindDialog(dialog);assert.equal(facet.icon,'classification-book');
 assert.equal(api.canSubmitDialog(dialog),false);assert.equal(facet.buttonDisabled,true);assert.equal(ui.ctrl.container.style.display,'none');
 assert.equal(props.sdxECCAAutoRoot.children.length,2); // 상태와 폼뿐, 검색 컴포넌트 없음
 ui.request().onComplete({chains:new Map([['C1',[{physicalid:'L1',type:'General Library',label:'Library'},{physicalid:'C1',type:'General Class',label:'Class'}]]])});
@@ -129,7 +130,7 @@ assert.equal(facet.buttonDisabled,false);
 const watched=ui.ctrl.classifPropModels[0];
 assert.equal(watched.listenerCount(),1);
 validateError='필수';watched.emit('onChangeAttributes');flushButton();
-assert.equal(facet.buttonDisabled,true);
+assert.equal(facet.buttonDisabled,true);assert.equal(facet.icon,'classification-book');
 validateError=null;watched.emit('onChangeAttributes');flushButton();
 assert.equal(facet.buttonDisabled,false);
 // 기본 속성이 유효하지 않으면 분류가 유효해져도 생성 버튼을 활성화하지 않습니다.

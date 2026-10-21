@@ -268,3 +268,27 @@ setFacetValidation 호출은 occurrence.setValidation이 준비될 때까지 미
 필수 아이콘 중복 보완: 같은 속성 행(.flexLine)에 mandIcon이 여러 개이면 DOM 순서상
 맨 앞의 하나만 남기고 뒤의 중복을 제거합니다. 라벨에 mandIcon이 이미 있으면 새 아이콘을
 추가하지 않습니다. 분류 탭/헤더 아이콘과 서버 생성 응답은 이 변경에서 처리하지 않습니다.
+
+
+## 분류 탭의 원래 아이콘 유지
+
+미입력 오류를 분류 탭 제목의 빨간 X로 표시하지 않도록, 커스텀 버튼 연결에서는
+`classificationFacet.setFacetValidation` / occurrence.setValidation을 호출하지 않습니다.
+facetValidation 값은 실제 검증 결과로 유지하고, 연결한 DialogController의
+OOTB `evaluateValidationStatus()`로 생성 버튼 상태만 집계합니다.
+필수 검증이나 서버 오류를 무시하거나 유효성 값을 true로 강제하지 않습니다.
+
+추가 적용: [ENONewWidget.js 연결 메모](webapps/ENONewWidget/ENONewWidget.js)의
+DialogController `setup()`에서 myDialog 생성 및 footer 구성 완료 후 다음 호출을 넣습니다.
+
+```javascript
+sdxECCAAutoClass.bindDialog(o);
+```
+
+o는 R2024x setup의 then 콜백이 캡처한 DialogController 변수입니다.
+설치 코드의 실제 컨트롤러 변수명으로 바꾸세요. 콜백 내부의 this를 임의로 사용하지 않습니다.
+main 파일 교체와 이 연결을 함께 적용하고 화면을 닫았다 다시 여세요.
+기존 onSubmitDialog/resetButtons 연결은 유지합니다. 연결 전에도 비활성 상태를 보관하고
+bindDialog 시점에 최신 상태를 버튼 집계로 전달합니다.
+
+로컬 대역 및 실제 R2024x 버튼 집계 코드로 검증했습니다. 실제 설치 버전에서의 아이콘 유지는 미확인입니다.
