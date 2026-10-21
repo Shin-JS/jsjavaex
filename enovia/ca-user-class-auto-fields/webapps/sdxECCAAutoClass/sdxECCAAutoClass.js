@@ -222,6 +222,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             throw new Error("분류 폼이 재초기화되었습니다. 화면을 다시 열어 주세요.");
         }
         if (form.parentNode !== facet.sdxECCAAutoHost) facet.sdxECCAAutoHost.appendChild(form);
+        sdxECCARenderMandatoryIcons(form);
         session.fieldsMounted = true;
         clearTimeout(facet.sdxECCAAutoResize);
         facet.sdxECCAAutoResize = setTimeout(function () {
@@ -229,6 +230,23 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 ctrl.classifPropertiesView.onInnerResize();
             }
         }, 0);
+    }
+
+    /** OOTB가 만든 필수 라벨 표시만 기본 생성 폼의 mandIcon으로 맞춥니다.
+     * 분류 헤더/탭/검증 오류 아이콘은 선택하거나 변경하지 않습니다.
+     */
+    function sdxECCARenderMandatoryIcons(form) {
+        if (!form) return;
+        form.querySelectorAll(".attrLabel.mandAttr").forEach(function (label) {
+            var legacy = label.querySelector(".attrMand");
+            if (!legacy) return;
+            var icon = document.createElement("span");
+            icon.className = "mandIcon wux-ui3ds wux-ui-3ds-new-create";
+            icon.setAttribute("aria-hidden", "true");
+            legacy.parentNode.replaceChild(icon, legacy);
+            // 구형 라벨 클래스의 별표 pseudo-element와 새 아이콘이 중복되지 않도록 합니다.
+            label.classList.remove("mandAttr");
+        });
     }
 
     function sdxECCACheckAutoFacetContext(facet, options) {
@@ -603,6 +621,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                     }
                 });
             }
+            sdxECCARenderMandatoryIcons(session.controller.accordeonCon);
             session.markAttributesLoaded(model.sdxECCAAutoClassId);
         } catch (error) { session.fail(error); }
     }
@@ -642,6 +661,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         applyClass: sdxECCAApplyOrganizationClass,
         tagClassModel: sdxECCATagAutoClassModel,
         prepareAttributes: sdxECCAPrepareClassAttributes,
+        renderMandatoryIcons: sdxECCARenderMandatoryIcons,
         notifyAttributesLoaded: sdxECCANotifyAutoClassAttributes,
         isEnabled: sdxECCAIsFixedClassWidget,
         configureCreateType: sdxECCAConfigureFixedCreateType

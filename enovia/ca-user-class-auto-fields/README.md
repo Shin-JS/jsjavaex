@@ -186,7 +186,7 @@ R2024x `3DSpaceAjaxRequests.getListOfAttributes`에서 확인한
 
 별도로 추가했던 `validateMandatoryFields`와 빈 값 판정은 제거했습니다.
 필수 여부는 폼 생성 전의 `mandatory:true` 메타데이터로 전달하고,
-별표 DOM 추가, 라벨 문자열 변경, 별표를 숨기는 CSS는 사용하지 않습니다.
+필수 여부는 OOTB 모델이 관리하고, 필수 라벨의 구형 별표만 기본 생성 폼의 mandIcon으로 교체합니다.
 
 분류 폼은 속성 탭으로 이동해도 기본 속성의 ENOListView.propModel과 별도 모델을 사용합니다.
 따라서 생성 직전 `canSubmitDialog`에서 **실제 이동한 분류 폼**의 기본 검증도 호출합니다.
@@ -218,7 +218,7 @@ R2024x의 실제 AttributesUtils 구현으로 빈 필수값 오류 설정과 입
 별도 DOM 입력값 판정이나 주기적 polling은 하지 않습니다.
 
 필수 표시도 폼 생성 전에 `mandatory:true`를 전달하여 OOTB Form/tweaker에 맡깁니다.
-별표 문자열/HTML/CSS는 추가하지 않습니다. 기존 수동 별표 코드가 있다면 제거하세요.
+기존 수동 별표 코드가 있다면 제거하세요. 기본 생성 폼의 mandIcon 마크업으로 표시를 통일합니다.
 기존 화면의 중복 별표가 제거됐는지는 서버 DOM 확인 없이 확정할 수 없습니다.
 
 ### 이번 배포 변경
@@ -242,3 +242,24 @@ setFacetValidation 호출은 occurrence.setValidation이 준비될 때까지 미
 기존 컨트롤러 준비 타이머에서 occurrence도 확인하며, 준비되면 보관한 상태를 한 번 발행합니다.
 단순히 null일 때 return하여 초기 비활성 상태 전달을 누락하지 않습니다.
 준비 제한시간을 넘기면 오류로 남기며, 화면 종료 시 기존 타이머를 정리합니다.
+
+
+## 기본 생성 폼과 동일한 필수 아이콘
+
+`sdxECCAAutoClass.js`의 renderMandatoryIcons가 대상 폼 내부의
+`.attrLabel.mandAttr`에 있는 구형 `.attrMand` 요소만 아래 마크업으로 교체합니다.
+
+```html
+<span class="mandIcon wux-ui3ds wux-ui-3ds-new-create" aria-hidden="true"></span>
+```
+
+구형 라벨의 mandAttr 클래스도 제거하여 해당 클래스의 pseudo-element와 중복되지 않게 합니다.
+필수 여부를 담는 속성 모델의 mandatory 값은 유지합니다. 전역 스타일이나 OOTB 공용 파일은 변경하지 않습니다.
+폼 생성 완료와 기존 폼 배치 시 실행하며, 반복 통지에서 중복 추가하지 않습니다.
+앞서 수동으로 추가한 `.attrMand` 내부 span 코드가 있다면 최신 모듈의 처리로 대체할 수 있습니다.
+이번 수정은 검증/버튼 동작을 변경하지 않습니다.
+
+분류 아이콘이 로딩 후 빨간 X로 바뀌는 현상은 별도 확인 중입니다.
+확인한 R2024x setFacetValidation 및 대화상자 상태 집계에는 직접 아이콘을 바꾸는 코드가 없었습니다.
+탭 제목/클래스 섹션/필드 오류 중 어느 위치인지와 실제 설치 DOM/스택 확인이 필요합니다.
+이 수정은 분류/오류 아이콘을 선택하지 않으며 X를 강제로 숨기거나 원래 아이콘으로 덮어쓰지 않습니다.

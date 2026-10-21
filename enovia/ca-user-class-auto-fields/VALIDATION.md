@@ -83,3 +83,10 @@ node --check webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js
 - 컨트롤러가 준비됐어도 getOccurrence()가 null이면 setFacetValidation/자동 선택을 호출하지 않음.
 - 초기 false 상태를 보존하고 occurrence가 나중에 붙으면 같은 false 상태도 OOTB에 발행하는 검사 통과.
 - 기존 위젯 격리/모델 검증/버튼 상태 검사 모두 통과. 실제 설치 서버에서의 확인은 남아 있습니다.
+
+
+2026-10-21 기본 필수 아이콘 표시:
+
+- 대상 폼의 구형 필수 라벨 요소만 mandIcon/wux-ui3ds/wux-ui-3ds-new-create span으로 교체.
+- 반복 렌더링 시 중복 생성하지 않고 검증 모델/버튼 경로를 변경하지 않는 검사 통과.
+- 실제 서버의 두 별표 소멸 여부와 분류 빨간 X 원인/해결은 미검증입니다.

@@ -15,6 +15,7 @@ class Element {
  removeChild(node){this.children.splice(this.children.indexOf(node),1);node.parentNode=null;}
  insertBefore(node,next){if(node.parentNode)node.parentNode.removeChild(node);this.children.splice(this.children.indexOf(next),0,node);node.parentNode=this;}
  setAttribute(){}
+ querySelectorAll(){return [];}
  contains(node){return node===this||this.children.some(c=>c.contains(node));}
 }
 const document = {createElement:()=>new Element(),activeElement:null};
@@ -74,6 +75,17 @@ function makeController(session){
  editPropertiesUI:{elements:{UIController:{validateModels(models){assert.equal(models[0],ctrl.renderedModel || ctrl.classifPropModels[0]);return validateError?[{message:validateError}]:null;}}}}
  };}}};
  return {ctrl,parent,form,sibling,request:()=>request,selectedCount:()=>selectedCount};
+}
+// 필수 라벨만 기본 아이콘으로 교체하며 분류/오류 아이콘은 건드리지 않습니다.
+{
+ let required=true, count=0;const classificationIcon={className:'original-classification-icon'};
+ const old={textContent:' *'},label={querySelector:selector=>selector==='.attrMand'?old:null,
+ classList:{remove(name){assert.equal(name,'mandAttr');required=false;}},
+ replaceChild(icon,node){assert.equal(node,old);assert.equal(icon.className,'mandIcon wux-ui3ds wux-ui-3ds-new-create');count++;}};
+ old.parentNode=label;
+ const form={querySelectorAll(selector){assert.equal(selector,'.attrLabel.mandAttr');return required?[label]:[];}};
+ api.renderMandatoryIcons(form);api.renderMandatoryIcons(form);
+ assert.equal(count,1);assert.equal(classificationIcon.className,'original-classification-icon');
 }
 // 비활성 위젯과 다른 타입의 공용 호출에는 세션을 추가하지 않습니다.
 config={};let facets=metadata();api.attachBridge(data(),facets,{});assert.equal(facets[0].options.sdxECCAAutoSession,undefined);
