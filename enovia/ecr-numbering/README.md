@@ -1,3 +1,11 @@
+# ECR No: Create Action 트리거 채번
+
+2026-10-21: 현재 전환안은 **즉시 실행 Create Action JPO**입니다. [TRIGGER-INTEGRATION.md](TRIGGER-INTEGRATION.md)의 배포·기존 OOTB 트리거 보존·검증 순서를 따릅니다. 대상은 정확한 `sdxECChangeAction` 타입 + `sdxECR` 정책이며 `sdxECO`는 제외합니다. 서버 배포/등록은 아직 하지 않았습니다.
+
+기존 채번 핵심 코드를 재사용하며 `jpo/sdxEcrNumbering_mxJPO.java` → `SdxEcrCreateAction`에서 생성 객체의 이름을 변경합니다. 기존 Adapter 호출과 트리거를 동시에 채번시키지 않습니다. 아래 Adapter 설명과 패치는 이전 방식의 이력입니다. 새 트리거 전환에 Adapter 패치를 적용하지 마십시오.
+
+---
+
 # ECR No: 기존 CA 생성 백엔드에 적용할 채번 코드
 
 2026-10-20 R2024x 원본 조사 반영본입니다. 기존 `ENONewChangeActionApplicationAdapter.createBusinessObject(Context, CreateParameters)`에 이름 설정 호출을 추가하는 **소스 수정 패치와 Java 구현**입니다. 새 생성 REST API·위젯·채번 스키마를 만들지 않습니다.

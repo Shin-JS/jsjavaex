@@ -1,3 +1,5 @@
+> 이전 Adapter 연결 방식의 이력입니다. 2026-10-21부터의 트리거 전환은 [TRIGGER-INTEGRATION.md](TRIGGER-INTEGRATION.md)를 따릅니다. 두 연결을 동시에 활성화하지 않습니다.
+
 # R2024x 기존 CA 생성 코드 수정
 
 ## 수정 대상

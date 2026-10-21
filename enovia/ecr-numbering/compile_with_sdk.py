@@ -19,7 +19,8 @@ args.output.mkdir(parents=True, exist_ok=True)
 java = shutil.which("java")
 if not java:
     raise SystemExit("JDK 17+ required")
-sources = sorted(str(path) for path in (root / "src").rglob("*.java"))
+sources = sorted(str(path) for directory in (root / "src", root / "jpo")
+                 for path in directory.rglob("*.java"))
 subprocess.run([java, "-m", "jdk.compiler/com.sun.tools.javac.Main", "--release", "8",
                 "-classpath", os.pathsep.join(str(path) for path in jars),
                 "-d", str(args.output), *sources], check=True)

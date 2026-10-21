@@ -5,6 +5,8 @@ import java.util.List;
 
 /** Call-order/output double only; does not execute MQL or simulate DB transactions. */
 public class MQLCommand {
+    public interface Handler { String exec(String command, List<String> args) throws Exception; }
+    public static Handler handler;
     public static String result = "";
     public static String error = "";
     public static boolean success = true;
@@ -13,6 +15,7 @@ public class MQLCommand {
     public static String exec(Context context, String command, List<String> arguments) throws Exception {
         lastCommand = command;
         lastArguments = new ArrayList<>(arguments);
+        if (handler != null) return handler.exec(command, arguments);
         BusinessObject.calls.add("query:" + arguments.get(1));
         if (!success || !error.isEmpty()) throw new Exception("simulated MQL error: " + error);
         return result;

@@ -46,3 +46,12 @@ python3 run_tests.py
 - 기존 CA 생성 후 처리와 분류 저장, 응답 및 UI name 반영.
 
 대역은 Matrix DB 잠금/롤백을 재현하지 않습니다. 실제 SDK 컴파일 통과도 서버 실행 성공과 동일하지 않습니다. 기본 CA를 포함한 실제 위젯 통합 실행은 이 환경에서 수행하지 않았습니다.
+
+
+## 2026-10-21 Create Action 전환
+
+`EcrCreateActionTest`는 실제 type/policy에 따른 대상 제한, 기존 최대 번호에서 이어 발급, 중복 호출 시 추가 소비 방지, update 트랜잭션 요구, 미해결 매크로/잘못된 인자 거절, 사업부/카운터 누락, 카운터 쓰기 실패, rename 실패 및 이름 덮어쓰기 오류 전파, 잘못된 기존 번호, 발급 한계, Adapter 전환 모드를 검사합니다. JPO wrapper도 로컬 컴파일 대상입니다. 등록 준비 도구의 기존 Input 보존 및 잘못된 연결 거절도 검사합니다.
+
+대역 테스트가 실제 DB rollback이나 다중 WAS 잠금을 구현하지는 않습니다. 서버 JPO insert/등록/실행, OOTB 트리거 보존, 생성 응답 name, 권한 및 전체 rollback은 TRIGGER-INTEGRATION.md에 따른 통합 검증이 필요합니다.
+
+이번 변경도 참조 R2024x 커밋 `ef1fd81959f127ec7d5d5760cf2178e381cf738a`의 실제 `eMatrixServletRMI.jar`, `NewContentWebServices.jar`에 대해 일반 Java 및 JPO wrapper 전체를 Java 8 대상으로 컴파일해 통과했습니다. 로컬 검사 결과: 기존 번호 규칙 143,969 assertions, 기존 번호 조회/발급 46 checks, 새 Create Action 40 assertions, Python 패치/등록 준비 도구 각 4 tests 통과. SDK 컴파일은 서버 설치 버전에서의 실행 호환성 검증과 구분합니다.
