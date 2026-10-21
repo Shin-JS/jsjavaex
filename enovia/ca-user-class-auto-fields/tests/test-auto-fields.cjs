@@ -121,7 +121,7 @@ const bindingTask=session.dialogBindTimer;timers.get(bindingTask)();timers.delet
 assert.equal(facet.states.length,1);assert.equal(facet.icon,'classification-book');
 assert.equal(api.canSubmitDialog(dialog),false);assert.equal(facet.buttonDisabled,true);assert.equal(ui.ctrl.container.style.display,'none');
 assert.equal(props.sdxECCAAutoRoot.children.length,3); // 범위 제한 스타일, 상태, 폼. 검색 컴포넌트 없음
-assert.match(props.sdxECCAAutoRoot.children[0].textContent,/\.sdxECCAClassFields .*color: inherit !important/);
+assert.match(props.sdxECCAAutoRoot.children[0].textContent,/\.sdxECCAClassFields .*font-size: 7px; font-family: DSFontIcon;/);
 ui.request().onComplete({chains:new Map([['C1',[{physicalid:'L1',type:'General Library',label:'Library'},{physicalid:'C1',type:'General Class',label:'Class'}]]])});
 await flush();assert.equal(ui.selectedCount(),1);assert.equal(session.status,'loading');assert.equal(api.canSubmitDialog(dialog),false);
 api.prepareAttributes(ui.ctrl.classifPropModels[0],{attribute:[]});

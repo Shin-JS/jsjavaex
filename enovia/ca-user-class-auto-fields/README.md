@@ -294,17 +294,19 @@ bindDialog 시점에 최신 상태를 버튼 집계로 전달합니다.
 로컬 대역 및 실제 R2024x 버튼 집계 코드로 검증했습니다. 실제 설치 버전에서의 아이콘 유지는 미확인입니다.
 
 
-### 필수 아이콘 색상
+### 필수 아이콘 표시
 
 대상 폼에만 sdxECCAClassFields 클래스를 붙이고 다음 규칙을 대화상자 생성 시 함께 삽입합니다.
 
 ```css
 .sdxECCAClassFields .flexLine .formLabel .mandIcon {
-    color: inherit !important;
+    font-size: 7px;
+    font-family: DSFontIcon;
 }
 ```
 
-필수 아이콘은 라벨의 글자색을 따릅니다. 폰트/글리프, 필수 여부와 버튼 상태는 변경하지 않습니다.
+사용자 환경의 정상 OOTB 필수 아이콘에서 확인한 7px / DSFontIcon을 적용합니다.
+색상 강제 상속을 제거하여 기존 OOTB 색상 규칙을 따릅니다. 필수 여부와 버튼 상태는 변경하지 않습니다.
 별도 CSS 파일을 배포할 필요 없이 최신 main 모듈에 포함되어 있습니다.
 종료 시 삽입한 스타일과 추가한 폼 클래스를 정리합니다.
 
