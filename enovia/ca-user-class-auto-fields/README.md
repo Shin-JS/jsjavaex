@@ -1,5 +1,12 @@
 # 클래스 자동 표시 · 유형 고정 · 부서 조회 연결 준비
 
+## 생성 서비스 typeName 유지
+
+`configureCreateType()`에서 생성 타입이 `sdxECChangeAction`이면 `options.typeName`만
+`Change Action`으로 전달합니다. `type`과 `options.preferedType`은 `sdxECChangeAction`을
+유지합니다. 이 분기는 저장 성공을 확인했던 설정이며 Policy 파라미터 변경과 함께 유지합니다.
+Change Order, Change Request 및 다른 타입은 기존 타입 이름을 그대로 전달합니다.
+
 ## sdxECType 고정 및 숨김 (2026-10-21)
 
 생성 Policy는 고정 문자열 대신 파라미터로 받습니다. 대상 위젯의 기존 설정 위치에서

@@ -749,7 +749,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var type = widget.getValue("sdxECCAAutoClassType") || "Change Action";
         createOptions.type = type;
         createOptions.options = createOptions.options || {};
-        createOptions.options.typeName = type;
+        // 커스텀 CA도 OOTB 생성 서비스의 typeName은 Change Action으로 전달합니다.
+        createOptions.options.typeName = type === "sdxECChangeAction" ? "Change Action" : type;
         createOptions.options.preferedType = type;
         return createOptions;
     }

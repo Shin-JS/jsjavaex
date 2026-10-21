@@ -268,6 +268,17 @@ config={};const normal={type:'Change Action',options:{preferedType:'Other'}};ass
 config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'Custom CA'};
 const launch={type:'Change Action',options:{preferedType:'Other',select:[]},context:{},facets:[]};
 const configured=api.configureCreateType(launch);assert.equal(configured,launch);assert.equal(launch.type,'Custom CA');assert.equal(launch.options.typeName,'Custom CA');assert.equal(launch.options.preferedType,'Custom CA');assert.equal(launch.options.select.length,0);
+// 저장 성공을 확인한 typeName 분기는 Policy 수정 후에도 유지합니다.
+for (const typeName of ['sdxECChangeAction','Change Action','Change Order','Change Request']) {
+ config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:typeName};
+ const options={options:{select:['physicalid']}};api.configureCreateType(options);
+ assert.equal(options.type,typeName);assert.equal(options.options.preferedType,typeName);
+ assert.equal(options.options.typeName,typeName==='sdxECChangeAction'?'Change Action':typeName);
+ assert.deepEqual(options.options.select,['physicalid']);
+}
+config={sdxECCAEnableAutoClassByOrganization:false,sdxECCAAutoClassType:'sdxECChangeAction'};
+const untouched={type:'Change Request',options:{typeName:'Change Request',preferedType:'Change Request'}};
+api.configureCreateType(untouched);assert.equal(untouched.options.typeName,'Change Request');
 console.log('PASS: widget/type isolation, fixed class without department lookup, asynchronous selection/loading, validation/blur, context change, form restore, late responses, config/type/library/response errors, timeout, hidden/read-only type with original schema, launch type isolation');
 
 // 부서 서비스와 기존 폼 흐름의 연결: 두 대화상자 격리, 늦은 응답, 오류 시 우회 금지.
