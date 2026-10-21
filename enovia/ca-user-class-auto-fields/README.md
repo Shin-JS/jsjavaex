@@ -1,5 +1,49 @@
 # 클래스 자동 표시 · 유형 고정 · 부서 조회 연결 준비
 
+## 클래스 코드와 활성 상태로 자동 선택 (2026-10-21)
+
+`sdxClassCode`가 정확히 `EC_MX`이고 활성 상태인 `General Class`의 ID를 조회하여
+기존 자동 선택·속성 표시 흐름에 전달합니다. Class Attributes의 입력 기본값이 아닌
+**클래스 객체 자체의 속성**을 확인합니다. N개 선택은 추가하지 않았습니다.
+0건·여러 건·조회 오류는 생성을 막으며 기존 고정 ID로 우회하지 않습니다.
+Policy 파라미터와 `typeName = Change Action` 분기는 유지합니다.
+
+**배포할 파일:**
+
+- `webapps/sdxECCAAutoClass/sdxECCAAutoClass.js`
+- `webapps/sdxECCAAutoClass/sdxECCAClassAttributeService.js`
+
+대상 위젯의 기존 설정 위치에서 `fixed` 설정이 있다면 아래 설정으로 바꿉니다.
+
+```js
+widget.setValue("sdxECCAClassRuleMode", "code");
+widget.setValue("sdxECCAClassCode", "EC_MX");
+```
+
+code가 현재 기본 모드입니다. 이 모드에는 `sdxECCAFixedClassId`가 필요하지 않습니다.
+기존 ID 방식은 명시적으로 `fixed` 모드를 지정할 때만 사용합니다.
+**JSP·새 REST 서버·JPO 배포는 필요하지 않습니다.** 현재 위젯에서 사용하는 OOTB API를 호출합니다.
+
+조회 흐름:
+
+1. `POST /resources/IPClassificationReuse/Search/search`에 General Class 쿼리와
+   `states_to_fetch: ["Active"]`를 전달하여 DB 기반 authoring 검색으로 활성 후보를 읽습니다.
+2. 각 페이지의 ID를 `POST /resources/IPClassificationReuse/classifiedItem/getContentDetails`로 조회합니다.
+   `select_predicate`에 `attribute[sdxClassCode]`, physicalid, 유형, 상태를 포함합니다.
+3. 상세 응답에서도 활성 상태인지 확인하고 코드가 `EC_MX`와 정확히 같은 것만 남깁니다.
+   검색 인덱스에 커스텀 속성이 등록되어 있다고 가정하지 않습니다.
+4. 빈 페이지까지 조회하여 다른 페이지의 중복도 확인합니다. 정확히 1개이면 기존
+   getClassPaths → 클래스 필수 설정 조회 → 자동 선택·속성 표시 순서로 진행합니다.
+
+검색의 활성 필터와 상세 상태 `Active` 또는 `Classification.Active`는 참조 OOTB 코드 기준입니다.
+권한 문맥과 tenant는 팝업 세션에서 가져오며 다른 팝업의 설정을 공유하지 않습니다.
+팝업이 닫히거나 문맥이 바뀌면 이후 페이지를 요청하지 않습니다.
+활성 클래스가 많으면 후보 페이지와 상세 조회 횟수에 따라 로딩 시간이 늘어날 수 있습니다.
+
+검사: `node tests/test-class-code.cjs` 및 기존 auto-fields/class-mandatory/amd-headers 검사를 통과했습니다.
+참조 R2024x LibraryEditor의 실제 요청 생성 함수로 위 API·상태 필터·DB 속성 선택 형식을 대조했습니다.
+사용자 설치 서버의 실제 API 응답과 자동 선택·저장은 아직 실행 확인하지 못했습니다.
+
 ## Payload의 basicAttributes.policy 지정
 
 최신 main 모듈은 `installFields`에서 해당 팝업의 `ENOListView.onSubmit` 콜백을 연결합니다.
@@ -54,7 +98,7 @@ R2024x 모델 빌더의 `visible || forUI` 조건을 사용해 숨긴 모델도 
 
 2026-10-19 현장에서 지정 클래스의 속성 필드가 표시되는 것을 확인했습니다. 완료 알림에는 **클래스 모델과 응답을 이 순서로** 전달해야 합니다. 현재 설치 소스가 `modelList:[i]`, `onAttributesLoad:function(r)`이면 `notifyAttributesLoaded(i,r)`입니다. R2024x 예시의 축약 변수명을 그대로 사용하지 않습니다.
 
-기본값은 기존 고정 클래스 방식입니다. 향후 로그인 사용자 부서와 분류에 추가할 General Type의 부서 값을 매칭하도록 별도 조회 서비스와 Provider 연결 지점을 추가했습니다. 실제 General Type/속성/API는 미확정이므로 **실제 부서 조회 두 함수는 아직 연결하지 않았습니다.** [부서 조회 설명](DEPARTMENT.md)을 참고합니다. 서버 저장 오류는 별도 보류 상태입니다.
+기존 fixed 방식도 명시적 설정으로 지원합니다. 로그인 사용자 부서와 General Type의 부서 값을 매칭하는 department 방식은 Provider 연결 준비 단계이며, **실제 부서 조회 두 함수는 아직 연결하지 않았습니다.** [부서 조회 설명](DEPARTMENT.md)을 참고합니다.
 
 ## 접두사 변경: zca → sdxECCA
 
@@ -158,13 +202,13 @@ sdxECCACss를 빼면 sdxECCAAutoClass 인자가 CSS 결과를 받습니다. 다�
 
 ```js
 widget.setValue("sdxECCAEnableAutoClassByOrganization", true);
-widget.setValue("sdxECCAAutoClassType", "sdxEcChangeAction");
-widget.setValue("sdxECCAFixedClassId", "CLASS_PHYSICALID");
-widget.setValue("sdxECCAClassRuleMode", "fixed");
+widget.setValue("sdxECCAAutoClassType", "sdxECChangeAction");
+widget.setValue("sdxECCAClassRuleMode", "code");
+widget.setValue("sdxECCAClassCode", "EC_MX");
 widget.setValue("sdxECCATypeDisplay", "hidden");
 ```
 
-CLASS_PHYSICALID는 실제 General Class physicalid로 바꿉니다. 자동으로 적용할 유형은 실제 환경에서 지원하는 이름으로 설정합니다. sdxEcChangeAction은 현재 사용자 환경에서 설정한 이름이며 다른 환경에는 해당하지 않을 수 있습니다.
+자동으로 적용할 유형은 실제 환경에서 지원하는 이름으로 설정합니다. 현재 설정은 sdxECChangeAction입니다.
 
 - sdxECCATypeDisplay가 hidden이면 유형을 숨깁니다.
 - disabled이면 OOTB isReadOnly로 편집을 막습니다. 실제 모양은 렌더러에 따라 비활성 드롭다운 또는 읽기 전용 값입니다.

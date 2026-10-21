@@ -5,8 +5,8 @@
  * OOTB 모듈을 정적 의존성으로 요구하지 않아 역방향 의존 순환을 피합니다.
  * 값 검증은 실제 분류 폼 UIController의 기본 validateModels를 사용합니다.
  *
- * 클래스 결정은 ClassRuleService, 실제 사용자/분류 조회 연결은 OrganizationProvider로 분리합니다.
- * 기본 fixed 모드는 현재 정상 표시된 고정 클래스 방식을 유지합니다.
+ * 코드 조회는 ClassAttributeService, 부서 규칙/조회는 ClassRuleService와 OrganizationProvider로 분리합니다.
+ * 기본 code 모드는 OOTB 조회 API로 클래스 코드와 활성 상태를 확인합니다.
  */
 define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     "require",
@@ -94,7 +94,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         return session;
     }
 
-    /** 대상 위젯에만 공유 세션을 전달합니다. 고정 클래스/유형은 전용 HTML에서 설정합니다. */
+    /** 대상 위젯에만 세션을 전달합니다. 클래스 코드/유형은 전용 위젯에서 설정합니다. */
     function sdxECCAAttachAutoBridge(data, facetList, settings, createPolicy) {
         if (typeof widget === "undefined") return;
         var enabled = widget.getValue("sdxECCAEnableAutoClassByOrganization");
@@ -111,11 +111,11 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var rule = null, configError = null;
         var typeDisplay = widget.getValue("sdxECCATypeDisplay") || "hidden";
         try {
-            var ruleMode = widget.getValue("sdxECCAClassRuleMode") || "fixed";
-            if (ruleMode !== "fixed" && ruleMode !== "department") {
-                throw new Error("sdxECCAClassRuleMode는 fixed 또는 department로 지정해 주세요.");
+            var ruleMode = widget.getValue("sdxECCAClassRuleMode") || "code";
+            if (ruleMode !== "fixed" && ruleMode !== "department" && ruleMode !== "code") {
+                throw new Error("sdxECCAClassRuleMode는 code, fixed 또는 department로 지정해 주세요.");
             }
-            // department 모드에는 고정 클래스 ID가 필요하지 않습니다. 조회 실패 시 고정값으로 우회하지 않습니다.
+            // code/department 모드에는 고정 ID가 필요하지 않습니다. 조회 실패 시 고정값으로 우회하지 않습니다.
             if (ruleMode === "fixed") rule = ClassRuleService.resolveFixed({
                 classId: widget.getValue("sdxECCAFixedClassId"),
                 libraryId: widget.getValue("sdxECCAFixedLibraryId")
@@ -128,6 +128,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         session.createPolicy = createPolicy === undefined ? widget.getValue("sdxECCACreatePolicy") : createPolicy;
         session.typeDisplay = typeDisplay;
         session.ruleMode = ruleMode;
+        session.classCode = widget.getValue("sdxECCAClassCode") || "EC_MX";
         session.tenant = settings && settings.tenant || "OnPremise";
         properties.options = properties.options || {};
         classification.options = classification.options || {};
@@ -560,7 +561,18 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                     session.controller = ctrl;
                     session.notify();
                     if (session.status === "error" || session.disposed) return;
-                    if (session.ruleMode === "department") {
+                    if (session.ruleMode === "code") {
+                        ClassAttributeService.findActiveClassByCode(ctrl.PLMNewCommonWebService, {
+                            classCode: session.classCode, securityContext: session.context, tenant: session.tenant,
+                            isCancelled: function () { return session.disposed || session.status === "error"; }
+                        }).then(function (rule) {
+                            if (session.disposed || session.status === "error") return;
+                            session.rule = rule;
+                            sdxECCAApplyOrganizationClass(ctrl, session);
+                        }).catch(function (error) {
+                            if (!session.disposed && session.status !== "error") session.fail(error);
+                        });
+                    } else if (session.ruleMode === "department") {
                         // 부서 조회는 현재 대화상자 문맥으로 매번 수행하며 전역 사용자/클래스 캐시를 두지 않습니다.
                         ClassRuleService.resolveDepartment({
                             securityContext: session.context, tenant: options.tenant
@@ -583,7 +595,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     }
 
     /** OOTB getClassPaths 응답으로 클래스 노드를 만들고 원래 select/change 처리를 실행합니다.
-     * 검색 서비스나 존재를 확인하지 않은 별도 클래스 조회 API를 추가하지 않습니다.
+     * code 모드가 조회한 ID도 기존 getClassPaths로 경로·유형을 확인합니다.
      * classId는 General Class의 physicalid입니다. General Library ID를 넣으면 거부합니다.
      */
     function sdxECCAApplyOrganizationClass(ctrl, session) {

@@ -2,11 +2,14 @@
 공용 OOTB HTML에서 모든 위젯에 설정하지 않습니다.
 
 widget.setValue("sdxECCAEnableAutoClassByOrganization", true);
-widget.setValue("sdxECCAAutoClassType", "sdxEcChangeAction");
-widget.setValue("sdxECCAFixedClassId", "CLASS_PHYSICALID");
+widget.setValue("sdxECCAAutoClassType", "sdxECChangeAction");
+widget.setValue("sdxECCAClassRuleMode", "code");
+widget.setValue("sdxECCAClassCode", "EC_MX");
 widget.setValue("sdxECCATypeDisplay", "hidden");
 
-CLASS_PHYSICALID는 자동 적용할 General Class의 실제 physicalid로 바꿉니다.
+sdxClassCode가 EC_MX이고 활성 상태인 General Class가 정확히 1개일 때 자동 선택합니다.
+code 모드에서는 기존 sdxECCAFixedClassId를 사용하지 않습니다.
+기존 OOTB REST API를 사용하므로 JSP나 별도 서버 코드는 배포하지 않습니다.
 sdxECCAAutoClassType은 실제 생성할 타입 이름입니다. subtype을 생성하면 해당 타입명으로 바꿉니다.
 유형을 표시하되 편집하지 못하게 하려면 sdxECCATypeDisplay를 "disabled"로 지정합니다.
 OOTB isReadOnly를 사용하는 모드이며, 렌더러에 따라 드롭다운 대신 읽기 전용 값으로 표시될 수 있습니다.
@@ -25,10 +28,12 @@ Change Governance의 classificationFacet와 isLibrary:true는 유지합니다.
 실제 함수 본문은 webapps/sdxECCAAutoClass/sdxECCAAutoClass.js 전체 파일에 있습니다.
 -->
 
-<!-- 현재 fixed 모드 유지: 기존 대상 위젯의 실행 확인된 설정 위치에 추가합니다.
+<!-- 기존 ID 고정 방식을 명시적으로 사용할 때만 다음을 설정합니다.
 widget.setValue("sdxECCAClassRuleMode", "fixed");
+widget.setValue("sdxECCAFixedClassId", "CLASS_PHYSICALID");
 
 향후 OrganizationProvider 두 조회 함수 구현 및 검증 후에만 다음으로 전환합니다.
 widget.setValue("sdxECCAClassRuleMode", "department");
 department 모드에서는 sdxECCAFixedClassId로 우회하지 않습니다.
 -->
+

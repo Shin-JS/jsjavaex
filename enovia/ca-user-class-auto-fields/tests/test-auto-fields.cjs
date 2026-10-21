@@ -42,7 +42,7 @@ assert.equal(context.sdxECCAAttachAutoBridge,undefined); // 전역 함수로 노
 function metadata(){return [{facet:{name:'ENOCreate'},options:{}},{facet:{name:'classificationFacet'},options:{}}];}
 function data(org='Engineering'){return {defaultAttributes:{Type:{value:'Change Action',range:['Change Action','Other'],rangeNLS:['설계변경','다른 유형'],persistData:[{name:'Change Action',schema:'real'},{name:'Other'}]},SecurityContext:{value:`ctx::Leader.${org}.Space`}}};}
 function makeSession(classId='C1',mode='hidden'){
- config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAFixedClassId:classId,sdxECCAFixedLibraryId:'L1',sdxECCATypeDisplay:mode};
+ config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAClassRuleMode:'fixed',sdxECCAFixedClassId:classId,sdxECCAFixedLibraryId:'L1',sdxECCATypeDisplay:mode};
  const facets=metadata();api.attachBridge(data(),facets,{});return {session:facets[0].options.sdxECCAAutoSession,facets};
 }
 function eventModel(model){
@@ -311,6 +311,32 @@ const untouched={type:'Change Request',options:{typeName:'Change Request',prefer
 api.configureCreateType(untouched);assert.equal(untouched.options.typeName,'Change Request');
 console.log('PASS: widget/type isolation, fixed class without department lookup, asynchronous selection/loading, validation/blur, context change, form restore, late responses, config/type/library/response errors, timeout, hidden/read-only type with original schema, launch type isolation');
 
+// 클래스 코드 조회 → 기존 경로/폼 흐름 연결, 지연 응답과 조회 실패 처리.
+{
+ const lookup=modules['DS/sdxECCAAutoClass/sdxECCAClassAttributeService'];
+ const original=lookup.findActiveClassByCode;const pending=[];
+ lookup.findActiveClassByCode=(service,scope)=>new Promise((resolve,reject)=>pending.push({scope,resolve,reject}));
+ function byCode(){
+  config={sdxECCAEnableAutoClassByOrganization:true}; // 기본 code 모드, EC_MX
+  const facets=metadata();api.attachBridge(data(),facets,{tenant:'OnPremise'});
+  const state=facets[0].options.sdxECCAAutoSession;assert.equal(state.ruleMode,'code');assert.equal(state.rule,null);
+  const ui=makeController(state),facet=classificationFacet(ui);
+  api.connectClassification(facet,{sdxECCAAutoSession:state,securityContext:state.context,tenant:'OnPremise'});
+  timers.get(facet.sdxECCAAutoTimer)();
+  return {state,ui};
+ }
+ const first=byCode(),second=byCode();
+ assert.equal(pending[0].scope.classCode,'EC_MX');assert.equal(pending[0].scope.tenant,'OnPremise');
+ assert.equal(pending[0].scope.securityContext,first.state.context);
+ pending[1].resolve({classId:'C2',libraryId:null});await flush();assert.equal(second.state.classId,'C2');assert.equal(first.ui.request(),undefined);
+ pending[0].resolve({classId:'C1',libraryId:null});await flush();assert.equal(first.state.classId,'C1');
+ first.state.dispose();second.state.dispose();
+ const closed=byCode();closed.state.dispose();pending[2].resolve({classId:'C3'});await flush();assert.equal(closed.ui.request(),undefined);
+ const failed=byCode();pending[3].reject(new Error('활성 클래스 없음'));await flush();assert.equal(failed.state.status,'error');assert.equal(failed.ui.request(),undefined);failed.state.dispose();
+ const changed=byCode();changed.state.checkContext('changed');pending[4].resolve({classId:'C5'});await flush();assert.equal(changed.ui.request(),undefined);changed.state.dispose();
+ lookup.findActiveClassByCode=original;
+ console.log('PASS: code mode EC_MX, tenant/context propagation, dialog isolation, closed/changed late responses, no ID fallback');
+}
 // 부서 서비스와 기존 폼 흐름의 연결: 두 대화상자 격리, 늦은 응답, 오류 시 우회 금지.
 await (async function () {
  const service=modules['DS/sdxECCAAutoClass/sdxECCAClassRuleService'];

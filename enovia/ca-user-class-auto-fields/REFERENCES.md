@@ -1,5 +1,19 @@
 # 참조 소스와 판단 근거
 
+## 클래스 코드·활성 상태 조회 (2026-10-21)
+
+[R2024x LibraryEditor.js](https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/LibraryEditor/LibraryEditor.js)의
+아래 구현을 확인했습니다. 새 JSP나 별도 서버 조회를 추가하지 않습니다.
+
+- LibraryEditorWebService._performSearchQuery: isAuthoringMode일 때 `/resources/IPClassificationReuse/Search/search`, states_to_fetch, start/nresults 사용.
+- ChangeMaturityFilterCmdUtil.getMaturityFilterForAuthSearch: 활성 상태 필터 배열 전달.
+- LibraryEditorWebService._performFetchQuery: isAuthoringMode일 때 `/resources/IPClassificationReuse/classifiedItem/getContentDetails`, physicalid, select_predicate, classification_attribute 사용.
+- 상세 조회 호출부에서 attrDBName의 `attribute[...]`를 dynamicAttrs로 넘기는 부분.
+- LibrarySearch.getAuthAttributes: DB 속성 선택자를 authoring 조회에 포함하는 부분.
+- ChangeMaturityFilterCmdUtil: 활성 상태의 내부 표현 `Classification.Active`.
+
+실제 참조 모듈을 실행하여 요청 생성 형식을 확인했습니다. 설치 서버에서 API 실행은 미검증입니다.
+
 공개 R2024x 런타임 소스의 해당 모듈을 직접 확인했습니다. 벤더의 공식 확장 API 계약이나 현재 설치 버전의 보증 자료는 아닙니다.
 
 | 원본 | 확인한 부분 |
@@ -58,3 +72,4 @@ ClassificationsFacet의 별도 classifPropertiesUI 보조 인스턴스와 구별
 ENOTabView sharedContext.setValidation → refreshValidationStatus,
 ENONewDialogController.evaluateValidationStatus/disableFormSubmit/resetButtons를 확인했습니다.
 ClassifPropModel의 onChangeAttributes 이벤트를 사용하고 화면 종료 시 removeEvent로 해제합니다.
+
