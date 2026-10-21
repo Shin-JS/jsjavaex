@@ -171,6 +171,9 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 view.data.defaultAttributes.Type && view.data.defaultAttributes.Type.value;
         };
         var root = document.createElement("div");
+        var style = document.createElement("style");
+        style.textContent = ".sdxECCAClassFields .flexLine .formLabel .mandIcon { color: inherit !important; }";
+        root.appendChild(style);
         var status = document.createElement("div");
         status.setAttribute("role", "status");
         var host = document.createElement("div");
@@ -217,10 +220,12 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var binding = facet.sdxECCAAutoBinding;
         if (!binding) {
             if (!form.parentNode) throw new Error("분류 속성 폼이 아직 연결되지 않았습니다.");
-            binding = facet.sdxECCAAutoBinding = {form: form, parent: form.parentNode, next: form.nextSibling};
+            binding = facet.sdxECCAAutoBinding = {form: form, parent: form.parentNode, next: form.nextSibling,
+                hadScopedClass: form.classList.contains("sdxECCAClassFields")};
         } else if (binding.form !== form) {
             throw new Error("분류 폼이 재초기화되었습니다. 화면을 다시 열어 주세요.");
         }
+        form.classList.add("sdxECCAClassFields");
         if (form.parentNode !== facet.sdxECCAAutoHost) facet.sdxECCAAutoHost.appendChild(form);
         sdxECCARenderMandatoryIcons(form);
         session.fieldsMounted = true;
@@ -277,6 +282,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (facet.sdxECCAAutoUnsubscribe) facet.sdxECCAAutoUnsubscribe();
         var binding = facet.sdxECCAAutoBinding;
         if (binding) {
+            if (!binding.hadScopedClass) binding.form.classList.remove("sdxECCAClassFields");
             if (binding.next && binding.next.parentNode === binding.parent) binding.parent.insertBefore(binding.form, binding.next);
             else binding.parent.appendChild(binding.form);
         }

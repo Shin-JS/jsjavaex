@@ -10,7 +10,7 @@ let config = {}, seq = 0, validateError = null;
 const timers = new Map();
 const loadedModules = [];
 class Element {
- constructor(){this.nodeType=1;this.children=[];this.parentNode=null;this.style={};this.textContent='';}
+ constructor(){const classes=new Set();this.classList={add:name=>classes.add(name),remove:name=>classes.delete(name),contains:name=>classes.has(name)};this.nodeType=1;this.children=[];this.parentNode=null;this.style={};this.textContent='';}
  appendChild(node){if(node.parentNode)node.parentNode.removeChild(node);this.children.push(node);node.parentNode=this;}
  removeChild(node){this.children.splice(this.children.indexOf(node),1);node.parentNode=null;}
  insertBefore(node,next){if(node.parentNode)node.parentNode.removeChild(node);this.children.splice(this.children.indexOf(next),0,node);node.parentNode=this;}
@@ -117,13 +117,14 @@ assert.equal(facet.states.length,0);
 const dialog={View:{facets:activeFacets},myDialog:{},evaluateValidationStatus(){facet.states.push(facet.facetValidation);facet.buttonDisabled=!(facet.facetValidation&&facet.baseValid);}};
 api.bindDialog(dialog);assert.equal(facet.icon,'classification-book');
 assert.equal(api.canSubmitDialog(dialog),false);assert.equal(facet.buttonDisabled,true);assert.equal(ui.ctrl.container.style.display,'none');
-assert.equal(props.sdxECCAAutoRoot.children.length,2); // 상태와 폼뿐, 검색 컴포넌트 없음
+assert.equal(props.sdxECCAAutoRoot.children.length,3); // 범위 제한 스타일, 상태, 폼. 검색 컴포넌트 없음
+assert.match(props.sdxECCAAutoRoot.children[0].textContent,/\.sdxECCAClassFields .*color: inherit !important/);
 ui.request().onComplete({chains:new Map([['C1',[{physicalid:'L1',type:'General Library',label:'Library'},{physicalid:'C1',type:'General Class',label:'Class'}]]])});
 await flush();assert.equal(ui.selectedCount(),1);assert.equal(session.status,'loading');assert.equal(api.canSubmitDialog(dialog),false);
 api.prepareAttributes(ui.ctrl.classifPropModels[0],{attribute:[]});
 api.notifyAttributesLoaded(ui.ctrl.classifPropModels[0],{attribute:[]});
 assert.deepEqual(loadedModules,[]); // 반복 알림에도 각 한 번
-assert.equal(session.status,'ready');assert.equal(props.sdxECCAAutoHost.style.display,'');assert.equal(ui.form.parentNode,props.sdxECCAAutoHost);
+assert.equal(session.status,'ready');assert.equal(props.sdxECCAAutoHost.style.display,'');assert.equal(ui.form.parentNode,props.sdxECCAAutoHost);assert.equal(ui.form.classList.contains('sdxECCAClassFields'),true);
 // 버튼을 누르기 전 모델 변경으로 OOTB facet validation을 갱신합니다.
 function flushButton(){for(const fn of Array.from(timers.values())){if(fn.name==='')fn();}}
 assert.equal(facet.buttonDisabled,false);
@@ -152,7 +153,7 @@ delete ui.ctrl.renderedModel;
 props.listview.data.defaultAttributes.Type.value='Other';assert.equal(api.canSubmitDialog(dialog),false);props.listview.data.defaultAttributes.Type.value='Change Action';
 validateError='필수 속성';assert.equal(api.canSubmitDialog(dialog),false);validateError=null;
 session.checkContext('ctx::Leader.Manufacturing.Space');assert.equal(session.status,'error');assert.equal(api.canSubmitDialog(dialog),false);
-api.disconnectClassification(facet);assert.equal(ui.form.parentNode,ui.parent);assert.equal(ui.parent.children[0],ui.form);assert.equal(ui.ctrl.sdxECCAAutoSession,undefined);assert.equal(watched.listenerCount(),0);
+api.disconnectClassification(facet);assert.equal(ui.form.parentNode,ui.parent);assert.equal(ui.form.classList.contains('sdxECCAClassFields'),false);assert.equal(ui.parent.children[0],ui.form);assert.equal(ui.ctrl.sdxECCAAutoSession,undefined);assert.equal(watched.listenerCount(),0);
 // 늦게 도착한 조회가 닫힌 화면을 변경하지 않아야 합니다.
 ({session}=makeSession());const late=makeController(session);late.ctrl.sdxECCAAutoSession=session;session.controller=late.ctrl;
 api.applyClass(late.ctrl,session);session.dispose();late.request().onComplete({});assert.equal(late.selectedCount(),0);
