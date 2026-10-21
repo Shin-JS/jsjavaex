@@ -213,6 +213,35 @@ for (const typeName of ['sdxECChangeAction', 'Change Action', 'Change Order', 'C
   assert.equal(typed.attributes.publicAttributes.some(attr=>attr.name==='policy'),false);}
 }
 // 다른 그룹에 기존 policy가 있어도 원래 정의를 수정하고 중복 추가하지 않습니다.
+// 모델 직렬화 후 정책이 Change Action으로 돌아가도 최종 콜백에서 복구합니다.
+{
+ const cases=[];
+ for (const policyName of ['sdxECR','sdxECO']) {
+  config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAFixedClassId:'C1'};
+  const typed=data();typed.defaultAttributes.Type.value='sdxECChangeAction';
+  const facets=metadata();api.attachBridge(typed,facets,{},policyName);
+  const state=facets[0].options.sdxECCAAutoSession;
+  let finish;
+  const original=function(callback){assert.equal(this,view);finish=callback;return 'pending';};
+  const view={data:typed,onSubmit:original};const facet={listview:view,skeleton:new Element()};
+  api.installFields(facet,{sdxECCAAutoSession:state});
+  cases.push({state,view,facet,original,finish:()=>finish});
+  let received;
+  assert.equal(view.onSubmit(result=>{received=result;}),'pending');
+  const outgoing={defaultAttributes:typed.defaultAttributes,attributes:{publicAttributes:[{name:'policy',value:'Change Action',modified:false}]}};
+  finish(outgoing);assert.equal(received,outgoing);
+  assert.equal(outgoing.attributes.publicAttributes[0].value,policyName);
+  assert.equal(outgoing.attributes.publicAttributes[0].basicAttribute,true);
+  assert.equal(outgoing.attributes.publicAttributes[0].modified,true);
+  view.onSubmit(result=>{received=result;});finish(false);assert.equal(received,false);
+ }
+ assert.notEqual(cases[0].view.onSubmit,cases[1].view.onSubmit);
+ for(const item of cases) {
+  let received;item.view.onSubmit(result=>{received=result;});const late=item.finish();
+  item.state.dispose();assert.equal(item.view.onSubmit,item.original);
+  late({defaultAttributes:item.view.data.defaultAttributes,attributes:{publicAttributes:[]}});assert.equal(received,false);
+ }
+}
 for (const typeName of ['sdxECChangeAction','Change Order','Change Request']) {
  const typed=data();typed.defaultAttributes.Type={value:typeName,range:[typeName],persistData:[{name:typeName}]};
  const policy={name:'policy',value:'Old Policy',visible:true,storeLocalPreference:true};

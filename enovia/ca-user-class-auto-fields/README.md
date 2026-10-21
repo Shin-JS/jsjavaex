@@ -2,6 +2,16 @@
 
 ## 생성 서비스 typeName 유지
 
+### Payload에서 Policy가 되돌아가는 경우
+
+최신 main 모듈은 `installFields`에서 해당 팝업의 `ENOListView.onSubmit` 콜백을 연결합니다.
+기존 BL·검증·`_parseModel`이 끝난 결과를 받은 뒤, 원래 생성 콜백으로 넘기기 직전에
+해당 세션의 Policy를 다시 반영합니다. 폼 준비 시점의 값만 수정하면 이후 모델 직렬화에서
+`Change Action`으로 덮어써질 수 있어 최종 결과에도 적용합니다.
+기존 검증 실패는 그대로 전달하며 종료한 팝업의 지연 결과는 제출하지 않습니다.
+종료 시 원래 메서드를 복원합니다. 기존 `installFields`/`destroyFields` 연결이 있으면
+추가 OOTB 수정 없이 최신 `sdxECCAAutoClass.js`를 교체합니다.
+
 `configureCreateType()`에서 생성 타입이 `sdxECChangeAction`이면 `options.typeName`만
 `Change Action`으로 전달합니다. `type`과 `options.preferedType`은 `sdxECChangeAction`을
 유지합니다. 이 분기는 저장 성공을 확인했던 설정이며 Policy 파라미터 변경과 함께 유지합니다.

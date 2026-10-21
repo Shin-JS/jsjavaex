@@ -222,12 +222,41 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         } catch (error) { session.fail(error); }
     }
 
+    /** OOTB BL/모델 직렬화가 끝난 콜백에서 최종 요청의 Policy를 확정합니다. */
+    function sdxECCABindCreatePolicy(facet, session) {
+        if (session.type !== "sdxECChangeAction" || facet.sdxECCAPolicySubmitBinding) return;
+        var view = facet.listview;
+        var original = view && view.onSubmit;
+        if (typeof original !== "function") throw new Error("ENOListView.onSubmit 연결을 확인해 주세요.");
+        var wrapped = function (callback) {
+            return original.call(this, function (result) {
+                // OOTB 검증 실패는 그대로 전달합니다. 실패를 성공 데이터로 바꾸지 않습니다.
+                if (!result) { callback(result); return; }
+                if (session.disposed || session.status === "error") { callback(false); return; }
+                try {
+                    var type = result.defaultAttributes && result.defaultAttributes.Type;
+                    if (!type || type.value !== session.type) throw new Error("생성 요청의 유형이 지정 유형과 다릅니다.");
+                    sdxECCAPreparePolicy(result, session);
+                } catch (error) {
+                    session.fail(error);
+                    callback(false);
+                    return;
+                }
+                callback(result);
+            });
+        };
+        facet.sdxECCAPolicySubmitBinding = {view: view, original: original, wrapped: wrapped};
+        view.onSubmit = wrapped;
+    }
+
     /** 폼 영역만 준비하며 검색 UI는 만들지 않습니다. OOTB 폼을 이동합니다. */
     function sdxECCAInstallAutoFields(facet, options) {
         var session = options.sdxECCAAutoSession;
         if (!session) return;
         facet.sdxECCAAutoSession = session;
         facet.sdxECCAAutoDisposed = false;
+        try { sdxECCABindCreatePolicy(facet, session); }
+        catch (error) { session.fail(error); }
         session.readCurrentType = function () {
             var view = facet.listview;
             var field = view && view.propModel && view.propModel.get("New-Type");
@@ -342,6 +371,11 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     function sdxECCADestroyAutoFields(facet) {
         if (facet.sdxECCAAutoDisposed) return;
         facet.sdxECCAAutoDisposed = true;
+        var submitBinding = facet.sdxECCAPolicySubmitBinding;
+        if (submitBinding) {
+            if (submitBinding.view.onSubmit === submitBinding.wrapped) submitBinding.view.onSubmit = submitBinding.original;
+            delete facet.sdxECCAPolicySubmitBinding;
+        }
         clearTimeout(facet.sdxECCAAutoResize);
         if (facet.sdxECCAAutoUnsubscribe) facet.sdxECCAAutoUnsubscribe();
         var binding = facet.sdxECCAAutoBinding;
