@@ -161,6 +161,36 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (!found) throw new Error("sdxECChangeAction의 sdxECType 속성 정의를 찾지 못했습니다.");
     }
 
+    /** policy는 일반 사용자 속성이 아닌 기본 생성 속성으로 전달합니다. */
+    function sdxECCAPreparePolicy(data, session) {
+        if (session.type !== "sdxECChangeAction") return;
+        var groups = data.attributes;
+        var policies = [];
+        Object.keys(groups).forEach(function (key) {
+            if (!Array.isArray(groups[key])) return;
+            groups[key].forEach(function (attribute) {
+                if (attribute && attribute.name === "policy") policies.push(attribute);
+            });
+        });
+        if (!policies.length) {
+            if (!groups.publicAttributes) groups.publicAttributes = [];
+            if (!Array.isArray(groups.publicAttributes)) throw new Error("publicAttributes가 배열이 아닙니다.");
+            var policy = {name: "policy", type: "string"};
+            groups.publicAttributes.push(policy);
+            policies.push(policy);
+        }
+        policies.forEach(function (policy) {
+            policy.value = "sdxEC";
+            policy.basicAttribute = true;
+            policy.modified = true;
+            policy.isReadOnly = true;
+            policy.visible = false;
+            policy.forUI = true;
+            policy.storeLocalPreference = false;
+            delete policy.visibility;
+        });
+    }
+
     /** OOTB가 유형 모델을 만들기 전에 표시·편집 메타데이터를 제한합니다.
      * 타입 값은 CreateNew 이전부터 지정해야 합니다. 여기서 다른 타입으로 값만 바꾸지 않습니다.
      * OOTB isReadOnly는 편집을 막는 모델 옵션이며, disabled 모드의 실제 모양은 렌더러에 따릅니다.
@@ -173,6 +203,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 throw new Error("조회된 유형과 고정 유형이 다릅니다. CreateNew 전 타입 설정을 확인해 주세요.");
             }
             sdxECCAPrepareECType(data, session);
+            sdxECCAPreparePolicy(data, session);
             var index = Array.isArray(type.range) ? type.range.indexOf(session.type) : -1;
             if (index < 0 || !Array.isArray(type.persistData) || !type.persistData.some(function (item) {
                 return item.name === session.type;

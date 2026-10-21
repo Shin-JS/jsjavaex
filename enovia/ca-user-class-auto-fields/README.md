@@ -2,6 +2,13 @@
 
 ## sdxECType 고정 및 숨김 (2026-10-21)
 
+같은 대상 타입의 생성 Policy도 `sdxEC`로 지정합니다. 기존 속성 그룹에 `name: "policy"`
+항목이 있으면 수정하고, 없으면 `attributes.publicAttributes`에 추가합니다.
+`value: "sdxEC"`, `basicAttribute: true`, `modified: true`로 기본 생성 속성임을 전달하며,
+정책 입력은 화면에 표시하지 않습니다. 타입 이름이나 `typeName` 옵션은 변경하지 않습니다.
+이 변경은 정책 자체를 생성하거나 서버의 타입-정책 연결을 수정하지 않습니다.
+서버에 `sdxEC` 정책이 정의되어 있어야 하며 실제 생성 요청과 생성된 객체의 Policy를 확인해야 합니다.
+
 활성화한 전용 위젯에서 생성 타입이 정확히 `sdxECChangeAction`이면 `sdxECType`을
 `ECR`로 지정하고 입력 필드를 숨깁니다. 기존 `prepareFixedType(data, session)` 연결에서
 폼 모델 생성 전에 적용하므로 추가 OOTB 호출은 필요하지 않습니다.

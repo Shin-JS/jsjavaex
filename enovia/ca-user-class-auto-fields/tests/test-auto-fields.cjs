@@ -204,8 +204,30 @@ for (const typeName of ['sdxECChangeAction', 'Change Action', 'Change Order', 'C
   assert.equal(field.value,'ECR');assert.equal(field.visible,false);assert.equal(field.isReadOnly,true);
   assert.equal(field.modified,true);assert.equal(field.forUI,true);assert.equal(field.storeLocalPreference,false);
   assert.equal(field.visibility,undefined);assert.equal(typed.attributes.publicAttributes[0],field);
+  const policy=typed.attributes.publicAttributes.find(attr=>attr.name==='policy');
+  assert.equal(policy.value,'sdxEC');assert.equal(policy.basicAttribute,true);assert.equal(policy.modified,true);
+  assert.equal(policy.visible,false);assert.equal(policy.forUI,true);assert.equal(policy.isReadOnly,true);
   field.value='ECN';api.prepareFixedType(typed,state);assert.equal(field.value,'ECR');
- } else {assert.equal(field.value,'ECN');assert.equal(field.visible,true);assert.equal(field.storeLocalPreference,true);}
+  assert.equal(typed.attributes.publicAttributes.filter(attr=>attr.name==='policy').length,1);
+ } else {assert.equal(field.value,'ECN');assert.equal(field.visible,true);assert.equal(field.storeLocalPreference,true);
+  assert.equal(typed.attributes.publicAttributes.some(attr=>attr.name==='policy'),false);}
+}
+// 다른 그룹에 기존 policy가 있어도 원래 정의를 수정하고 중복 추가하지 않습니다.
+for (const typeName of ['sdxECChangeAction','Change Order','Change Request']) {
+ const typed=data();typed.defaultAttributes.Type={value:typeName,range:[typeName],persistData:[{name:typeName}]};
+ const policy={name:'policy',value:'Old Policy',visible:true,storeLocalPreference:true};
+ typed.attributes={publicAttributes:[{name:'sdxECType',value:'ECN'}],extensionAttributes:[policy]};
+ const state={type:typeName,fail(error){throw error;}};
+ api.prepareFixedType(typed,state);
+ assert.equal(policy.value,typeName==='sdxECChangeAction'?'sdxEC':'Old Policy');
+ assert.equal(typed.attributes.publicAttributes.some(attr=>attr.name==='policy'),false);
+ if(typeName==='sdxECChangeAction') {
+  assert.equal(policy.basicAttribute,true);assert.equal(policy.modified,true);assert.equal(policy.storeLocalPreference,false);
+  // 실제 생성 요청에서 전송하는 attributes 그룹의 JSON에 기본 정책 플래그를 유지합니다.
+  const request=JSON.parse(JSON.stringify({create:[{type:typeName,attributes:typed.attributes}]}));
+  assert.equal(request.create[0].attributes.extensionAttributes[0].value,'sdxEC');
+  assert.equal(request.create[0].attributes.extensionAttributes[0].basicAttribute,true);
+ }
 }
 {
  const typed=data();typed.defaultAttributes.Type={value:'sdxECChangeAction',range:['sdxECChangeAction'],persistData:[{name:'sdxECChangeAction'}]};
