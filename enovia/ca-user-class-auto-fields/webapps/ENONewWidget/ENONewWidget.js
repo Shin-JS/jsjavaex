@@ -11,6 +11,10 @@
  */
 /* getFacetList(e,t,i)의 최종 facet 배열 a를 반환하기 직전:
  *     sdxECCAAutoClass.attachBridge(e,a,i);
+ * 대상 위젯에서 widget.setValue("sdxECCACreatePolicy", "sdxECR" 또는 "sdxECO")로 설정합니다.
+ * 호출부가 Policy를 직접 가지고 있으면 네 번째 인자로 전달할 수도 있습니다:
+ *     sdxECCAAutoClass.attachBridge(e,a,i,createPolicy);
+ * 네 번째 인자는 위젯 설정보다 우선하며 대화상자 세션마다 별도로 보관합니다.
  * 기존 sdxECCAAttachAutoBridge(e,a,i) 호출을 위 호출로 바꿉니다.
  * e는 data, a는 최종 배열, i는 settings입니다. 함수 밖에 넣지 않습니다.
  */
@@ -85,3 +89,4 @@
  *     sdxECCAAutoClass.disposeDialog(this);
  * 기존 생성, 취소, postCreation 처리는 그대로 유지합니다.
  */
+

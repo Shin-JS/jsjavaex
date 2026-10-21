@@ -198,14 +198,14 @@ for (const typeName of ['sdxECChangeAction', 'Change Action', 'Change Order', 'C
  const typed=data();const field={name:'sdxECType',type:'string',value:'ECN',visible:true,storeLocalPreference:true,visibility:{Other:['Y']}};
  typed.defaultAttributes.Type={value:typeName,range:[typeName],persistData:[{name:typeName}]};
  typed.attributes={publicAttributes:[field]};
- const state={type:typeName,typeDisplay:'hidden',fail(error){this.error=error;}};
+ const state={type:typeName,createPolicy:'sdxECR',typeDisplay:'hidden',fail(error){this.error=error;}};
  api.prepareFixedType(typed,state);assert.equal(state.error,undefined);
  if(typeName==='sdxECChangeAction') {
   assert.equal(field.value,'ECR');assert.equal(field.visible,false);assert.equal(field.isReadOnly,true);
   assert.equal(field.modified,true);assert.equal(field.forUI,true);assert.equal(field.storeLocalPreference,false);
   assert.equal(field.visibility,undefined);assert.equal(typed.attributes.publicAttributes[0],field);
   const policy=typed.attributes.publicAttributes.find(attr=>attr.name==='policy');
-  assert.equal(policy.value,'sdxEC');assert.equal(policy.basicAttribute,true);assert.equal(policy.modified,true);
+  assert.equal(policy.value,'sdxECR');assert.equal(policy.basicAttribute,true);assert.equal(policy.modified,true);
   assert.equal(policy.visible,false);assert.equal(policy.forUI,true);assert.equal(policy.isReadOnly,true);
   field.value='ECN';api.prepareFixedType(typed,state);assert.equal(field.value,'ECR');
   assert.equal(typed.attributes.publicAttributes.filter(attr=>attr.name==='policy').length,1);
@@ -217,17 +217,44 @@ for (const typeName of ['sdxECChangeAction','Change Order','Change Request']) {
  const typed=data();typed.defaultAttributes.Type={value:typeName,range:[typeName],persistData:[{name:typeName}]};
  const policy={name:'policy',value:'Old Policy',visible:true,storeLocalPreference:true};
  typed.attributes={publicAttributes:[{name:'sdxECType',value:'ECN'}],extensionAttributes:[policy]};
- const state={type:typeName,fail(error){throw error;}};
+ const state={type:typeName,createPolicy:'sdxECO',fail(error){throw error;}};
  api.prepareFixedType(typed,state);
- assert.equal(policy.value,typeName==='sdxECChangeAction'?'sdxEC':'Old Policy');
+ assert.equal(policy.value,typeName==='sdxECChangeAction'?'sdxECO':'Old Policy');
  assert.equal(typed.attributes.publicAttributes.some(attr=>attr.name==='policy'),false);
  if(typeName==='sdxECChangeAction') {
   assert.equal(policy.basicAttribute,true);assert.equal(policy.modified,true);assert.equal(policy.storeLocalPreference,false);
   // 실제 생성 요청에서 전송하는 attributes 그룹의 JSON에 기본 정책 플래그를 유지합니다.
   const request=JSON.parse(JSON.stringify({create:[{type:typeName,attributes:typed.attributes}]}));
-  assert.equal(request.create[0].attributes.extensionAttributes[0].value,'sdxEC');
+  assert.equal(request.create[0].attributes.extensionAttributes[0].value,'sdxECO');
   assert.equal(request.create[0].attributes.extensionAttributes[0].basicAttribute,true);
  }
+}
+// Policy 파라미터는 대화상자별로 보존하며 기본값으로 조용히 대체하지 않습니다.
+{
+ config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAFixedClassId:'C1'};
+ const sessions=[];
+ for (const policyName of ['sdxECR','sdxECO',undefined,'sdxEC']) {
+  const typed=data();typed.defaultAttributes.Type={value:'sdxECChangeAction',range:['sdxECChangeAction'],persistData:[{name:'sdxECChangeAction'}]};
+  typed.attributes={publicAttributes:[{name:'sdxECType',value:'ECN'}]};
+  const facets=metadata();api.attachBridge(typed,facets,{},policyName);
+  const state=facets[0].options.sdxECCAAutoSession;sessions.push(state);
+  api.prepareFixedType(typed,state);
+  if (policyName==='sdxECR'||policyName==='sdxECO') {
+   assert.notEqual(state.status,'error');assert.equal(state.createPolicy,policyName);
+   assert.equal(typed.attributes.publicAttributes.find(attr=>attr.name==='policy').value,policyName);
+   assert.equal(typed.attributes.publicAttributes[0].value,'ECR');
+  } else {assert.equal(state.status,'error');assert.match(state.error.message,/Policy/);}
+ }
+ assert.equal(sessions[0].createPolicy,'sdxECR');assert.equal(sessions[1].createPolicy,'sdxECO');
+ sessions.forEach(state=>state.dispose());
+ config.sdxECCACreatePolicy='sdxECR';
+ const typed=data();typed.defaultAttributes.Type.value='sdxECChangeAction';
+ const widgetFacets=metadata();api.attachBridge(typed,widgetFacets,{});
+ const widgetSession=widgetFacets[0].options.sdxECCAAutoSession;
+ config.sdxECCACreatePolicy='sdxECO';assert.equal(widgetSession.createPolicy,'sdxECR');
+ const directFacets=metadata();api.attachBridge(typed,directFacets,{},'sdxECR');
+ assert.equal(directFacets[0].options.sdxECCAAutoSession.createPolicy,'sdxECR');
+ widgetSession.dispose();directFacets[0].options.sdxECCAAutoSession.dispose();
 }
 {
  const typed=data();typed.defaultAttributes.Type={value:'sdxECChangeAction',range:['sdxECChangeAction'],persistData:[{name:'sdxECChangeAction'}]};

@@ -2,12 +2,21 @@
 
 ## sdxECType 고정 및 숨김 (2026-10-21)
 
-같은 대상 타입의 생성 Policy도 `sdxEC`로 지정합니다. 기존 속성 그룹에 `name: "policy"`
-항목이 있으면 수정하고, 없으면 `attributes.publicAttributes`에 추가합니다.
-`value: "sdxEC"`, `basicAttribute: true`, `modified: true`로 기본 생성 속성임을 전달하며,
-정책 입력은 화면에 표시하지 않습니다. 타입 이름이나 `typeName` 옵션은 변경하지 않습니다.
-이 변경은 정책 자체를 생성하거나 서버의 타입-정책 연결을 수정하지 않습니다.
-서버에 `sdxEC` 정책이 정의되어 있어야 하며 실제 생성 요청과 생성된 객체의 Policy를 확인해야 합니다.
+생성 Policy는 고정 문자열 대신 파라미터로 받습니다. 대상 위젯의 기존 설정 위치에서
+`widget.setValue("sdxECCACreatePolicy", "sdxECR")` 또는
+`widget.setValue("sdxECCACreatePolicy", "sdxECO")`를 설정합니다.
+기존 `attachBridge(e,a,i)` 호출은 유지할 수 있습니다. 호출부에 Policy 변수가 있다면
+`attachBridge(e,a,i,createPolicy)`의 네 번째 인자로 직접 넘길 수도 있으며 직접 인자가 우선합니다.
+Policy는 세션 생성 시 복사하므로 열린 대화상자의 값이 다른 호출의 설정으로 바뀌지 않습니다.
+미지정 또는 다른 값이면 준비 오류로 알려주며 기본 정책으로 대체하지 않습니다.
+
+기존 속성 그룹에 `name: "policy"` 항목이 있으면 수정하고, 없으면
+`attributes.publicAttributes`에 추가합니다. 전달한 Policy를 `value`에 넣고
+`basicAttribute: true`, `modified: true`로 기본 생성 속성임을 전달합니다.
+정책 입력은 화면에 표시하지 않습니다. 타입은 `sdxECChangeAction` 그대로이며
+`sdxECType`의 `ECR` 고정·숨김도 유지합니다.
+이 변경은 정책 자체나 서버의 타입-정책 연결을 수정하지 않습니다.
+실제 생성 요청과 생성된 객체의 Policy 확인은 필요합니다.
 
 활성화한 전용 위젯에서 생성 타입이 정확히 `sdxECChangeAction`이면 `sdxECType`을
 `ECR`로 지정하고 입력 필드를 숨깁니다. 기존 `prepareFixedType(data, session)` 연결에서

@@ -95,7 +95,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     }
 
     /** 대상 위젯에만 공유 세션을 전달합니다. 고정 클래스/유형은 전용 HTML에서 설정합니다. */
-    function sdxECCAAttachAutoBridge(data, facetList, settings) {
+    function sdxECCAAttachAutoBridge(data, facetList, settings, createPolicy) {
         if (typeof widget === "undefined") return;
         var enabled = widget.getValue("sdxECCAEnableAutoClassByOrganization");
         if (!(enabled === true || enabled === "true")) return;
@@ -125,6 +125,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             }
         } catch (error) { configError = error; }
         var session = sdxECCACreateAutoSession(context, type, rule);
+        session.createPolicy = createPolicy === undefined ? widget.getValue("sdxECCACreatePolicy") : createPolicy;
         session.typeDisplay = typeDisplay;
         session.ruleMode = ruleMode;
         session.tenant = settings && settings.tenant || "OnPremise";
@@ -164,6 +165,10 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     /** policy는 일반 사용자 속성이 아닌 기본 생성 속성으로 전달합니다. */
     function sdxECCAPreparePolicy(data, session) {
         if (session.type !== "sdxECChangeAction") return;
+        var policyName = session.createPolicy;
+        if (policyName !== "sdxECR" && policyName !== "sdxECO") {
+            throw new Error("생성 Policy 파라미터는 sdxECR 또는 sdxECO로 지정해 주세요.");
+        }
         var groups = data.attributes;
         var policies = [];
         Object.keys(groups).forEach(function (key) {
@@ -180,7 +185,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             policies.push(policy);
         }
         policies.forEach(function (policy) {
-            policy.value = "sdxEC";
+            policy.value = policyName;
             policy.basicAttribute = true;
             policy.modified = true;
             policy.isReadOnly = true;
