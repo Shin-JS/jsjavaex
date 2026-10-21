@@ -32,13 +32,14 @@ function fixture(roots,graph){
 }
 (async()=>{
  fixture(['L1','L2','L3'],{
-  L1:[cls('P','', 'Inactive'),cls('X','EC_MX_EXTRA')],L2:[cls('X','EC_MX_EXTRA')],
+  L1:[cls('P','', 'Inactive'),cls('X','EC_MX_EXTRA')],L2:[cls('X','EC_MX_EXTRA'),cls('A')],
   P:[cls('B'),cls('C','EC_MX','Inactive')],B:[cls('P','', 'Inactive')]
  });
- assert.equal((await api.findActiveClassByCode(service,scope)).classId,'B');
+ assert.equal((await api.findActiveClassByCode(service,scope)).classId,'A');
  assert.ok(requests.some(r=>r.body.next_start==='2 1')); // 루트 라이브러리 다음 페이지
- assert.equal(requests.filter(r=>r.body.root_physicalid==='P').length,1); // 순환·공유 경로는 한 번만 확장
- assert.equal(requests.filter(r=>r.body.root_physicalid==='X').length,1);
+ assert.equal(requests.filter(r=>r.body.root_physicalid==='P').length,0); // 손자 클래스는 조회하지 않음
+ assert.equal(requests.filter(r=>r.body.root_physicalid==='X').length,0);
+ assert.equal(requests.length,5); // 루트 2페이지 + 라이브러리 3개만 조회
  assert.equal(new Set(requests.map(r=>r.body.label)).size,requests.length); // 팝업별 set 이름 충돌 방지
  for(const req of requests){assert.equal(req.options.method,'POST');assert.equal(decodeURIComponent(req.options.headers.SecurityContext),scope.securityContext);assert.ok(req.url.endsWith('?tenant=OnPremise'));assert.equal(req.url.includes('.jsp'),false);}
  fixture(['L'],{L:[cls('A','OTHER'),cls('B',''),cls('C')]});
@@ -51,7 +52,10 @@ function fixture(roots,graph){
  handler=req=>{active++;peak=Math.max(peak,active);setImmediate(()=>{active--;completeRequest(req);});};
  assert.equal((await api.findActiveClassByCode(service,scope)).classId,'A');
  assert.equal(peak,4);assert.equal(active,0);
- assert.ok(requests.some(r=>r.body.root_physicalid==='Y'));
+ assert.equal(requests.some(r=>r.body.root_physicalid==='X'||r.body.root_physicalid==='Y'),false);
+ fixture(['L'],{L:[cls('P','OTHER')],P:[cls('B')]});
+ await assert.rejects(api.findActiveClassByCode(service,scope),/1뎁스/);
+ assert.equal(requests.length,2); // 일치하는 손자가 있어도 탐색하지 않음
  // 다른 경로 실패 뒤, 이미 진행 중인 경로의 다음 페이지는 요청하지 않습니다.
  fixture(['L1','L2'],{});const rootRequest=handler;let pending=[];
  handler=req=>{if(!req.body.root_physicalid)rootRequest(req);else pending.push(req);};
@@ -79,5 +83,5 @@ function fixture(roots,graph){
  await assert.rejects(api.findActiveClassByCode(service,{...scope,isCancelled:()=>cancelled}),/취소/);
  await assert.rejects(api.findActiveClassByCode(service,{...scope,classCode:"EC_MX' || true"}),/sdxClassCode/);
  await assert.rejects(api.findActiveClassByCode(service,{...scope,securityContext:''}),/권한 문맥/);
- console.log('PASS: MQL where, root-library/Subclass traversal, nested/inactive ancestors, shared/cyclic paths, server pagination/empty results, exact code/current, duplicate errors, cancellation, bounded parallelism and failure stop');
+ console.log('PASS: one-depth library classes, no class expansion, request count, pagination/empty results, exact code/current, duplicate errors, cancellation, bounded parallelism and failure stop');
 })().catch(error=>{console.error(error);process.exitCode=1;});

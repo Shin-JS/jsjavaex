@@ -167,11 +167,9 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
                     if (state === null || code === null) throw new Error("클래스의 current·sdxClassCode 조회값을 확인해 주세요.");
                     if (state === "Active" && code === scope.classCode) matches.add(id);
                     if (matches.size > 1) throw new Error("코드에 해당하는 활성 클래스가 여러 개입니다.");
-                    // 중간 클래스가 비활성이어도 그 아래 활성 클래스는 조회해야 합니다.
-                    enqueue(id);
+                    // 조회 범위는 라이브러리 바로 아래 1뎁스입니다. 클래스를 다시 확장하지 않습니다.
             }
-            // 페이지는 각 경로 안에서 순차 조회하고, 독립 경로는 최대 4개만 병렬 조회합니다.
-            // 동적 queue와 queued Set은 공유하므로 순환·공유 경로도 한 번만 확장합니다.
+            // 페이지는 각 라이브러리 안에서 순차 조회하고, 라이브러리는 최대 4개만 병렬 조회합니다.
             var node = 0;
             while (node < queue.length) {
                 checkOpen();
@@ -189,7 +187,7 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
                     }
                 }));
             }
-            if (!matches.size) throw new Error("sdxClassCode가 " + scope.classCode + "인 활성 클래스가 없습니다.");
+            if (!matches.size) throw new Error("라이브러리 바로 아래 1뎁스에 sdxClassCode가 " + scope.classCode + "인 활성 클래스가 없습니다.");
             return {classId: Array.from(matches)[0], libraryId: null};
         });
     }
