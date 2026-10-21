@@ -26,22 +26,29 @@ code가 현재 기본 모드입니다. 이 모드에는 `sdxECCAFixedClassId`가
 
 조회 흐름:
 
-1. `POST /resources/IPClassificationReuse/Search/search`에 General Class 쿼리와
-   `states_to_fetch: ["Active"]`를 전달하여 DB 기반 authoring 검색으로 활성 후보를 읽습니다.
-2. 각 페이지의 ID를 `POST /resources/IPClassificationReuse/classifiedItem/getContentDetails`로 조회합니다.
-   `select_predicate`에 `attribute[sdxClassCode]`, physicalid, 유형, 상태를 포함합니다.
-3. 상세 응답에서도 활성 상태인지 확인하고 코드가 `EC_MX`와 정확히 같은 것만 남깁니다.
-   검색 인덱스에 커스텀 속성이 등록되어 있다고 가정하지 않습니다.
-4. 빈 페이지까지 조회하여 다른 페이지의 중복도 확인합니다. 정확히 1개이면 기존
+1. `POST /resources/IPClassificationReuse/Search/search`에 MQL where 조건
+   `type == "General Library"`를 전달하여 사용자 권한으로 보이는 루트 라이브러리를 읽습니다.
+2. 각 라이브러리/클래스를 `root_physicalid`로 지정하고 `rels_to_fetch: ["Subclass"]`,
+   `query: 'type == "General Class"'`로 바로 아래 클래스를 조회합니다. 하위 클래스를 따라 반복합니다.
+3. `select_predicate`에 raw DB 선택자인 `physicalid`, `type`, `current`, `attribute[sdxClassCode]`를 넣습니다.
+   `current === "Active"`이고 코드가 `EC_MX`와 정확히 같은 클래스만 남깁니다.
+   비활성 중간 클래스 아래의 활성 클래스를 놓치지 않도록 중간 단계에는 활성 필터를 걸지 않습니다.
+4. 서버의 `infos.next_start`와 `nhits`로 각 단계의 모든 페이지를 확인합니다.
+   공유 경로/순환 경로에서는 같은 클래스를 다시 확장하지 않습니다. 정확히 1개이면 기존
    getClassPaths → 클래스 필수 설정 조회 → 자동 선택·속성 표시 순서로 진행합니다.
 
-검색의 활성 필터와 상세 상태 `Active` 또는 `Classification.Active`는 참조 OOTB 코드 기준입니다.
+이 API의 query는 서버에서 MQL where로 직접 사용됩니다. `flattenedtaxonomies:...` 같은 검색 엔진
+문법을 보내면 `RESULT_FETCH_ERROR`가 발생할 수 있습니다. 또한 root_physicalid를 생략한 호출은
+전역 General Class 검색이 아니라 루트 라이브러리 조회입니다. 이 두 계약을 반영했습니다.
+조회 범위는 사용자 권한에서 보이는 라이브러리와 그 아래 Subclass로 연결된 클래스입니다.
+상태는 번역된 ds6w:status가 아닌 raw `current = Active`로 비교합니다.
 권한 문맥과 tenant는 팝업 세션에서 가져오며 다른 팝업의 설정을 공유하지 않습니다.
 팝업이 닫히거나 문맥이 바뀌면 이후 페이지를 요청하지 않습니다.
-활성 클래스가 많으면 후보 페이지와 상세 조회 횟수에 따라 로딩 시간이 늘어날 수 있습니다.
+라이브러리/클래스가 많으면 경로 조회 횟수에 따라 로딩 시간이 늘어날 수 있습니다.
 
 검사: `node tests/test-class-code.cjs` 및 기존 auto-fields/class-mandatory/amd-headers 검사를 통과했습니다.
-참조 R2024x LibraryEditor의 실제 요청 생성 함수로 위 API·상태 필터·DB 속성 선택 형식을 대조했습니다.
+참조 R2024x의 classificationWidgetServices.jar와 libraryrestservices.jar에서
+실제 MQL 처리, raw 속성 선택 및 페이지/빈 응답 구조를 확인했습니다.
 사용자 설치 서버의 실제 API 응답과 자동 선택·저장은 아직 실행 확인하지 못했습니다.
 
 ## Payload의 basicAttributes.policy 지정

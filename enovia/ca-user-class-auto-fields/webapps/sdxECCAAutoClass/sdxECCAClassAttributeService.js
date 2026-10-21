@@ -51,7 +51,7 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
             });
         });
     }
-    /** OOTB authoring 검색과 상세 조회로 클래스 자체의 코드·상태를 확인합니다. */
+    /** OOTB authoring API의 MQL where 조건과 Subclass 경로로 코드·상태를 확인합니다. */
     function findActiveClassByCode(service, scope) {
         return Promise.resolve().then(async function () {
             if (!scope || typeof scope.classCode !== "string" || !/^[A-Za-z0-9_]+$/.test(scope.classCode)) {
@@ -78,73 +78,99 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
                             try {
                                 checkOpen();
                                 if (typeof response === "string") response = JSON.parse(response);
-                                if (!response || response.success === false || response.error || !Array.isArray(response.results)) {
+                                if (!response || response.success === false || response.error ||
+                                    (!Array.isArray(response.results) && !(response.infos && response.infos.nresults === 0))) {
                                     throw new Error("분류 조회 API의 results 응답을 확인해 주세요.");
                                 }
-                                resolve(response.results);
+                                if (!response.results) response.results = [];
+                                resolve(response);
                             } catch (error) { reject(error); }
                         },
-                        onFailure: function () { reject(new Error("기존 분류 조회 API 호출에 실패했습니다. 응답과 권한을 확인해 주세요.")); },
+                        onFailure: function (error) {
+                            var code = error && error.error && error.error.code;
+                            reject(new Error("분류 조회 API " + path + " 호출에 실패했습니다." + (code ? " " + code : "")));
+                        },
                         onTimeout: function () { reject(new Error("활성 클래스 조회 시간이 초과되었습니다.")); }
                     });
                 });
             }
             function value(row, names) {
-                if (!row || !Array.isArray(row.attributes)) throw new Error("분류 상세 조회의 attributes 응답을 확인해 주세요.");
+                if (!row || !Array.isArray(row.attributes)) throw new Error("분류 조회의 attributes 응답을 확인해 주세요.");
                 var attrs = row.attributes.filter(function (item) { return item && names.indexOf(item.name) >= 0; });
                 if (!attrs.length) return null;
                 var values = attrs.map(function (item) {
                     var result = item.value;
                     if (Array.isArray(result) && result.length <= 1) result = result.length ? result[0] : "";
-                    if (typeof result !== "string") throw new Error("분류 상세 속성의 단일 문자열 값을 확인해 주세요.");
+                    if (typeof result !== "string") throw new Error("분류 속성의 단일 문자열 값을 확인해 주세요.");
                     return result;
                 });
                 if (values.some(function (item) { return item !== values[0]; })) throw new Error("분류 속성의 응답값이 서로 다릅니다.");
                 return values[0];
             }
-            var seen = new Set(), matches = new Set(), start = 0;
-            // sdxClassCode의 검색 인덱스 등록 여부를 가정하지 않습니다.
-            // DB 기반 활성 후보를 페이지별로 읽고 DB 상세 속성으로 정확히 비교합니다.
-            for (var page = 0; page < 1000; page++) {
-                var rows = await post("/resources/IPClassificationReuse/Search/search", {
-                    label: "sdxECCAClassCodeSearch", tenant: tenant,
-                    query: 'flattenedtaxonomies:"types/General Class"', states_to_fetch: ["Active"],
-                    select_predicate: ["physicalid", "ds6w:type", "ds6w:status"],
-                    person_predicate: [], start: start, nresults: 100,
-                    order_field: "ds6w:modified", order_by: "desc", with_indexing_date: true
-                });
-                if (!rows.length) {
-                    if (!matches.size) throw new Error("sdxClassCode가 " + scope.classCode + "인 활성 클래스가 없습니다.");
-                    return {classId: Array.from(matches)[0], libraryId: null};
-                }
-                var ids = rows.map(function (row) {
-                    var id = value(row, ["physicalid"]);
-                    if (!id || seen.has(id)) throw new Error("분류 조회의 physicalid 또는 페이지 진행을 확인해 주세요.");
-                    seen.add(id);
-                    return id;
-                });
-                var details = await post("/resources/IPClassificationReuse/classifiedItem/getContentDetails", {
-                    label: "sdxECCAClassCodeDetails", physicalid: ids,
-                    select_predicate: ["physicalid", "ds6w:type", "ds6w:status", "attribute[sdxClassCode]"],
-                    classification_attribute: ["attribute[sdxClassCode]"],
-                    person_predicate: [], compute_select_bo: []
-                });
-                var returned = new Set();
-                details.forEach(function (row) {
-                    var id = value(row, ["physicalid"]);
-                    if (ids.indexOf(id) < 0 || returned.has(id)) throw new Error("분류 상세 응답의 객체 ID를 확인해 주세요.");
-                    returned.add(id);
-                    var type = value(row, ["ds6w:type", "ds6w:what/ds6w:type", "type"]);
-                    var state = value(row, ["ds6w:status", "ds6w:what/ds6w:status", "current"]);
-                    var code = value(row, ["attribute[sdxClassCode]", "sdxClassCode"]);
-                    if (type !== "General Class" || state === null || code === null) throw new Error("분류 상세의 유형·상태·sdxClassCode를 확인해 주세요.");
-                    if ((state === "Active" || state === "Classification.Active") && code === scope.classCode) matches.add(id);
-                });
-                if (returned.size !== ids.length) throw new Error("분류 상세 조회 결과가 누락되었습니다.");
-                if (matches.size > 1) throw new Error("코드에 해당하는 활성 클래스가 여러 개입니다.");
-                start += rows.length;
+            var queue = [], queued = new Set(), matches = new Set();
+            function enqueue(id) {
+                if (!queued.has(id)) { queued.add(id); queue.push(id); }
             }
-            throw new Error("분류 조회 페이지 제한을 초과했습니다. 검색 범위를 확인해 주세요.");
+            async function readChildren(rootId, consume) {
+                var start = 0, next = null, seen = new Set();
+                for (var page = 0; page < 1000; page++) {
+                    // SearchUtil은 query를 MQL where에 그대로 전달하므로 검색 엔진 문법을 사용하지 않습니다.
+                    var payload = {
+                        label: "sdxECCAClassCode_" + Date.now() + "_" + Math.random().toString(36).slice(2), tenant: tenant,
+                        query: rootId ? 'type == "General Class"' : 'type == "General Library"',
+                        select_predicate: rootId ? ["physicalid", "type", "current", "attribute[sdxClassCode]"] : ["physicalid", "type"],
+                        person_predicate: [], select_file: [], start: start, nresults: 100,
+                        order_field: "physicalid", order_by: "asc"
+                    };
+                    if (rootId) {
+                        payload.root_physicalid = rootId;
+                        payload.rels_to_fetch = ["Subclass"];
+                    }
+                    if (next !== null) payload.next_start = next;
+                    var response = await post("/resources/IPClassificationReuse/Search/search", payload);
+                    var rows = response.results, info = response.infos;
+                    if (!info || !Number.isSafeInteger(info.nhits) || info.nhits < 0 ||
+                        !Number.isSafeInteger(info.nresults) || info.nresults !== rows.length) {
+                        throw new Error("분류 조회 API의 페이지 집계 정보를 확인해 주세요.");
+                    }
+                    rows.forEach(function (row) {
+                        var id = value(row, ["physicalid"]);
+                        if (!id || seen.has(id)) throw new Error("분류 조회의 physicalid 또는 페이지 진행을 확인해 주세요.");
+                        seen.add(id);
+                        consume(row, id);
+                    });
+                    if (!rows.length) {
+                        if (start < info.nhits) throw new Error("분류 조회 결과가 누락되었습니다.");
+                        return;
+                    }
+                    next = info.next_start;
+                    if (typeof next !== "string" || !/^\d+(?: \d+)?$/.test(next)) throw new Error("분류 조회의 next_start를 확인해 주세요.");
+                    var offset = Number(next.split(" ")[0]);
+                    if (!Number.isSafeInteger(offset) || offset !== start + rows.length) throw new Error("분류 조회의 페이지 진행을 확인해 주세요.");
+                    if (offset >= info.nhits) return;
+                    start = offset;
+                }
+                throw new Error("분류 조회 페이지 제한을 초과했습니다.");
+            }
+            // 루트 ID가 없으면 이 API는 General Library만 조회합니다.
+            await readChildren(null, function (row, id) {
+                if (value(row, ["type"]) !== "General Library") throw new Error("루트 라이브러리 유형을 확인해 주세요.");
+                enqueue(id);
+            });
+            for (var node = 0; node < queue.length; node++) {
+                if (node >= 20000) throw new Error("클래스 경로 조회 제한을 초과했습니다.");
+                await readChildren(queue[node], function (row, id) {
+                    if (value(row, ["type"]) !== "General Class") throw new Error("조회한 클래스 유형을 확인해 주세요.");
+                    var state = value(row, ["current"]), code = value(row, ["attribute[sdxClassCode]"]);
+                    if (state === null || code === null) throw new Error("클래스의 current·sdxClassCode 조회값을 확인해 주세요.");
+                    if (state === "Active" && code === scope.classCode) matches.add(id);
+                    if (matches.size > 1) throw new Error("코드에 해당하는 활성 클래스가 여러 개입니다.");
+                    // 중간 클래스가 비활성이어도 그 아래 활성 클래스는 조회해야 합니다.
+                    enqueue(id);
+                });
+            }
+            if (!matches.size) throw new Error("sdxClassCode가 " + scope.classCode + "인 활성 클래스가 없습니다.");
+            return {classId: Array.from(matches)[0], libraryId: null};
         });
     }
     return {load: load, readMandatory: readMandatory, findActiveClassByCode: findActiveClassByCode};

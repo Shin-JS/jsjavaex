@@ -2,17 +2,20 @@
 
 ## 클래스 코드·활성 상태 조회 (2026-10-21)
 
-[R2024x LibraryEditor.js](https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/LibraryEditor/LibraryEditor.js)의
-아래 구현을 확인했습니다. 새 JSP나 별도 서버 조회를 추가하지 않습니다.
+API 호출 위치는 [R2024x LibraryEditor.js](https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/LibraryEditor/LibraryEditor.js)의
+LibraryEditorWebService._performSearchQuery에서 확인했습니다. HTTP 500 RESULT_FETCH_ERROR 조사 후
+다음 참조 JAR의 바이트코드를 추가로 확인하여 서버 계약에 맞췄습니다. 벤더 파일은 이 저장소에 복제하지 않았습니다.
 
-- LibraryEditorWebService._performSearchQuery: isAuthoringMode일 때 `/resources/IPClassificationReuse/Search/search`, states_to_fetch, start/nresults 사용.
-- ChangeMaturityFilterCmdUtil.getMaturityFilterForAuthSearch: 활성 상태 필터 배열 전달.
-- LibraryEditorWebService._performFetchQuery: isAuthoringMode일 때 `/resources/IPClassificationReuse/classifiedItem/getContentDetails`, physicalid, select_predicate, classification_attribute 사용.
-- 상세 조회 호출부에서 attrDBName의 `attribute[...]`를 dynamicAttrs로 넘기는 부분.
-- LibrarySearch.getAuthAttributes: DB 속성 선택자를 authoring 조회에 포함하는 부분.
-- ChangeMaturityFilterCmdUtil: 활성 상태의 내부 표현 `Classification.Active`.
+- [classificationWidgetServices.jar](https://github.com/Ignim94/R2024x/blob/master/3dspace/WEB-INF/lib/classificationWidgetServices.jar), blob `e5d2a547fad2d263f58a1540cc7b920d5e849b28`.
+  SearchUtil.listRootContentsToSet/listContentsToSet: query를 MQL where에 그대로 사용합니다.
+  루트 조회는 모델의 root types만, root_physicalid 지정 시 Subclass 관계를 한 단계 확장합니다.
+  rels_to_fetch를 지정하면 해당 관계만 조회합니다.
+  PredicateAttrManager: physicalid/type/current/attribute[...] 등의 raw DB 선택자를 그대로 사용할 수 있습니다.
+  ClassificationSearchManager: infos.nhits/nresults/next_start 및 빈 응답 시 results 생략을 확인했습니다.
+- [libraryrestservices.jar](https://github.com/Ignim94/R2024x/blob/master/3dspace/WEB-INF/lib/libraryrestservices.jar), blob `1785eddd3a404e44329408b307fd6848d6fc9c2f`.
+  LibrarySearchService와 LibraryModelProvider: 루트 유형 General Library, 하위 유형 General Class와 관계 Subclass를 확인했습니다.
 
-실제 참조 모듈을 실행하여 요청 생성 형식을 확인했습니다. 설치 서버에서 API 실행은 미검증입니다.
+설치 서버의 실제 API 실행 및 응답은 추가 확인이 필요합니다.
 
 공개 R2024x 런타임 소스의 해당 모듈을 직접 확인했습니다. 벤더의 공식 확장 API 계약이나 현재 설치 버전의 보증 자료는 아닙니다.
 
