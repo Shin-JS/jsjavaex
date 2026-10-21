@@ -1,16 +1,20 @@
 # 클래스 자동 표시 · 유형 고정 · 부서 조회 연결 준비
 
-## 생성 서비스 typeName 유지
-
-### Payload에서 Policy가 되돌아가는 경우
+## Payload의 basicAttributes.policy 지정
 
 최신 main 모듈은 `installFields`에서 해당 팝업의 `ENOListView.onSubmit` 콜백을 연결합니다.
 기존 BL·검증·`_parseModel`이 끝난 결과를 받은 뒤, 원래 생성 콜백으로 넘기기 직전에
-해당 세션의 Policy를 다시 반영합니다. 폼 준비 시점의 값만 수정하면 이후 모델 직렬화에서
-`Change Action`으로 덮어써질 수 있어 최종 결과에도 적용합니다.
+해당 세션의 Policy를 `basicAttributes.policy` 문자열에 반영합니다.
+사용자 환경에서 확인한 실제 형태는 `basicAttributes: { policy: "Change Action" }`입니다.
+이전에 `attributes.publicAttributes`의 policy 항목을 수정하던 처리는 잘못된 위치여서 제거했습니다.
+OOTB `_parseModel`은 basicAttributes를 결과에서 생략할 수 있으므로 원래 데이터의
+기본 속성과 직렬화 결과의 기본 속성을 보존해 합친 뒤 policy만 지정합니다.
+`createContent`는 이 basicAttributes를 rawTypeInfo에 복사하므로 실제 요청에도 반영됩니다.
 기존 검증 실패는 그대로 전달하며 종료한 팝업의 지연 결과는 제출하지 않습니다.
 종료 시 원래 메서드를 복원합니다. 기존 `installFields`/`destroyFields` 연결이 있으면
 추가 OOTB 수정 없이 최신 `sdxECCAAutoClass.js`를 교체합니다.
+
+## 생성 서비스 typeName 유지
 
 `configureCreateType()`에서 생성 타입이 `sdxECChangeAction`이면 `options.typeName`만
 `Change Action`으로 전달합니다. `type`과 `options.preferedType`은 `sdxECChangeAction`을
@@ -27,10 +31,9 @@ Change Order, Change Request 및 다른 타입은 기존 타입 이름을 그대
 Policy는 세션 생성 시 복사하므로 열린 대화상자의 값이 다른 호출의 설정으로 바뀌지 않습니다.
 미지정 또는 다른 값이면 준비 오류로 알려주며 기본 정책으로 대체하지 않습니다.
 
-기존 속성 그룹에 `name: "policy"` 항목이 있으면 수정하고, 없으면
-`attributes.publicAttributes`에 추가합니다. 전달한 Policy를 `value`에 넣고
-`basicAttribute: true`, `modified: true`로 기본 생성 속성임을 전달합니다.
-정책 입력은 화면에 표시하지 않습니다. 타입은 `sdxECChangeAction` 그대로이며
+전달한 Policy는 `basicAttributes.policy`에 문자열로 지정합니다.
+`attributes` 배열에는 policy 항목이나 별도 플래그를 추가하지 않습니다.
+타입은 `sdxECChangeAction` 그대로이며
 `sdxECType`의 `ECR` 고정·숨김도 유지합니다.
 이 변경은 정책 자체나 서버의 타입-정책 연결을 수정하지 않습니다.
 실제 생성 요청과 생성된 객체의 Policy 확인은 필요합니다.

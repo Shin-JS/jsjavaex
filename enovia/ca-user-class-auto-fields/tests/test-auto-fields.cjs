@@ -204,21 +204,19 @@ for (const typeName of ['sdxECChangeAction', 'Change Action', 'Change Order', 'C
   assert.equal(field.value,'ECR');assert.equal(field.visible,false);assert.equal(field.isReadOnly,true);
   assert.equal(field.modified,true);assert.equal(field.forUI,true);assert.equal(field.storeLocalPreference,false);
   assert.equal(field.visibility,undefined);assert.equal(typed.attributes.publicAttributes[0],field);
-  const policy=typed.attributes.publicAttributes.find(attr=>attr.name==='policy');
-  assert.equal(policy.value,'sdxECR');assert.equal(policy.basicAttribute,true);assert.equal(policy.modified,true);
-  assert.equal(policy.visible,false);assert.equal(policy.forUI,true);assert.equal(policy.isReadOnly,true);
+  assert.equal(typed.basicAttributes.policy,'sdxECR');
   field.value='ECN';api.prepareFixedType(typed,state);assert.equal(field.value,'ECR');
-  assert.equal(typed.attributes.publicAttributes.filter(attr=>attr.name==='policy').length,1);
+  assert.equal(typed.attributes.publicAttributes.some(attr=>attr.name==='policy'),false);
  } else {assert.equal(field.value,'ECN');assert.equal(field.visible,true);assert.equal(field.storeLocalPreference,true);
   assert.equal(typed.attributes.publicAttributes.some(attr=>attr.name==='policy'),false);}
 }
-// 다른 그룹에 기존 policy가 있어도 원래 정의를 수정하고 중복 추가하지 않습니다.
 // 모델 직렬화 후 정책이 Change Action으로 돌아가도 최종 콜백에서 복구합니다.
 {
  const cases=[];
  for (const policyName of ['sdxECR','sdxECO']) {
   config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAFixedClassId:'C1'};
   const typed=data();typed.defaultAttributes.Type.value='sdxECChangeAction';
+  typed.basicAttributes={policy:'Change Action',vault:'Original Vault'};
   const facets=metadata();api.attachBridge(typed,facets,{},policyName);
   const state=facets[0].options.sdxECCAAutoSession;
   let finish;
@@ -228,11 +226,15 @@ for (const typeName of ['sdxECChangeAction', 'Change Action', 'Change Order', 'C
   cases.push({state,view,facet,original,finish:()=>finish});
   let received;
   assert.equal(view.onSubmit(result=>{received=result;}),'pending');
-  const outgoing={defaultAttributes:typed.defaultAttributes,attributes:{publicAttributes:[{name:'policy',value:'Change Action',modified:false}]}};
+  const outgoing={defaultAttributes:typed.defaultAttributes,attributes:{publicAttributes:[]},basicAttributes:{policy:'Change Action',description:'Keep description'}};
   finish(outgoing);assert.equal(received,outgoing);
-  assert.equal(outgoing.attributes.publicAttributes[0].value,policyName);
-  assert.equal(outgoing.attributes.publicAttributes[0].basicAttribute,true);
-  assert.equal(outgoing.attributes.publicAttributes[0].modified,true);
+  assert.equal(outgoing.basicAttributes.policy,policyName);
+  assert.equal(outgoing.basicAttributes.vault,'Original Vault');
+  assert.equal(outgoing.basicAttributes.description,'Keep description');
+  assert.equal(outgoing.attributes.publicAttributes.length,0);
+  view.onSubmit(result=>{received=result;});
+  const parsed={defaultAttributes:typed.defaultAttributes,attributes:{publicAttributes:[]}};
+  finish(parsed);assert.equal(received.basicAttributes.policy,policyName);assert.equal(received.basicAttributes.vault,'Original Vault');
   view.onSubmit(result=>{received=result;});finish(false);assert.equal(received,false);
  }
  assert.notEqual(cases[0].view.onSubmit,cases[1].view.onSubmit);
@@ -246,16 +248,15 @@ for (const typeName of ['sdxECChangeAction','Change Order','Change Request']) {
  const typed=data();typed.defaultAttributes.Type={value:typeName,range:[typeName],persistData:[{name:typeName}]};
  const policy={name:'policy',value:'Old Policy',visible:true,storeLocalPreference:true};
  typed.attributes={publicAttributes:[{name:'sdxECType',value:'ECN'}],extensionAttributes:[policy]};
+ typed.basicAttributes={policy:'Change Action',vault:'Keep Vault'};
  const state={type:typeName,createPolicy:'sdxECO',fail(error){throw error;}};
  api.prepareFixedType(typed,state);
- assert.equal(policy.value,typeName==='sdxECChangeAction'?'sdxECO':'Old Policy');
+ assert.equal(policy.value,'Old Policy');
+ assert.equal(typed.basicAttributes.policy,typeName==='sdxECChangeAction'?'sdxECO':'Change Action');
+ assert.equal(typed.basicAttributes.vault,'Keep Vault');
  assert.equal(typed.attributes.publicAttributes.some(attr=>attr.name==='policy'),false);
  if(typeName==='sdxECChangeAction') {
-  assert.equal(policy.basicAttribute,true);assert.equal(policy.modified,true);assert.equal(policy.storeLocalPreference,false);
-  // 실제 생성 요청에서 전송하는 attributes 그룹의 JSON에 기본 정책 플래그를 유지합니다.
-  const request=JSON.parse(JSON.stringify({create:[{type:typeName,attributes:typed.attributes}]}));
-  assert.equal(request.create[0].attributes.extensionAttributes[0].value,'sdxECO');
-  assert.equal(request.create[0].attributes.extensionAttributes[0].basicAttribute,true);
+  assert.equal(policy.visible,true);assert.equal(policy.storeLocalPreference,true);
  }
 }
 // Policy 파라미터는 대화상자별로 보존하며 기본값으로 조용히 대체하지 않습니다.
@@ -270,7 +271,7 @@ for (const typeName of ['sdxECChangeAction','Change Order','Change Request']) {
   api.prepareFixedType(typed,state);
   if (policyName==='sdxECR'||policyName==='sdxECO') {
    assert.notEqual(state.status,'error');assert.equal(state.createPolicy,policyName);
-   assert.equal(typed.attributes.publicAttributes.find(attr=>attr.name==='policy').value,policyName);
+   assert.equal(typed.basicAttributes.policy,policyName);
    assert.equal(typed.attributes.publicAttributes[0].value,'ECR');
   } else {assert.equal(state.status,'error');assert.match(state.error.message,/Policy/);}
  }

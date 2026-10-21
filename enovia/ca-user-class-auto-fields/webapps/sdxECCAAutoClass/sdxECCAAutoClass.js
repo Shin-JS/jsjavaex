@@ -162,38 +162,18 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (!found) throw new Error("sdxECChangeAction의 sdxECType 속성 정의를 찾지 못했습니다.");
     }
 
-    /** policy는 일반 사용자 속성이 아닌 기본 생성 속성으로 전달합니다. */
+    /** 설치 환경의 실제 요청 구조: basicAttributes.policy는 문자열입니다. */
     function sdxECCAPreparePolicy(data, session) {
         if (session.type !== "sdxECChangeAction") return;
         var policyName = session.createPolicy;
         if (policyName !== "sdxECR" && policyName !== "sdxECO") {
             throw new Error("생성 Policy 파라미터는 sdxECR 또는 sdxECO로 지정해 주세요.");
         }
-        var groups = data.attributes;
-        var policies = [];
-        Object.keys(groups).forEach(function (key) {
-            if (!Array.isArray(groups[key])) return;
-            groups[key].forEach(function (attribute) {
-                if (attribute && attribute.name === "policy") policies.push(attribute);
-            });
-        });
-        if (!policies.length) {
-            if (!groups.publicAttributes) groups.publicAttributes = [];
-            if (!Array.isArray(groups.publicAttributes)) throw new Error("publicAttributes가 배열이 아닙니다.");
-            var policy = {name: "policy", type: "string"};
-            groups.publicAttributes.push(policy);
-            policies.push(policy);
+        if (data.basicAttributes == null) data.basicAttributes = {};
+        if (typeof data.basicAttributes !== "object" || Array.isArray(data.basicAttributes)) {
+            throw new Error("basicAttributes가 객체가 아닙니다.");
         }
-        policies.forEach(function (policy) {
-            policy.value = policyName;
-            policy.basicAttribute = true;
-            policy.modified = true;
-            policy.isReadOnly = true;
-            policy.visible = false;
-            policy.forUI = true;
-            policy.storeLocalPreference = false;
-            delete policy.visibility;
-        });
+        data.basicAttributes.policy = policyName;
     }
 
     /** OOTB가 유형 모델을 만들기 전에 표시·편집 메타데이터를 제한합니다.
@@ -236,6 +216,9 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 try {
                     var type = result.defaultAttributes && result.defaultAttributes.Type;
                     if (!type || type.value !== session.type) throw new Error("생성 요청의 유형이 지정 유형과 다릅니다.");
+                    // OOTB _parseModel은 basicAttributes를 결과에서 생략할 수 있습니다.
+                    // 원래 기본 속성을 보존해 결과에 넣으면 createContent가 rawTypeInfo에도 반영합니다.
+                    result.basicAttributes = Object.assign({}, view.data && view.data.basicAttributes, result.basicAttributes);
                     sdxECCAPreparePolicy(result, session);
                 } catch (error) {
                     session.fail(error);
