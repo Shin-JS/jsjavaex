@@ -136,6 +136,31 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (configError) session.fail(configError);
     }
 
+    /** sdxECChangeAction 전용 필드입니다. 숨긴 모델도 만들어 저장 데이터에 값을 유지합니다. */
+    function sdxECCAPrepareECType(data, session) {
+        if (session.type !== "sdxECChangeAction") return;
+        var groups = data && data.attributes;
+        var found = false;
+        Object.keys(groups || {}).forEach(function (key) {
+            var attributes = groups[key];
+            if (!Array.isArray(attributes)) return;
+            attributes.forEach(function (attribute) {
+                if (!attribute || attribute.name !== "sdxECType") return;
+                found = true;
+                attribute.value = "ECR";
+                attribute.modified = true;
+                attribute.isReadOnly = true;
+                attribute.visible = false;
+                // visible:false만으로 모델 생성까지 생략되지 않도록 OOTB forUI를 사용합니다.
+                attribute.forUI = true;
+                attribute.storeLocalPreference = false;
+                // 다른 필드의 변경 이벤트로 다시 표시되는 조건도 제거합니다.
+                delete attribute.visibility;
+            });
+        });
+        if (!found) throw new Error("sdxECChangeAction의 sdxECType 속성 정의를 찾지 못했습니다.");
+    }
+
     /** OOTB가 유형 모델을 만들기 전에 표시·편집 메타데이터를 제한합니다.
      * 타입 값은 CreateNew 이전부터 지정해야 합니다. 여기서 다른 타입으로 값만 바꾸지 않습니다.
      * OOTB isReadOnly는 편집을 막는 모델 옵션이며, disabled 모드의 실제 모양은 렌더러에 따릅니다.
@@ -147,6 +172,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             if (!type || type.value !== session.type) {
                 throw new Error("조회된 유형과 고정 유형이 다릅니다. CreateNew 전 타입 설정을 확인해 주세요.");
             }
+            sdxECCAPrepareECType(data, session);
             var index = Array.isArray(type.range) ? type.range.indexOf(session.type) : -1;
             if (index < 0 || !Array.isArray(type.persistData) || !type.persistData.some(function (item) {
                 return item.name === session.type;
@@ -713,3 +739,4 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         configureCreateType: sdxECCAConfigureFixedCreateType
     };
 });
+

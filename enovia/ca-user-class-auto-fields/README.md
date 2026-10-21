@@ -1,5 +1,19 @@
 # 클래스 자동 표시 · 유형 고정 · 부서 조회 연결 준비
 
+## sdxECType 고정 및 숨김 (2026-10-21)
+
+활성화한 전용 위젯에서 생성 타입이 정확히 `sdxECChangeAction`이면 `sdxECType`을
+`ECR`로 지정하고 입력 필드를 숨깁니다. 기존 `prepareFixedType(data, session)` 연결에서
+폼 모델 생성 전에 적용하므로 추가 OOTB 호출은 필요하지 않습니다.
+최신 `webapps/sdxECCAAutoClass/sdxECCAAutoClass.js`를 교체합니다.
+
+속성 정의를 배열에서 삭제하지 않고 `value: "ECR"`, `modified: true`,
+`isReadOnly: true`, `visible: false`, `forUI: true`로 유지합니다.
+R2024x 모델 빌더의 `visible || forUI` 조건을 사용해 숨긴 모델도 생성하며,
+이전 로컬 기본값과 조건부 표시 설정은 해당 필드에서 해제합니다.
+속성 정의가 없으면 준비 오류로 알려줍니다. 다른 타입에는 적용하지 않습니다.
+서버의 타입 정의를 수정하는 기능은 아니며 실제 브라우저 생성 및 저장 확인은 필요합니다.
+
 기존 추가 함수 17개를 [sdxECCAAutoClass.js](webapps/sdxECCAAutoClass/sdxECCAAutoClass.js)의 `define("DS/sdxECCAAutoClass/sdxECCAAutoClass", ...)` 안으로 옮겼습니다. OOTB 파일에는 커스텀 모듈 의존성과 연결 호출만 남깁니다.
 
 2026-10-19 현장에서 지정 클래스의 속성 필드가 표시되는 것을 확인했습니다. 완료 알림에는 **클래스 모델과 응답을 이 순서로** 전달해야 합니다. 현재 설치 소스가 `modelList:[i]`, `onAttributesLoad:function(r)`이면 `notifyAttributesLoaded(i,r)`입니다. R2024x 예시의 축약 변수명을 그대로 사용하지 않습니다.
@@ -328,3 +342,4 @@ disableFormSubmit() 직접 호출과 permanentDisable 직접 변경은 제거했
 필수 검증 결과는 facetValidation에 반영하고 OOTB가 전체 버튼 상태를 집계합니다.
 resetButtons 훅으로 재진입하면 중복 집계를 차단합니다. 기존 bindDialog 훅을 유지하고
 최신 sdxECCAAutoClass.js를 교체하세요.
+

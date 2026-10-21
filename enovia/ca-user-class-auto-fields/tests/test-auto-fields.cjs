@@ -193,6 +193,25 @@ for(const mode of ['hidden','disabled']){
  assert.equal(typed.defaultAttributes.Type.persistData[0],descriptor);
  session.dispose();
 }
+// EC Type은 대상 타입에서만 ECR로 고정하고 숨겨도 요청 데이터에서 제거하지 않습니다.
+for (const typeName of ['sdxECChangeAction', 'Change Action', 'Change Order', 'Change Request']) {
+ const typed=data();const field={name:'sdxECType',type:'string',value:'ECN',visible:true,storeLocalPreference:true,visibility:{Other:['Y']}};
+ typed.defaultAttributes.Type={value:typeName,range:[typeName],persistData:[{name:typeName}]};
+ typed.attributes={publicAttributes:[field]};
+ const state={type:typeName,typeDisplay:'hidden',fail(error){this.error=error;}};
+ api.prepareFixedType(typed,state);assert.equal(state.error,undefined);
+ if(typeName==='sdxECChangeAction') {
+  assert.equal(field.value,'ECR');assert.equal(field.visible,false);assert.equal(field.isReadOnly,true);
+  assert.equal(field.modified,true);assert.equal(field.forUI,true);assert.equal(field.storeLocalPreference,false);
+  assert.equal(field.visibility,undefined);assert.equal(typed.attributes.publicAttributes[0],field);
+  field.value='ECN';api.prepareFixedType(typed,state);assert.equal(field.value,'ECR');
+ } else {assert.equal(field.value,'ECN');assert.equal(field.visible,true);assert.equal(field.storeLocalPreference,true);}
+}
+{
+ const typed=data();typed.defaultAttributes.Type={value:'sdxECChangeAction',range:['sdxECChangeAction'],persistData:[{name:'sdxECChangeAction'}]};
+ const state={type:'sdxECChangeAction',fail(error){this.error=error;}};
+ api.prepareFixedType(typed,state);assert.match(state.error.message,/sdxECType/);
+}
 ({session}=makeSession());const wrong=data();wrong.defaultAttributes.Type.value='Other';api.prepareFixedType(wrong,session);assert.equal(session.status,'error');session.dispose();
 ({session}=makeSession());const missing=data();missing.defaultAttributes.Type.persistData=[];api.prepareFixedType(missing,session);assert.equal(session.status,'error');session.dispose();
 ({session}=makeSession('C1','invalid'));assert.equal(session.status,'error');session.dispose();
@@ -257,3 +276,4 @@ await (async function () {
 })().catch(error=>{console.error(error);process.exitCode=1;});
 
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
