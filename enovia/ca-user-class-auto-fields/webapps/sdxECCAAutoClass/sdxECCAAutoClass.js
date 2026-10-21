@@ -228,6 +228,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         facet.sdxECCAAutoResize = setTimeout(function () {
             if (!facet.sdxECCAAutoDisposed && !session.disposed && ctrl.classifPropertiesView.onInnerResize) {
                 ctrl.classifPropertiesView.onInnerResize();
+                sdxECCARenderMandatoryIcons(form);
             }
         }, 0);
     }
@@ -240,12 +241,22 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         form.querySelectorAll(".attrLabel.mandAttr").forEach(function (label) {
             var legacy = label.querySelector(".attrMand");
             if (!legacy) return;
-            var icon = document.createElement("span");
-            icon.className = "mandIcon wux-ui3ds wux-ui-3ds-new-create";
-            icon.setAttribute("aria-hidden", "true");
-            legacy.parentNode.replaceChild(icon, legacy);
-            // 구형 라벨 클래스의 별표 pseudo-element와 새 아이콘이 중복되지 않도록 합니다.
+            if (label.querySelector(".mandIcon")) {
+                // 기본 아이콘이 이미 있으면 추가하지 않고 구형 별표만 제거합니다.
+                legacy.parentNode.removeChild(legacy);
+            } else {
+                var icon = document.createElement("span");
+                icon.className = "mandIcon wux-ui3ds wux-ui-3ds-new-create";
+                icon.setAttribute("aria-hidden", "true");
+                legacy.parentNode.replaceChild(icon, legacy);
+            }
             label.classList.remove("mandAttr");
+        });
+        form.querySelectorAll(".flexLine").forEach(function (row) {
+            // 한 속성 행의 필수 아이콘만 검사합니다. 맨 앞의 하나를 남깁니다.
+            row.querySelectorAll(".mandIcon").forEach(function (icon, index) {
+                if (index > 0 && icon.parentNode) icon.parentNode.removeChild(icon);
+            });
         });
     }
 

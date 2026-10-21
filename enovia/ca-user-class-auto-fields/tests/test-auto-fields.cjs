@@ -83,9 +83,19 @@ function makeController(session){
  classList:{remove(name){assert.equal(name,'mandAttr');required=false;}},
  replaceChild(icon,node){assert.equal(node,old);assert.equal(icon.className,'mandIcon wux-ui3ds wux-ui-3ds-new-create');count++;}};
  old.parentNode=label;
- const form={querySelectorAll(selector){assert.equal(selector,'.attrLabel.mandAttr');return required?[label]:[];}};
+ const form={querySelectorAll(selector){if(selector==='.flexLine')return [];assert.equal(selector,'.attrLabel.mandAttr');return required?[label]:[];}};
  api.renderMandatoryIcons(form);api.renderMandatoryIcons(form);
  assert.equal(count,1);assert.equal(classificationIcon.className,'original-classification-icon');
+}
+// 필수 아이콘이 두 개면 뒤의 것만 제거하고 첫 번째는 보존합니다.
+{
+ const first={id:'first'},second={id:'second'},third={id:'third'};
+ const icons=[first,second,third];const parent={removeChild(icon){icons.splice(icons.indexOf(icon),1);icon.parentNode=null;}};
+ icons.forEach(icon=>icon.parentNode=parent);
+ const row={querySelectorAll(selector){assert.equal(selector,'.mandIcon');return icons.slice();}};
+ const form={querySelectorAll(selector){return selector==='.flexLine'?[row]:[];}};
+ api.renderMandatoryIcons(form);api.renderMandatoryIcons(form);
+ assert.deepEqual(icons,[first]);
 }
 // 비활성 위젯과 다른 타입의 공용 호출에는 세션을 추가하지 않습니다.
 config={};let facets=metadata();api.attachBridge(data(),facets,{});assert.equal(facets[0].options.sdxECCAAutoSession,undefined);
