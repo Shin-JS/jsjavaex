@@ -76,3 +76,10 @@ node --check webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js
   다른 facet 무효 상태 보존과 취소 버튼 유지 검사 통과.
 - 필수 별표는 기존 mandatory 메타데이터만 사용합니다. 별도 표시 코드는 추가하지 않았습니다.
 - 서버의 실제 버튼/별표 중복 및 입력값 저장은 실행하지 못했습니다.
+
+
+2026-10-21 occurrence 초기화 순서 보완:
+
+- 컨트롤러가 준비됐어도 getOccurrence()가 null이면 setFacetValidation/자동 선택을 호출하지 않음.
+- 초기 false 상태를 보존하고 occurrence가 나중에 붙으면 같은 false 상태도 OOTB에 발행하는 검사 통과.
+- 기존 위젯 격리/모델 검증/버튼 상태 검사 모두 통과. 실제 설치 서버에서의 확인은 남아 있습니다.

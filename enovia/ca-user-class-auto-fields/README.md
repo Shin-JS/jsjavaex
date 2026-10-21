@@ -233,3 +233,12 @@ R2024x의 실제 AttributesUtils 구현으로 빈 필수값 오류 설정과 입
 분류 모델 변경 구독과 지연 작업은 화면 종료 시 해제합니다. 세션이 없는 다른 위젯은 변경하지 않습니다.
 검사: 기존 세 검사와 실제 OOTB 소스를 입력하는 test-ootb-validation/test-ootb-button-state를 실행했습니다.
 실제 서버 브라우저의 버튼 상태/필수 표시/저장은 별도 확인이 필요합니다.
+
+
+### occurrence 초기화 대기
+
+facet init 중에는 getOccurrence()가 null일 수 있습니다. 이때는 facetValidation 값만 보관하고
+setFacetValidation 호출은 occurrence.setValidation이 준비될 때까지 미룹니다.
+기존 컨트롤러 준비 타이머에서 occurrence도 확인하며, 준비되면 보관한 상태를 한 번 발행합니다.
+단순히 null일 때 return하여 초기 비활성 상태 전달을 누락하지 않습니다.
+준비 제한시간을 넘기면 오류로 남기며, 화면 종료 시 기존 타이머를 정리합니다.

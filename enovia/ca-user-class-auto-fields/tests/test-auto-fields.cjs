@@ -52,8 +52,9 @@ function eventModel(model){
  model.listenerCount=()=>Array.from(events.values()).reduce((sum,set)=>sum+set.size,0);
  return model;
 }
-function classificationFacet(ui){return {facetValidation:true,states:[],baseValid:true,
- setFacetValidation(value){this.facetValidation=value;this.states.push(value);this.buttonDisabled=!(value&&this.baseValid);},
+function classificationFacet(ui){return {facetValidation:true,states:[],baseValid:true,occurrenceReady:true,
+ getOccurrence(){return this.occurrenceReady?{setValidation(){}}:null;},
+ setFacetValidation(value){assert.ok(this.getOccurrence(),'setValidation must not run without occurrence');this.facetValidation=value;this.states.push(value);this.buttonDisabled=!(value&&this.baseValid);},
  initUI:{getController:()=>({plmNewLibraryActive:ui.ctrl})}};}
 function makeController(session){
  const parent=new Element(), form=new Element(), sibling=new Element();parent.appendChild(form);parent.appendChild(sibling);form.nextSibling=sibling;
@@ -85,8 +86,12 @@ api.prepareFixedType(props.listview.data,session);
 assert.equal(props.listview.data.defaultAttributes.Type.visible,false);
 api.installFields(props,{sdxECCAAutoSession:session});
 assert.equal(loadedModules.length,0); // 컨트롤러 생성 전에 검증 모듈을 요청하지 않음
-const facet=classificationFacet(ui);
-api.connectClassification(facet,{sdxECCAAutoSession:session,securityContext:session.context});timers.get(facet.sdxECCAAutoTimer)();
+const facet=classificationFacet(ui);facet.occurrenceReady=false;
+api.connectClassification(facet,{sdxECCAAutoSession:session,securityContext:session.context});
+assert.equal(facet.facetValidation,false);assert.equal(facet.states.length,0);
+timers.get(facet.sdxECCAAutoTimer)();assert.equal(ui.request(),undefined); // ctrl ready, occurrence not ready
+facet.occurrenceReady=true;timers.get(facet.sdxECCAAutoTimer)();
+assert.equal(facet.states[0],false); // initial state must be published even though the boolean already matches
 const dialog={View:{facets:activeFacets}};
 assert.equal(api.canSubmitDialog(dialog),false);assert.equal(facet.buttonDisabled,true);assert.equal(ui.ctrl.container.style.display,'none');
 assert.equal(props.sdxECCAAutoRoot.children.length,2); // 상태와 폼뿐, 검색 컴포넌트 없음

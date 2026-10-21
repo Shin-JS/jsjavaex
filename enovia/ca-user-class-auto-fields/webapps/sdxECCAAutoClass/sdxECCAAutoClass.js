@@ -318,7 +318,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     function sdxECCAInstallValidationState(facet, session) {
         if (facet.sdxECCAValidationInstalled) return;
         facet.sdxECCAValidationInstalled = true;
-        var watchedModel = null, pending = null, unsubscribe = null, validating = false;
+        var watchedModel = null, pending = null, unsubscribe = null, validating = false, needsPublish = false;
         function unwatch() {
             if (watchedModel) watchedModel.removeEvent("onChangeAttributes", onChange);
             watchedModel = null;
@@ -353,7 +353,17 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             }
             session.fieldsValid = valid;
             if (valid) session.validationError = null;
-            if (facet.facetValidation !== valid) facet.setFacetValidation(valid);
+            var occurrence = typeof facet.getOccurrence === "function" ? facet.getOccurrence() : null;
+            if (!occurrence || typeof occurrence.setValidation !== "function") {
+                // facet init 중에는 occurrence가 아직 없습니다. 값만 보존하고 이벤트는 준비 후 발행합니다.
+                facet.facetValidation = valid;
+                needsPublish = true;
+                return;
+            }
+            if (needsPublish || facet.facetValidation !== valid) {
+                needsPublish = false;
+                facet.setFacetValidation(valid);
+            }
         }
         if (typeof facet.setFacetValidation !== "function") {
             session.fail(new Error("OOTB setFacetValidation 연결을 확인해 주세요."));
@@ -382,9 +392,12 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var started = Date.now();
         facet.sdxECCAAutoTimer = setInterval(function () {
             if (session.disposed || session.status === "error") { clearInterval(facet.sdxECCAAutoTimer); return; }
+            if (session.refreshValidation) session.refreshValidation();
+            var occurrence = typeof facet.getOccurrence === "function" ? facet.getOccurrence() : null;
             var ui = facet.initUI && facet.initUI.getController();
             var ctrl = ui && ui.plmNewLibraryActive;
-            if (ctrl && ctrl.autoComplete && ctrl.classifPropertiesView && ctrl.accordeonCon) {
+            if (occurrence && typeof occurrence.setValidation === "function" &&
+                ctrl && ctrl.autoComplete && ctrl.classifPropertiesView && ctrl.accordeonCon) {
                 clearInterval(facet.sdxECCAAutoTimer);
                 try {
                     if ((ctrl.autoComplete.selectedItems || []).length || (ctrl.classifPropModels || []).length) {
@@ -422,7 +435,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 } catch (error) { session.fail(error); }
             } else if (Date.now() - started > 30000) {
                 clearInterval(facet.sdxECCAAutoTimer);
-                session.fail(new Error("기존 분류 컨트롤러 준비 시간이 초과되었습니다."));
+                session.fail(new Error("분류 컨트롤러 또는 facet occurrence 준비 시간이 초과되었습니다."));
             }
         }, 100);
     }
