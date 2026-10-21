@@ -64,7 +64,9 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
             var WAFData = await new Promise(function (resolve, reject) {
                 require(["DS/WAFData/WAFData"], resolve, function () { reject(new Error("WAFData 모듈을 로드할 수 없습니다.")); });
             });
+            var stoppedError = null;
             function checkOpen() {
+                if (stoppedError) throw stoppedError;
                 if (scope.isCancelled && scope.isCancelled()) throw new Error("클래스 조회가 취소되었습니다.");
             }
             function post(path, payload) {
@@ -159,9 +161,7 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
                 if (value(row, ["ds6w:type", "type"]) !== "General Library") throw new Error("루트 라이브러리 유형을 확인해 주세요.");
                 enqueue(id);
             });
-            for (var node = 0; node < queue.length; node++) {
-                if (node >= 20000) throw new Error("클래스 경로 조회 제한을 초과했습니다.");
-                await readChildren(queue[node], function (row, id) {
+            function consumeClass(row, id) {
                     if (value(row, ["ds6w:type", "type"]) !== "General Class") throw new Error("조회한 클래스 유형을 확인해 주세요.");
                     var state = value(row, ["current"]), code = value(row, ["attribute[sdxClassCode]"]);
                     if (state === null || code === null) throw new Error("클래스의 current·sdxClassCode 조회값을 확인해 주세요.");
@@ -169,7 +169,25 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
                     if (matches.size > 1) throw new Error("코드에 해당하는 활성 클래스가 여러 개입니다.");
                     // 중간 클래스가 비활성이어도 그 아래 활성 클래스는 조회해야 합니다.
                     enqueue(id);
-                });
+            }
+            // 페이지는 각 경로 안에서 순차 조회하고, 독립 경로는 최대 4개만 병렬 조회합니다.
+            // 동적 queue와 queued Set은 공유하므로 순환·공유 경로도 한 번만 확장합니다.
+            var node = 0;
+            while (node < queue.length) {
+                checkOpen();
+                var end = Math.min(node + 4, queue.length);
+                if (end > 20000) throw new Error("클래스 경로 조회 제한을 초과했습니다.");
+                var batch = queue.slice(node, end);
+                node = end;
+                await Promise.all(batch.map(async function (id) {
+                    try {
+                        await readChildren(id, consumeClass);
+                    } catch (error) {
+                        // 한 경로라도 실패하면 다른 진행 중 경로의 후속 페이지도 중단합니다.
+                        if (!stoppedError) stoppedError = error;
+                        throw stoppedError;
+                    }
+                }));
             }
             if (!matches.size) throw new Error("sdxClassCode가 " + scope.classCode + "인 활성 클래스가 없습니다.");
             return {classId: Array.from(matches)[0], libraryId: null};

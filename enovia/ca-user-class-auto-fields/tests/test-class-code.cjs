@@ -45,6 +45,23 @@ function fixture(roots,graph){
  assert.equal((await api.findActiveClassByCode(service,scope)).classId,'C'); // 클래스 다음 페이지의 일치 항목
  fixture(['L1','L2'],{L1:[cls('A')],L2:[cls('B')]});await assert.rejects(api.findActiveClassByCode(service,scope),/여러 개/);
  fixture(['L1','L2'],{L1:[cls('A')],L2:[cls('A')]});assert.equal((await api.findActiveClassByCode(service,scope)).classId,'A');
+ // 응답 지연 상황에서 동시 실행 수와 전체 탐색 완료를 검증합니다.
+ fixture(['L1','L2','L3','L4','L5','L6'],{L1:[cls('A')],L2:[cls('X','OTHER')],X:[cls('Y','OTHER')]});
+ const completeRequest=handler;let active=0,peak=0;
+ handler=req=>{active++;peak=Math.max(peak,active);setImmediate(()=>{active--;completeRequest(req);});};
+ assert.equal((await api.findActiveClassByCode(service,scope)).classId,'A');
+ assert.equal(peak,4);assert.equal(active,0);
+ assert.ok(requests.some(r=>r.body.root_physicalid==='Y'));
+ // 다른 경로 실패 뒤, 이미 진행 중인 경로의 다음 페이지는 요청하지 않습니다.
+ fixture(['L1','L2'],{});const rootRequest=handler;let pending=[];
+ handler=req=>{if(!req.body.root_physicalid)rootRequest(req);else pending.push(req);};
+ const failedLookup=api.findActiveClassByCode(service,scope);
+ const checkedFailure=assert.rejects(failedLookup,/RESULT_FETCH_ERROR/);
+ await new Promise(setImmediate);assert.equal(pending.length,2);
+ pending[0].options.onFailure({error:{code:'RESULT_FETCH_ERROR'}});
+ await checkedFailure;
+ pending[1].options.onComplete({results:[cls('A','OTHER')],infos:{nhits:2,nresults:1,next_start:'1 1'}});
+ await new Promise(setImmediate);assert.equal(pending.length,2);
  fixture([],{});await assert.rejects(api.findActiveClassByCode(service,scope),/없습니다/);
  fixture(['L'],{L:[cls('A','OTHER'),cls('B','EC_MX','Inactive'),cls('C',[])]});await assert.rejects(api.findActiveClassByCode(service,scope),/없습니다/);
  for(const response of [null,{},'html login page',{error:{code:'RESULT_FETCH_ERROR'}},{success:false,results:[]},
@@ -62,5 +79,5 @@ function fixture(roots,graph){
  await assert.rejects(api.findActiveClassByCode(service,{...scope,isCancelled:()=>cancelled}),/취소/);
  await assert.rejects(api.findActiveClassByCode(service,{...scope,classCode:"EC_MX' || true"}),/sdxClassCode/);
  await assert.rejects(api.findActiveClassByCode(service,{...scope,securityContext:''}),/권한 문맥/);
- console.log('PASS: MQL where, root-library/Subclass traversal, nested/inactive ancestors, shared/cyclic paths, server pagination/empty results, exact code/current, duplicate errors and cancellation');
+ console.log('PASS: MQL where, root-library/Subclass traversal, nested/inactive ancestors, shared/cyclic paths, server pagination/empty results, exact code/current, duplicate errors, cancellation, bounded parallelism and failure stop');
 })().catch(error=>{console.error(error);process.exitCode=1;});
