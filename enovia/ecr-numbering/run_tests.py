@@ -15,6 +15,7 @@ with tempfile.TemporaryDirectory(prefix="ecr-tests-") as output:
     subprocess.run([java, "-cp", output, "com.sdx.enovia.ecr.EcrNumberingTest"], check=True)
     subprocess.run([java, "-cp", output, "com.sdx.enovia.ecr.EcrExistingNumberQueryTest"], check=True)
     subprocess.run([java, "-cp", output, "com.sdx.enovia.ecr.EcrCreateActionTest"], check=True)
-    subprocess.run([java, "-cp", output, "JpoOnlyNumberingTest"], check=True)
+subprocess.run([__import__("sys").executable, str(root / "run_jpo_only_tests.py")], check=True)
 subprocess.run([__import__("sys").executable, str(root / "tests/test_source_patch.py")], check=True)
 subprocess.run([__import__("sys").executable, str(root / "tests/test_trigger_registration.py")], check=True)
+

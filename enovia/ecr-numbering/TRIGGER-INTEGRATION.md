@@ -1,4 +1,8 @@
-# ECR 채번: JPO 한 파일 구현 (2026-10-22)
+# ECR 채번: createAction 단일 메서드 구현 (2026-10-22)
+
+모든 채번 처리를 `createAction(Context context, String[] args)` 하나에 통합했습니다.
+**args[0] = objectId 한 개만 받습니다.** 사업부·날짜·순번은 추가 인자로 받지 않습니다.
+JPO 생성자는 유지하며 보조 메서드·람다·내부 클래스로 로직을 분리하지 않았습니다.
 
 현재 배포 대상은 [jpo/sdxEcrNumbering_mxJPO.java](jpo/sdxEcrNumbering_mxJPO.java)입니다.
 이 파일은 이전 SdxEcrCreateAction 위임을 대체하며 com.sdx.enovia.ecr 유틸리티, 카운터 객체, 커스텀 속성, interface, properties 파일을 사용하지 않습니다.
@@ -28,10 +32,10 @@
 
 ## 배포 전에 채울 곳
 
-resolveDivision(Context)의 roles/users 맵에 **실제 서버의 정확한 credential 또는 로그인명**을 추가합니다.
+createAction 내부의 roles/users 맵에 **실제 서버의 정확한 credential 또는 로그인명**을 추가합니다.
 예시 주석의 REAL 값은 실제 계정이 아닙니다. 설치 환경의 사용자-사업부 매핑이 제공되지 않았으므로
 임의의 사용자나 관리자를 MX로 고정하지 않았습니다. 미설정이면 명확한 오류로 중단합니다.
-사용자 부서 조회가 필요하면 이 메서드 안에 기존 서버 조회를 연결합니다.
+사용자 부서 조회가 필요하면 createAction의 사업부 매핑 블록 안에 기존 서버 조회를 연결합니다.
 Trigger Manager가 관리자 Context로 호출하는 경우 원래 생성자를 확인하는 연결이 먼저 필요합니다.
 
 ```java
@@ -87,11 +91,22 @@ prepare_trigger_registration.py는 기존 전용 이름을 사용하는 다른 �
 
 ## 검증
 
-이번 변경은 JDK 17에서 --release 8로 JPO를 대역 SDK와 컴파일하고 JpoOnlyNumberingTest를 실행했습니다.
-숫자/알파벳 전체 35,973개 왕복 변환, 최대번호 이후 발급, 충돌 재시도, 권한 오류 전파,
-중단된 트랜잭션, changename 결과 불일치, 상한 초과, 대상 제외, 이중 채번 방지,
-잘못된 번호 및 미설정 사업부의 실패를 확인했습니다.
-run_tests.py에 이 검사를 추가했습니다. 기존 전체 검사와 실제 SDK 컴파일은 이번 실행에서 재수행하지 않았습니다.
+이번 변경은 JDK 17에서 --release 8로 원본 JPO 및 테스트용 매핑을 넣은 임시 JPO를
+대역 SDK와 컴파일하고 JpoOnlyNumberingTest를 실행했습니다.
+테스트용 사본에만 test-user → MX 매핑을 추가하며 배포 원본은 바꾸지 않습니다.
+0001 시작, 기존 최대번호 다음 발급, 9999→A001, A999→B001, Z998→Z999,
+상한 초과, 충돌 재시도, 권한 오류 전파, 중단된 트랜잭션, changename 결과 불일치,
+대상 제외, 이중 채번 방지, 잘못된 번호·날짜·미설정 사업부를 확인했습니다.
+args는 objectId 한 개만 허용하며 추가 인자, 미해결 매크로, 빈 값 등을 거부하는 것도 검사합니다.
+리플렉션으로 JPO에 선언된 메서드가 createAction 한 개뿐인지 확인합니다.
+
+단일 메서드 검사 실행:
+
+```bash
+python3 run_jpo_only_tests.py
+```
+
+run_tests.py에서도 위 검사를 호출합니다. 기존 전체 검사와 실제 SDK 컴파일은 이번 실행에서 재수행하지 않았습니다.
 
 실제 서버에서는 동일 사업부 병렬 생성(여러 WAS 포함), 충돌 시 예외/트랜잭션 상태,
 생성 이후 분류 저장 실패 시 rollback, OOTB 트리거 보존, 날짜 전환,
@@ -104,3 +119,4 @@ run_tests.py에 이 검사를 추가했습니다. 기존 전체 검사와 실제
 - [DS MQL Guide](https://cjlr.srm.covisint.com/enovia/docv6/English/DteUserPdf/ENOVIAStudioModelingPlatformMQLGuide-V6R2013.pdf)
 
 공급자 과거 버전 문서이며 현재 설치 커널의 충돌/트랜잭션 동작을 증명하는 자료는 아닙니다.
+

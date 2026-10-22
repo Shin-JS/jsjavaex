@@ -1,11 +1,11 @@
 # ECR No: Create Action JPO 내부 채번
 
-2026-10-22: 현재 구현은 **JPO 한 파일에서 최대번호 조회 후 rename 충돌 시 재시도**하는 방식입니다.
-[jpo/sdxEcrNumbering_mxJPO.java](jpo/sdxEcrNumbering_mxJPO.java)에 채번 로직을 모두 넣었습니다.
+2026-10-22: 현재 구현은 **createAction 단일 메서드에서 최대번호 조회 후 rename 충돌 시 재시도**하는 방식입니다.
+[jpo/sdxEcrNumbering_mxJPO.java](jpo/sdxEcrNumbering_mxJPO.java)에 채번 로직을 모두 넣었습니다. 보조 메서드 없이 `args[0]`으로 objectId 하나만 받습니다.
 카운터 객체·커스텀 속성·interface·별도 유틸리티 JAR가 필요 없습니다.
 
 배포/설정/동시성 조건은 [TRIGGER-INTEGRATION.md](TRIGGER-INTEGRATION.md)를 따릅니다.
-**resolveDivision의 실제 사용자/credential 매핑은 배포 전에 채워야 합니다.**
+**createAction 안의 실제 사용자/credential 매핑은 배포 전에 채워야 합니다.**
 동시성은 DB 유일성 범위 및 충돌 후 트랜잭션 상태에 의존하며 실제 서버 검증은 미완료입니다.
 
 이전 src 구현, properties와 Adapter 패치는 아래의 과거 구현 설명에 해당합니다.
@@ -107,3 +107,4 @@ python3 run_tests.py
 ```
 
 실제 SDK 빌드는 `python3 compile_with_sdk.py PATH/TO/WEB-INF/lib`로 수행합니다. R2024x의 실제 JAR에 대한 컴파일을 확인했습니다. **tests/stubs는 배포하거나 실제 ENOVIA JAR와 함께 컴파일하지 않습니다.** 이 저장소의 검사는 대역 API를 사용하며 서버 통합 검사와 구분됩니다.
+
