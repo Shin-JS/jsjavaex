@@ -35,7 +35,7 @@ public class sdxEcrNumbering_mxJPO {
         }
         if (!targetType.equals(type.trim())) return 0;
         String ecType = MQLCommand.exec(context,
-                "print bus $1 select attribute[sdxECType] dump", Arrays.asList(objectId));
+                "print bus $1 select $2 dump", Arrays.asList(objectId, "attribute[sdxECType]"));
         if (ecType == null) throw new IllegalStateException("Missing sdxECType result buffer");
         if (!"ECR".equals(ecType.trim())) return 0;
         String policy = MQLCommand.exec(context, "print bus $1 select policy dump", Arrays.asList(objectId));

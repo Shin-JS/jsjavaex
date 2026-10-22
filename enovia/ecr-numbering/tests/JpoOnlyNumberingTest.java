@@ -20,7 +20,8 @@ public class JpoOnlyNumberingTest {
         void install() {
             MQLCommand.handler = (cmd, args) -> {
                 if (cmd.startsWith("print")) {
-                    if (cmd.contains("attribute[sdxECType]")) return ecType;
+                    if (cmd.equals("print bus $1 select $2 dump")
+                            && args.size() == 2 && "attribute[sdxECType]".equals(args.get(1))) return ecType;
                     if (cmd.contains("select type")) return type;
                     if (cmd.contains("select policy")) return policy;
                     if (cmd.contains("select revision")) return "";
