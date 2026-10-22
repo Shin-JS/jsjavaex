@@ -34,6 +34,10 @@ public class sdxEcrNumbering_mxJPO {
             throw new IllegalStateException("Missing object type");
         }
         if (!targetType.equals(type.trim())) return 0;
+        String ecType = MQLCommand.exec(context,
+                "print bus $1 select attribute[sdxECType] dump", Arrays.asList(objectId));
+        if (ecType == null) throw new IllegalStateException("Missing sdxECType result buffer");
+        if (!"ECR".equals(ecType.trim())) return 0;
         String policy = MQLCommand.exec(context, "print bus $1 select policy dump", Arrays.asList(objectId));
         if (policy == null || policy.trim().isEmpty()) {
             throw new IllegalStateException("Missing object policy");
