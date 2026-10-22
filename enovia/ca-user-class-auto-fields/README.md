@@ -65,6 +65,27 @@ code가 현재 기본 모드입니다. 이 모드에는 `sdxECCAFixedClassId`가
 실제 MQL 처리, raw 속성 선택 및 페이지/빈 응답 구조를 확인했습니다.
 사용자 설치 서버의 실제 API 응답과 자동 선택·저장은 아직 실행 확인하지 못했습니다.
 
+## Text 접미사 속성 숨김과 저장 전 복사 (2026-10-22)
+
+전용 위젯의 `sdxECChangeAction` 생성 시 `publicAttributes`와 `extensionAttributes`에서
+속성 **name**이 대소문자를 구분하여 `Text`로 끝나면 입력 필드를 숨깁니다.
+분류 클래스 속성은 대상이 아닙니다. 정의는 삭제하지 않고 `visible:false`, `forUI:true`로
+숨긴 모델을 유지하며 조건부 표시와 로컬 기본값 복원은 해제합니다.
+복사 전 숨긴 필드의 빈값 검증에 걸리지 않도록 UI의 `mandatory`만 해제합니다.
+서버 속성 정의와 원본 필드의 검증은 유지합니다.
+
+같은 속성 그룹에 `Text`를 뺀 이름의 원본이 있으면, OOTB 검증·BL·모델 직렬화가 끝난
+`onSubmit` 콜백에서 최신 `value`를 복사합니다. 예: `ECPlanText ← ECPlan`.
+표시 라벨 대신 실제 저장 값을 사용하며 빈 문자열·배열·숫자·boolean도 그대로 유지합니다.
+대상 항목이 직렬화에서 빠졌으면 추가하고 `modified:true`로 지정합니다.
+원본 이름이 없는 Text 속성은 숨기기만 하고, 원본 정의는 있지만 저장 결과에 값이 없으면
+초기값으로 대체하지 않고 오류를 표시하여 제출을 막습니다.
+
+기존 OOTB 연결이 적용되어 있으면 `webapps/sdxECCAAutoClass/sdxECCAAutoClass.js`만
+교체하면 됩니다. 기존 Policy 처리와 `sdxECType` 고정은 유지합니다.
+로컬 대역 검사로 숨김·최신값 복사·빈값·대상 누락 복원·다른 타입 제외를 검증했습니다.
+실제 플랫폼에서 팝업 표시와 최종 요청 Payload 및 저장된 속성값 확인은 별도로 필요합니다.
+
 ## Payload의 basicAttributes.policy 지정
 
 최신 main 모듈은 `installFields`에서 해당 팝업의 `ENOListView.onSubmit` 콜백을 연결합니다.

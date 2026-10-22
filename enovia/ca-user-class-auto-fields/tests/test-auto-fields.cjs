@@ -210,6 +210,48 @@ for (const typeName of ['sdxECChangeAction', 'Change Action', 'Change Order', 'C
  } else {assert.equal(field.value,'ECN');assert.equal(field.visible,true);assert.equal(field.storeLocalPreference,true);
   assert.equal(typed.attributes.publicAttributes.some(attr=>attr.name==='policy'),false);}
 }
+// Text 속성은 폼에서 숨기고 OOTB 직렬화 후 최신 원본 값으로 저장합니다.
+{
+ config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAFixedClassId:'C1'};
+ const typed=data();typed.defaultAttributes.Type={value:'sdxECChangeAction',range:['sdxECChangeAction'],persistData:[{name:'sdxECChangeAction'}]};
+ const shared={name:'ECPlanText',value:'old',visible:true,mandatory:true,visibility:{Other:['Y']}};
+ typed.attributes={publicAttributes:[{name:'sdxECType'},{name:'ECPlan',value:'initial'},shared,
+  {name:'OrphanText',value:'keep'},{name:'ECPlanTextExtra',visible:true}],
+  extensionAttributes:[{name:'ECList',value:[]},{name:'ECListText',value:['old']}]};
+ const facets=metadata();api.attachBridge(typed,facets,{},'sdxECR');
+ const state=facets[0].options.sdxECCAAutoSession;
+ api.prepareFixedType(typed,state);api.prepareFixedType(typed,state);
+ assert.notEqual(state.status,'error');assert.equal(state.textAttributePairs.length,2);
+ const hidden=typed.attributes.publicAttributes[2];
+ assert.equal(hidden.visible,false);assert.equal(hidden.forUI,true);assert.equal(hidden.isReadOnly,true);
+ assert.equal(hidden.mandatory,false);assert.equal(shared.mandatory,true);
+ assert.equal(hidden.visibility,undefined);assert.equal(hidden.storeLocalPreference,false);
+ assert.equal(shared.visible,true);assert.equal(typed.attributes.publicAttributes[4].visible,true);
+ let finish;const view={data:typed,onSubmit(callback){finish=callback;}};
+ const facet={listview:view,skeleton:new Element()};api.installFields(facet,{sdxECCAAutoSession:state});
+ for(const value of ['latest','',0,false,null,['A','B']]) {
+  let received;view.onSubmit(result=>{received=result;});
+  const outgoing={defaultAttributes:typed.defaultAttributes,attributes:{
+   publicAttributes:[{name:'ECPlan',value},{name:'ECPlanText',value:'stale'}],
+   extensionAttributes:[{name:'ECList',value:[]}]}};
+  finish(outgoing);assert.equal(received,outgoing);
+  const target=outgoing.attributes.publicAttributes.find(item=>item.name==='ECPlanText');
+  assert.deepEqual(target.value,value);assert.equal(target.modified,true);
+  assert.equal(outgoing.attributes.publicAttributes.filter(item=>item.name==='ECPlanText').length,1);
+  assert.deepEqual(Array.from(outgoing.attributes.extensionAttributes[1].value),[]);
+  if(Array.isArray(value))assert.notEqual(target.value,value);
+ }
+ // 원본 누락 시 초기값을 조용히 복사하지 않고 저장을 막습니다.
+ let received;view.onSubmit(result=>{received=result;});
+ finish({defaultAttributes:typed.defaultAttributes,attributes:{publicAttributes:[]}});
+ assert.equal(received,false);assert.equal(state.status,'error');assert.match(state.error.message,/ECPlan/);
+ state.dispose();
+}
+for(const typeName of ['Change Action','Change Order','Change Request']) {
+ const typed=data();typed.defaultAttributes.Type={value:typeName,range:[typeName],persistData:[{name:typeName}]};
+ const field={name:'ECPlanText',visible:true};typed.attributes={publicAttributes:[field]};
+ api.prepareFixedType(typed,{type:typeName,fail(error){throw error;}});assert.equal(field.visible,true);
+}
 // 모델 직렬화 후 정책이 Change Action으로 돌아가도 최종 콜백에서 복구합니다.
 {
  const cases=[];

@@ -165,6 +165,51 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (!found) throw new Error("sdxECChangeAction의 sdxECType 속성 정의를 찾지 못했습니다.");
     }
 
+    /** 기본/확장 속성만 숨깁니다. 분류 클래스 속성은 별도 facet이므로 대상이 아닙니다. */
+    function sdxECCAPrepareTextAttributes(data, session) {
+        if (session.type !== "sdxECChangeAction") return;
+        session.textAttributePairs = [];
+        ["publicAttributes", "extensionAttributes"].forEach(function (group) {
+            var attributes = data.attributes && data.attributes[group];
+            if (!Array.isArray(attributes)) return;
+            attributes.forEach(function (attribute, index) {
+                if (!attribute || typeof attribute.name !== "string" || !/Text$/.test(attribute.name)) return;
+                var sourceName = attribute.name.slice(0, -4);
+                var hidden = Object.assign({}, attribute, {
+                    visible: false, forUI: true, isReadOnly: true, storeLocalPreference: false,
+                    // 값은 검증 후 복사하므로 숨긴 필드의 필수 검증으로 제출을 막지 않습니다.
+                    mandatory: false
+                });
+                delete hidden.visibility;
+                attributes[index] = hidden;
+                // 원본이 없는 Text 속성도 숨기되 기존 값을 임의로 지우지 않습니다.
+                if (attributes.some(function (item) { return item && item.name === sourceName; })) {
+                    session.textAttributePairs.push({group: group, sourceName: sourceName, target: hidden});
+                }
+            });
+        });
+    }
+
+    /** BL/모델 직렬화가 끝난 최신 value를 복사합니다. 초기 typeInfo 값은 사용하지 않습니다. */
+    function sdxECCACopyTextAttributes(result, session) {
+        (session.textAttributePairs || []).forEach(function (pair) {
+            var attributes = result.attributes && result.attributes[pair.group];
+            var source = Array.isArray(attributes) && attributes.find(function (item) {
+                return item && item.name === pair.sourceName;
+            });
+            if (!source || !Object.prototype.hasOwnProperty.call(source, "value") || source.value === undefined) {
+                throw new Error("Text 속성에 복사할 저장 값을 찾지 못했습니다: " + pair.sourceName);
+            }
+            var value = Array.isArray(source.value) ? source.value.slice() : source.value;
+            var index = attributes.findIndex(function (item) { return item && item.name === pair.target.name; });
+            var target = Object.assign({}, pair.target, index < 0 ? null : attributes[index], {
+                value: value, modified: true
+            });
+            if (index < 0) attributes.push(target);
+            else attributes[index] = target;
+        });
+    }
+
     /** 설치 환경의 실제 요청 구조: basicAttributes.policy는 문자열입니다. */
     function sdxECCAPreparePolicy(data, session) {
         if (session.type !== "sdxECChangeAction") return;
@@ -191,6 +236,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 throw new Error("조회된 유형과 고정 유형이 다릅니다. CreateNew 전 타입 설정을 확인해 주세요.");
             }
             sdxECCAPrepareECType(data, session);
+            sdxECCAPrepareTextAttributes(data, session);
             sdxECCAPreparePolicy(data, session);
             var index = Array.isArray(type.range) ? type.range.indexOf(session.type) : -1;
             if (index < 0 || !Array.isArray(type.persistData) || !type.persistData.some(function (item) {
@@ -223,6 +269,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                     // 원래 기본 속성을 보존해 결과에 넣으면 createContent가 rawTypeInfo에도 반영합니다.
                     result.basicAttributes = Object.assign({}, view.data && view.data.basicAttributes, result.basicAttributes);
                     sdxECCAPreparePolicy(result, session);
+                    sdxECCACopyTextAttributes(result, session);
                 } catch (error) {
                     session.fail(error);
                     callback(false);
