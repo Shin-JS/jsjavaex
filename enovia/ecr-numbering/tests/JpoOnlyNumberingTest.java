@@ -12,7 +12,6 @@ public class JpoOnlyNumberingTest {
         String name = "temporary";
         String type = "sdxECChangeAction";
         String policy = "sdxECR";
-        String ecType = "ECR";
         String maxSuffix = null;
         int renames = 0;
         boolean conflict, permissionFailure, aborted, changedName;
@@ -20,8 +19,9 @@ public class JpoOnlyNumberingTest {
         void install() {
             MQLCommand.handler = (cmd, args) -> {
                 if (cmd.startsWith("print")) {
-                    if (cmd.equals("print bus $1 select $2 dump")
-                            && args.size() == 2 && "attribute[sdxECType]".equals(args.get(1))) return ecType;
+                    if (cmd.contains("sdxECType") || args.contains("attribute[sdxECType]")) {
+                        throw new AssertionError("Create Action must not query the not-yet-saved sdxECType");
+                    }
                     if (cmd.contains("select type")) return type;
                     if (cmd.contains("select policy")) return policy;
                     if (cmd.contains("select revision")) return "";
@@ -66,9 +66,6 @@ public class JpoOnlyNumberingTest {
         f = new Fixture(); f.maxSuffix = "Z999"; fails(f); check(f.renames == 0);
         f = new Fixture(); f.policy = "sdxECO"; f.run(); check(f.renames == 0);
         f = new Fixture(); f.type = "Change Action"; f.run(); check(f.renames == 0);
-        f = new Fixture(); f.ecType = "ECO"; f.run(); check(f.renames == 0);
-        f = new Fixture(); f.ecType = ""; f.run(); check(f.renames == 0);
-        f = new Fixture(); f.ecType = "OTHER"; f.run(); check(f.renames == 0);
         f = new Fixture(); f.policy = "Change Action"; fails(f);
         f = new Fixture(); f.name = "ECR-W2610210001"; f.run(); check(f.renames == 0);
         f = new Fixture(); f.name = "ECR-W2610210000"; fails(f);

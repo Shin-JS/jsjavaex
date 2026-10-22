@@ -3,7 +3,7 @@
 모든 채번 처리를 `createAction(Context context, String[] args)` 하나에 통합했습니다.
 **args[0] = objectId 한 개만 받습니다.** 사업부·날짜·순번은 추가 인자로 받지 않습니다.
 생성 화면/백엔드에서 전달하는 sdxECR/sdxECO Policy 파라미터는 이 JPO의 args와 별개입니다.
-JPO에서는 objectId로 저장된 policy와 sdxECType을 조회합니다.
+JPO에서는 objectId로 생성 시 지정된 policy를 조회합니다. sdxECType은 조회하지 않습니다.
 JPO 생성자는 유지하며 보조 메서드·람다·내부 클래스로 로직을 분리하지 않았습니다.
 
 현재 배포 대상은 [jpo/sdxEcrNumbering_mxJPO.java](jpo/sdxEcrNumbering_mxJPO.java)입니다.
@@ -12,16 +12,16 @@ JPO 생성자는 유지하며 보조 메서드·람다·내부 클래스로 로�
 
 ## 규칙과 처리
 
-정확한 타입 sdxECChangeAction + 속성 sdxECType=ECR + 정책 sdxECR에만 적용합니다.
-sdxECType이 ECO, 다른 값 또는 빈 값이면 정책 검사와 채번을 건너뜁니다.
-sdxECType=ECR인 대상의 sdxECO 정책은 기존처럼 건너뛰며, 나머지 다른 정책은 오류로 처리합니다.
+정확한 타입 sdxECChangeAction + 정책 sdxECR에만 적용합니다.
+sdxECO 정책과 다른 타입은 건너뛰며, 대상 타입의 나머지 다른 정책은 오류로 처리합니다.
+생성 구분 ECR과 정책 sdxECR이 일치한다는 전제입니다. ECO 채번은 추가하지 않았습니다.
 payload의 policy를 대신 변경하지 않습니다.
 
 번호는 ECR- + 사업부(W=MX, N=NW, V=VD, A=DA, H=HME) + 한국 날짜 yyMMdd + 4자리 순번입니다.
 사업부·날짜별로 0001부터 시작하며, 9999 다음 A001, A999 다음 B001, 마지막 Z999입니다.
 
 1. 즉시 실행 create action에서 해결된 OBJECTID 한 개를 받습니다.
-2. type 확인 후 sdxECType=ECR인지 검사합니다. 조건에 맞으면 policy/name을 읽고 이미 유효한 ECR 번호면 반환합니다.
+2. type과 policy를 검사한 뒤 name을 읽고 이미 유효한 ECR 번호면 반환합니다.
 3. 서버 사용자/credential로 사업부를 결정하고 한국 날짜를 한 번 확정합니다.
 4. temp query bus로 해당 사업부·날짜의 기존 name들을 조회하고 최대 순번 + 1을 계산합니다.
 5. modify bus로 이름을 변경합니다.
@@ -56,8 +56,9 @@ JPO를 기존 insert/compile 절차로 DB에 등록하고, 등록 프로그램 �
 
 Execute Deferred를 끄고 원래 생성 update 트랜잭션 안에서 실행해야 합니다.
 Create Action 시점에 아직 저장되지 않은 사용자 입력 속성이나 분류 속성을 사업부 근거로 읽지 않습니다.
-sdxECType 역시 트리거 실행 시점에 ECR로 저장되어 있어야 합니다.
-이후 속성 저장 단계에서 ECR로 바뀌는 생성 경로라면 현재 Create Action은 빈 값으로 판단해 채번을 건너뜁니다.
+사용자 환경에서는 Create Action에서 sdxECType이 `-`로 조회되고 생성 완료 후 `ECR`로 저장되는 것을 확인했습니다.
+따라서 sdxECType 조회·비교를 제거하고 생성 시 이미 지정된 policy로 ECR 여부를 판단합니다.
+정책 sdxECR과 ECR 구분이 일치하도록 기존 생성 화면/백엔드에서 policy를 전달해야 합니다.
 
 ## 트리거 등록 문법
 
@@ -103,7 +104,8 @@ prepare_trigger_registration.py는 기존 전용 이름을 사용하는 다른 �
 0001 시작, 기존 최대번호 다음 발급, 9999→A001, A999→B001, Z998→Z999,
 상한 초과, 충돌 재시도, 권한 오류 전파, 중단된 트랜잭션, changename 결과 불일치,
 대상 제외, 이중 채번 방지, 잘못된 번호·날짜·미설정 사업부를 확인했습니다.
-sdxECType=ECR인 객체는 채번하고, ECO·빈 값·기타 값은 채번하지 않는 것도 확인했습니다.
+sdxECR 정책의 채번, sdxECO 정책 제외, 기타 정책 오류를 확인했습니다.
+테스트 대역은 sdxECType 조회 시 즉시 실패하도록 하여 생성 트리거가 해당 속성에 의존하지 않는지 검사합니다.
 args는 objectId 한 개만 허용하며 추가 인자, 미해결 매크로, 빈 값 등을 거부하는 것도 검사합니다.
 리플렉션으로 JPO에 선언된 메서드가 createAction 한 개뿐인지 확인합니다.
 

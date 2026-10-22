@@ -4,8 +4,10 @@
 [jpo/sdxEcrNumbering_mxJPO.java](jpo/sdxEcrNumbering_mxJPO.java)에 채번 로직을 모두 넣었습니다. 보조 메서드 없이 `args[0]`으로 objectId 하나만 받습니다.
 카운터 객체·커스텀 속성·interface·별도 유틸리티 JAR가 필요 없습니다.
 
-채번 대상은 `sdxECChangeAction` 타입에서 **`sdxECType = ECR`**인 객체입니다.
-`ECO`, 다른 값, 빈 값이면 채번하지 않습니다. 기존 `sdxECR` 정책 검사도 유지합니다.
+채번 대상은 정확한 `sdxECChangeAction` 타입 + **`sdxECR` 정책**인 객체입니다.
+`sdxECO` 정책은 건너뛰고, 그 외 정책은 기존처럼 오류로 처리합니다.
+생성 트리거에서는 `sdxECType`이 아직 `-`이고 생성 완료 후 `ECR`로 저장되는 것이 확인되어,
+`sdxECType` 조회·비교를 제거했습니다. ECR 구분과 `sdxECR` 정책이 일치해야 합니다.
 
 배포/설정/동시성 조건은 [TRIGGER-INTEGRATION.md](TRIGGER-INTEGRATION.md)를 따릅니다.
 **createAction 안의 실제 사용자/credential 매핑은 배포 전에 채워야 합니다.**
