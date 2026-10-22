@@ -327,7 +327,7 @@ console.log('PASS: widget/type isolation, fixed class without department lookup,
  }
  const first=byCode(),second=byCode();
  assert.equal(pending[0].scope.classCode,'EC_MX');assert.equal(pending[0].scope.tenant,'OnPremise');
- assert.equal(pending[0].scope.libraryName,'EC Library');
+ assert.equal(pending[0].scope.libraryTitle,'EC Library');
  assert.equal(pending[0].scope.securityContext,first.state.context);
  pending[1].resolve({classId:'C2',libraryId:null});await flush();assert.equal(second.state.classId,'C2');assert.equal(first.ui.request(),undefined);
  pending[0].resolve({classId:'C1',libraryId:null});await flush();assert.equal(first.state.classId,'C1');

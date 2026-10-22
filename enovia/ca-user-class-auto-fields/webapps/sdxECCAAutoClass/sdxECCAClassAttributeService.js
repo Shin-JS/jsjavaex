@@ -57,10 +57,10 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
             if (!scope || typeof scope.classCode !== "string" || !/^[A-Za-z0-9_]+$/.test(scope.classCode)) {
                 throw new Error("조회할 sdxClassCode를 확인해 주세요.");
             }
-            var libraryName = scope.libraryName === undefined ? "EC Library" : scope.libraryName;
-            // MQL where의 문자열 리터럴에 들어가는 이름입니다. 따옴표·역슬래시·제어문자는 허용하지 않습니다.
-            if (typeof libraryName !== "string" || !libraryName.trim() || /["'\\\x00-\x1f\x7f]/.test(libraryName)) {
-                throw new Error("조회할 라이브러리 name을 확인해 주세요.");
+            var libraryTitle = scope.libraryTitle === undefined ? "EC Library" : scope.libraryTitle;
+            // MQL where의 문자열 리터럴에 들어가는 제목입니다. 따옴표·역슬래시·제어문자는 허용하지 않습니다.
+            if (typeof libraryTitle !== "string" || !libraryTitle.trim() || /["'\\\x00-\x1f\x7f]/.test(libraryTitle)) {
+                throw new Error("조회할 라이브러리 제목을 확인해 주세요.");
             }
             if (!scope.securityContext) throw new Error("클래스 조회 권한 문맥이 없습니다.");
             if (!service || typeof service.get3DSpaceUrl !== "function") throw new Error("3DSpace 조회 서비스를 확인해 주세요.");
@@ -119,9 +119,9 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
                     // SearchUtil은 query를 MQL where에 그대로 전달하므로 검색 엔진 문법을 사용하지 않습니다.
                     var payload = {
                         label: "sdxECCAClassCode_" + Date.now() + "_" + Math.random().toString(36).slice(2), tenant: tenant,
-                        query: rootId ? 'type == "General Class"' : 'type == "General Library" && name == "' + libraryName + '"',
+                        query: rootId ? 'type == "General Class"' : 'type == "General Library" && attribute[Title] == "' + libraryTitle + '"',
                         // type은 서버가 자동 추가하는 ds6w:type으로 통일해 중복 DB 선택을 피합니다.
-                        select_predicate: rootId ? ["physicalid", "ds6w:type", "current", "attribute[sdxClassCode]"] : ["physicalid", "ds6w:type", "name"],
+                        select_predicate: rootId ? ["physicalid", "ds6w:type", "current", "attribute[sdxClassCode]"] : ["physicalid", "ds6w:type", "attribute[Title]"],
                         person_predicate: [], select_file: [], start: start, nresults: 100,
                         // 정렬은 OOTB authoring 조회에서 사용하는 기본 modified 정렬을 유지합니다.
                         order_field: "ds6w:modified", order_by: "desc"
@@ -159,11 +159,11 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
             // 루트 ID가 없으면 이 API는 General Library만 조회합니다.
             await readChildren(null, function (row, id) {
                 if (value(row, ["ds6w:type", "type"]) !== "General Library") throw new Error("루트 라이브러리 유형을 확인해 주세요.");
-                if (value(row, ["name"]) !== libraryName) throw new Error("조회된 라이브러리 name이 지정값과 다릅니다.");
-                if (libraryId && libraryId !== id) throw new Error("name이 " + libraryName + "인 라이브러리가 여러 개입니다.");
+                if (value(row, ["attribute[Title]"]) !== libraryTitle) throw new Error("조회된 라이브러리 제목이 지정값과 다릅니다.");
+                if (libraryId && libraryId !== id) throw new Error("제목이 " + libraryTitle + "인 라이브러리가 여러 개입니다.");
                 libraryId = id;
             });
-            if (!libraryId) throw new Error("name이 " + libraryName + "인 라이브러리가 없습니다. 이름과 조회 권한을 확인해 주세요.");
+            if (!libraryId) throw new Error("제목이 " + libraryTitle + "인 라이브러리가 없습니다. 제목과 조회 권한을 확인해 주세요.");
             function consumeClass(row, id) {
                     if (value(row, ["ds6w:type", "type"]) !== "General Class") throw new Error("조회한 클래스 유형을 확인해 주세요.");
                     var state = value(row, ["current"]), code = value(row, ["attribute[sdxClassCode]"]);

@@ -18,7 +18,7 @@ Policy 파라미터와 `typeName = Change Action` 분기는 유지합니다.
 ```js
 widget.setValue("sdxECCAClassRuleMode", "code");
 widget.setValue("sdxECCAClassCode", "EC_MX");
-widget.setValue("sdxECCALibraryName", "EC Library");
+widget.setValue("sdxECCALibraryTitle", "EC Library");
 ```
 
 code가 현재 기본 모드입니다. 이 모드에는 `sdxECCAFixedClassId`가 필요하지 않습니다.
@@ -28,8 +28,8 @@ code가 현재 기본 모드입니다. 이 모드에는 `sdxECCAFixedClassId`가
 조회 흐름:
 
 1. `POST /resources/IPClassificationReuse/Search/search`에 MQL where 조건
-   `type == "General Library" && name == "EC Library"`를 전달합니다.
-   `name`이 정확히 일치하는 루트 라이브러리 하나만 사용하며, 없거나 여러 개이면 중단합니다.
+   `type == "General Library" && attribute[Title] == "EC Library"`를 전달합니다.
+   제목(`attribute[Title]`)이 정확히 일치하는 루트 라이브러리 하나만 사용하며, 없거나 여러 개이면 중단합니다.
 2. 해당 라이브러리를 `root_physicalid`로 지정하고 `rels_to_fetch: ["Subclass"]`,
    `query: 'type == "General Class"'`로 바로 아래 1뎁스 클래스만 조회합니다. 클래스 아래는 탐색하지 않습니다.
 3. `select_predicate`에 `physicalid`, `ds6w:type`, `current`, `attribute[sdxClassCode]`를 넣습니다.
@@ -41,9 +41,10 @@ code가 현재 기본 모드입니다. 이 모드에는 `sdxECCAFixedClassId`가
 이 API의 query는 서버에서 MQL where로 직접 사용됩니다. `flattenedtaxonomies:...` 같은 검색 엔진
 문법을 보내면 `RESULT_FETCH_ERROR`가 발생할 수 있습니다. 또한 root_physicalid를 생략한 호출은
 전역 General Class 검색이 아니라 루트 라이브러리 조회입니다. 이 두 계약을 반영했습니다.
-조회 범위는 사용자 권한에서 보이고 내부 `name`이 `EC Library`인 루트 라이브러리 바로 아래 1뎁스 클래스입니다.
-라이브러리 이름의 기본값은 `EC Library`이며 `sdxECCALibraryName` 설정으로 변경할 수 있습니다.
-화면의 제목(Title)과 내부 `name`이 다르면 내부 `name`을 설정해야 합니다.
+조회 범위는 사용자 권한에서 보이고 제목(`attribute[Title]`)이 `EC Library`인 루트 라이브러리 바로 아래 1뎁스 클래스입니다.
+라이브러리 제목의 기본값은 `EC Library`이며 `sdxECCALibraryTitle` 설정으로 변경할 수 있습니다.
+검색과 반환값 검사는 모두 `attribute[Title]` 기준이며 내부 `name`과는 무관합니다.
+이전 `sdxECCALibraryName` 설정도 제목 값으로 해석하여 호환합니다. 새 설정에는 `sdxECCALibraryTitle`을 사용합니다.
 다른 라이브러리로 자동 전환하지 않으며 라이브러리 ID를 고정하지도 않습니다.
 손자 이하의 클래스는 코드가 일치해도 선택하지 않습니다.
 `EC_MX`·`Active` 조건과 1뎁스 범위의 중복 검사는 유지합니다. 오류나 팝업 종료 시 후속 조회를 중단합니다.

@@ -129,7 +129,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         session.typeDisplay = typeDisplay;
         session.ruleMode = ruleMode;
         session.classCode = widget.getValue("sdxECCAClassCode") || "EC_MX";
-        session.libraryName = widget.getValue("sdxECCALibraryName") || "EC Library";
+        // 기존 LibraryName 설정값도 제목으로 해석하여 이전 위젯 설정을 호환합니다.
+        session.libraryTitle = widget.getValue("sdxECCALibraryTitle") || widget.getValue("sdxECCALibraryName") || "EC Library";
         session.tenant = settings && settings.tenant || "OnPremise";
         properties.options = properties.options || {};
         classification.options = classification.options || {};
@@ -565,7 +566,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                     if (session.ruleMode === "code") {
                         ClassAttributeService.findActiveClassByCode(ctrl.PLMNewCommonWebService, {
                             classCode: session.classCode, securityContext: session.context, tenant: session.tenant,
-                            libraryName: session.libraryName,
+                            libraryTitle: session.libraryTitle,
                             isCancelled: function () { return session.disposed || session.status === "error"; }
                         }).then(function (rule) {
                             if (session.disposed || session.status === "error") return;

@@ -8,20 +8,20 @@ vm.runInContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass
 const service={get3DSpaceUrl:()=>Promise.resolve('https://example.test/3dspace/')};
 const scope={classCode:'EC_MX',securityContext:'ctx::Leader.Org.Space',tenant:'OnPremise'};
 const attr=(name,value)=>({name,value});
-const library=(id,name='EC Library')=>({attributes:[attr('physicalid',id),attr('ds6w:type','General Library'),attr('name',name)]});
+const library=(id,title='EC Library')=>({attributes:[attr('physicalid',id),attr('ds6w:type','General Library'),attr('name','AUTO_'+id),attr('attribute[Title]',title)]});
 const cls=(id,code='EC_MX',current='Active')=>({attributes:[attr('physicalid',id),attr('ds6w:type','General Class'),attr('current',current),attr('attribute[sdxClassCode]',code)]});
-function fixture(roots,graph,libraryName='EC Library'){
+function fixture(roots,graph,libraryTitle='EC Library'){
  requests=[];
  handler=({url,body,options})=>{
   assert.ok(url.includes('/IPClassificationReuse/Search/search?'));
-  assert.equal(body.query,body.root_physicalid?'type == "General Class"':'type == "General Library" && name == "'+libraryName+'"');
+  assert.equal(body.query,body.root_physicalid?'type == "General Class"':'type == "General Library" && attribute[Title] == "'+libraryTitle+'"');
   assert.equal(body.query.includes('flattenedtaxonomies'),false);
   assert.equal(body.order_field,'ds6w:modified');assert.equal(body.order_by,'desc');
   assert.equal(body.select_predicate.includes('ds6w:type'),true);assert.equal(body.select_predicate.includes('type'),false);
-  if(!body.root_physicalid)assert.deepEqual(body.select_predicate,['physicalid','ds6w:type','name']);
+  if(!body.root_physicalid)assert.deepEqual(body.select_predicate,['physicalid','ds6w:type','attribute[Title]']);
   assert.equal(body.states_to_fetch,undefined); // 내부 current 값으로 활성 여부를 확인
   if(body.root_physicalid)assert.deepEqual(body.rels_to_fetch,['Subclass']);
-  const rows=body.root_physicalid?(graph[body.root_physicalid]||[]):roots.map(id=>library(id,libraryName));
+  const rows=body.root_physicalid?(graph[body.root_physicalid]||[]):roots.map(id=>library(id,libraryTitle));
   const start=body.next_start?Number(body.next_start.split(' ')[0]):body.start;
   if(start)assert.equal(typeof body.next_start,'string');
   const page=rows.slice(start,start+2);
@@ -49,11 +49,11 @@ function fixture(roots,graph,libraryName='EC Library'){
  fixture(['L'],{L:[cls('P','OTHER')],P:[cls('B')]});
  await assert.rejects(api.findActiveClassByCode(service,scope),/1뎁스/);assert.equal(requests.length,2);
  fixture(['L'],{L:[cls('A')]},'Another Library');
- assert.equal((await api.findActiveClassByCode(service,{...scope,libraryName:'Another Library'})).classId,'A');
+ assert.equal((await api.findActiveClassByCode(service,{...scope,libraryTitle:'Another Library'})).classId,'A');
  requests=[];handler=({options})=>options.onComplete({results:[library('L','Wrong Library')],infos:{nhits:1,nresults:1,next_start:'1 1'}});
  await assert.rejects(api.findActiveClassByCode(service,scope),/지정값/);assert.equal(requests.length,1);
- for(const libraryName of ['',null,'EC" || true','EC\\Library',"EC'Library",'EC\nLibrary']){
-  requests=[];await assert.rejects(api.findActiveClassByCode(service,{...scope,libraryName}),/라이브러리 name/);assert.equal(requests.length,0);
+ for(const libraryTitle of ['',null,'EC" || true','EC\\Library',"EC'Library",'EC\nLibrary']){
+  requests=[];await assert.rejects(api.findActiveClassByCode(service,{...scope,libraryTitle}),/라이브러리 제목/);assert.equal(requests.length,0);
  }
  fixture([],{});await assert.rejects(api.findActiveClassByCode(service,scope),/없습니다/);
  fixture(['L'],{L:[cls('A','OTHER'),cls('B','EC_MX','Inactive'),cls('C',[])]});await assert.rejects(api.findActiveClassByCode(service,scope),/없습니다/);
@@ -72,5 +72,5 @@ function fixture(roots,graph,libraryName='EC Library'){
  await assert.rejects(api.findActiveClassByCode(service,{...scope,isCancelled:()=>cancelled}),/취소/);
  await assert.rejects(api.findActiveClassByCode(service,{...scope,classCode:"EC_MX' || true"}),/sdxClassCode/);
  await assert.rejects(api.findActiveClassByCode(service,{...scope,securityContext:''}),/권한 문맥/);
- console.log('PASS: named-library scope, two-request lookup, no class expansion, exact code/current, library/class duplicates, pagination, invalid response/name, failure and cancellation');
+ console.log('PASS: library-title scope, two-request lookup, no class expansion, exact code/current, library/class duplicates, pagination, invalid response/title, failure and cancellation');
 })().catch(error=>{console.error(error);process.exitCode=1;});

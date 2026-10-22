@@ -5,10 +5,10 @@ widget.setValue("sdxECCAEnableAutoClassByOrganization", true);
 widget.setValue("sdxECCAAutoClassType", "sdxECChangeAction");
 widget.setValue("sdxECCAClassRuleMode", "code");
 widget.setValue("sdxECCAClassCode", "EC_MX");
-widget.setValue("sdxECCALibraryName", "EC Library");
+widget.setValue("sdxECCALibraryTitle", "EC Library");
 widget.setValue("sdxECCATypeDisplay", "hidden");
 
-name이 EC Library인 라이브러리 바로 아래에서 sdxClassCode가 EC_MX이고 활성 상태인 General Class가 정확히 1개일 때 자동 선택합니다.
+제목이 EC Library인 라이브러리 바로 아래에서 sdxClassCode가 EC_MX이고 활성 상태인 General Class가 정확히 1개일 때 자동 선택합니다.
 code 모드에서는 기존 sdxECCAFixedClassId를 사용하지 않습니다.
 기존 OOTB REST API를 사용하므로 JSP나 별도 서버 코드는 배포하지 않습니다.
 sdxECCAAutoClassType은 실제 생성할 타입 이름입니다. subtype을 생성하면 해당 타입명으로 바꿉니다.
