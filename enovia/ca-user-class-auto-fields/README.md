@@ -18,6 +18,7 @@ Policy 파라미터와 `typeName = Change Action` 분기는 유지합니다.
 ```js
 widget.setValue("sdxECCAClassRuleMode", "code");
 widget.setValue("sdxECCAClassCode", "EC_MX");
+widget.setValue("sdxECCALibraryName", "EC Library");
 ```
 
 code가 현재 기본 모드입니다. 이 모드에는 `sdxECCAFixedClassId`가 필요하지 않습니다.
@@ -27,23 +28,26 @@ code가 현재 기본 모드입니다. 이 모드에는 `sdxECCAFixedClassId`가
 조회 흐름:
 
 1. `POST /resources/IPClassificationReuse/Search/search`에 MQL where 조건
-   `type == "General Library"`를 전달하여 사용자 권한으로 보이는 루트 라이브러리를 읽습니다.
-2. 각 라이브러리를 `root_physicalid`로 지정하고 `rels_to_fetch: ["Subclass"]`,
+   `type == "General Library" && name == "EC Library"`를 전달합니다.
+   `name`이 정확히 일치하는 루트 라이브러리 하나만 사용하며, 없거나 여러 개이면 중단합니다.
+2. 해당 라이브러리를 `root_physicalid`로 지정하고 `rels_to_fetch: ["Subclass"]`,
    `query: 'type == "General Class"'`로 바로 아래 1뎁스 클래스만 조회합니다. 클래스 아래는 탐색하지 않습니다.
 3. `select_predicate`에 `physicalid`, `ds6w:type`, `current`, `attribute[sdxClassCode]`를 넣습니다.
    `current === "Active"`이고 코드가 `EC_MX`와 정확히 같은 클래스만 남깁니다.
 4. 서버의 `infos.next_start`와 `nhits`로 각 단계의 모든 페이지를 확인합니다.
-   여러 라이브러리에 공유된 같은 클래스 ID는 중복으로 세지 않습니다. 조회 범위에서 정확히 1개이면 기존
+   조회 범위에서 정확히 1개이면 기존
    getClassPaths → 클래스 필수 설정 조회 → 자동 선택·속성 표시 순서로 진행합니다.
 
 이 API의 query는 서버에서 MQL where로 직접 사용됩니다. `flattenedtaxonomies:...` 같은 검색 엔진
 문법을 보내면 `RESULT_FETCH_ERROR`가 발생할 수 있습니다. 또한 root_physicalid를 생략한 호출은
 전역 General Class 검색이 아니라 루트 라이브러리 조회입니다. 이 두 계약을 반영했습니다.
-조회 범위는 사용자 권한에서 보이는 루트 라이브러리 바로 아래 1뎁스 클래스입니다.
+조회 범위는 사용자 권한에서 보이고 내부 `name`이 `EC Library`인 루트 라이브러리 바로 아래 1뎁스 클래스입니다.
+라이브러리 이름의 기본값은 `EC Library`이며 `sdxECCALibraryName` 설정으로 변경할 수 있습니다.
+화면의 제목(Title)과 내부 `name`이 다르면 내부 `name`을 설정해야 합니다.
+다른 라이브러리로 자동 전환하지 않으며 라이브러리 ID를 고정하지도 않습니다.
 손자 이하의 클래스는 코드가 일치해도 선택하지 않습니다.
-라이브러리는 최대 4개까지 병렬 조회하며, 각 라이브러리의 페이지는 순서대로 조회합니다.
 `EC_MX`·`Active` 조건과 1뎁스 범위의 중복 검사는 유지합니다. 오류나 팝업 종료 시 후속 조회를 중단합니다.
-페이지가 각각 하나라면 검색 호출 수는 루트 조회 1회 + 라이브러리 개수입니다.
+페이지가 각각 하나라면 검색 호출 수는 라이브러리 검색 1회 + 해당 라이브러리의 클래스 조회 1회로 총 2회입니다.
 이후 선택된 클래스의 경로·필수 설정·속성 조회는 기존대로 진행합니다.
 
 루트 조회의 `RESULT_SETPROCESSING_ERROR` 확인 후, 정렬은 OOTB 기본값인

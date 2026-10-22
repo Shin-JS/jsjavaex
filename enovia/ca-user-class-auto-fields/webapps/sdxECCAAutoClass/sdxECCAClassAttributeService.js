@@ -57,6 +57,11 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
             if (!scope || typeof scope.classCode !== "string" || !/^[A-Za-z0-9_]+$/.test(scope.classCode)) {
                 throw new Error("조회할 sdxClassCode를 확인해 주세요.");
             }
+            var libraryName = scope.libraryName === undefined ? "EC Library" : scope.libraryName;
+            // MQL where의 문자열 리터럴에 들어가는 이름입니다. 따옴표·역슬래시·제어문자는 허용하지 않습니다.
+            if (typeof libraryName !== "string" || !libraryName.trim() || /["'\\\x00-\x1f\x7f]/.test(libraryName)) {
+                throw new Error("조회할 라이브러리 name을 확인해 주세요.");
+            }
             if (!scope.securityContext) throw new Error("클래스 조회 권한 문맥이 없습니다.");
             if (!service || typeof service.get3DSpaceUrl !== "function") throw new Error("3DSpace 조회 서비스를 확인해 주세요.");
             var url = (await service.get3DSpaceUrl()).replace(/\/$/, "");
@@ -64,9 +69,7 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
             var WAFData = await new Promise(function (resolve, reject) {
                 require(["DS/WAFData/WAFData"], resolve, function () { reject(new Error("WAFData 모듈을 로드할 수 없습니다.")); });
             });
-            var stoppedError = null;
             function checkOpen() {
-                if (stoppedError) throw stoppedError;
                 if (scope.isCancelled && scope.isCancelled()) throw new Error("클래스 조회가 취소되었습니다.");
             }
             function post(path, payload) {
@@ -109,19 +112,16 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
                 if (values.some(function (item) { return item !== values[0]; })) throw new Error("분류 속성의 응답값이 서로 다릅니다.");
                 return values[0];
             }
-            var queue = [], queued = new Set(), matches = new Set();
-            function enqueue(id) {
-                if (!queued.has(id)) { queued.add(id); queue.push(id); }
-            }
+            var libraryId = null, matches = new Set();
             async function readChildren(rootId, consume) {
                 var start = 0, next = null, seen = new Set();
                 for (var page = 0; page < 1000; page++) {
                     // SearchUtil은 query를 MQL where에 그대로 전달하므로 검색 엔진 문법을 사용하지 않습니다.
                     var payload = {
                         label: "sdxECCAClassCode_" + Date.now() + "_" + Math.random().toString(36).slice(2), tenant: tenant,
-                        query: rootId ? 'type == "General Class"' : 'type == "General Library"',
+                        query: rootId ? 'type == "General Class"' : 'type == "General Library" && name == "' + libraryName + '"',
                         // type은 서버가 자동 추가하는 ds6w:type으로 통일해 중복 DB 선택을 피합니다.
-                        select_predicate: rootId ? ["physicalid", "ds6w:type", "current", "attribute[sdxClassCode]"] : ["physicalid", "ds6w:type"],
+                        select_predicate: rootId ? ["physicalid", "ds6w:type", "current", "attribute[sdxClassCode]"] : ["physicalid", "ds6w:type", "name"],
                         person_predicate: [], select_file: [], start: start, nresults: 100,
                         // 정렬은 OOTB authoring 조회에서 사용하는 기본 modified 정렬을 유지합니다.
                         order_field: "ds6w:modified", order_by: "desc"
@@ -159,8 +159,11 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
             // 루트 ID가 없으면 이 API는 General Library만 조회합니다.
             await readChildren(null, function (row, id) {
                 if (value(row, ["ds6w:type", "type"]) !== "General Library") throw new Error("루트 라이브러리 유형을 확인해 주세요.");
-                enqueue(id);
+                if (value(row, ["name"]) !== libraryName) throw new Error("조회된 라이브러리 name이 지정값과 다릅니다.");
+                if (libraryId && libraryId !== id) throw new Error("name이 " + libraryName + "인 라이브러리가 여러 개입니다.");
+                libraryId = id;
             });
+            if (!libraryId) throw new Error("name이 " + libraryName + "인 라이브러리가 없습니다. 이름과 조회 권한을 확인해 주세요.");
             function consumeClass(row, id) {
                     if (value(row, ["ds6w:type", "type"]) !== "General Class") throw new Error("조회한 클래스 유형을 확인해 주세요.");
                     var state = value(row, ["current"]), code = value(row, ["attribute[sdxClassCode]"]);
@@ -169,26 +172,9 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
                     if (matches.size > 1) throw new Error("코드에 해당하는 활성 클래스가 여러 개입니다.");
                     // 조회 범위는 라이브러리 바로 아래 1뎁스입니다. 클래스를 다시 확장하지 않습니다.
             }
-            // 페이지는 각 라이브러리 안에서 순차 조회하고, 라이브러리는 최대 4개만 병렬 조회합니다.
-            var node = 0;
-            while (node < queue.length) {
-                checkOpen();
-                var end = Math.min(node + 4, queue.length);
-                if (end > 20000) throw new Error("클래스 경로 조회 제한을 초과했습니다.");
-                var batch = queue.slice(node, end);
-                node = end;
-                await Promise.all(batch.map(async function (id) {
-                    try {
-                        await readChildren(id, consumeClass);
-                    } catch (error) {
-                        // 한 경로라도 실패하면 다른 진행 중 경로의 후속 페이지도 중단합니다.
-                        if (!stoppedError) stoppedError = error;
-                        throw stoppedError;
-                    }
-                }));
-            }
+            await readChildren(libraryId, consumeClass);
             if (!matches.size) throw new Error("라이브러리 바로 아래 1뎁스에 sdxClassCode가 " + scope.classCode + "인 활성 클래스가 없습니다.");
-            return {classId: Array.from(matches)[0], libraryId: null};
+            return {classId: Array.from(matches)[0], libraryId: libraryId};
         });
     }
     return {load: load, readMandatory: readMandatory, findActiveClassByCode: findActiveClassByCode};
