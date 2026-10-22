@@ -24,7 +24,8 @@ payload의 policy를 대신 변경하지 않습니다.
 2. type과 policy를 검사한 뒤 name을 읽고 이미 유효한 ECR 번호면 반환합니다.
 3. 서버 사용자/credential로 사업부를 결정하고 한국 날짜를 한 번 확정합니다.
 4. temp query bus로 해당 사업부·날짜의 기존 name들을 조회하고 최대 순번 + 1을 계산합니다.
-5. modify bus로 이름을 변경합니다.
+5. `DomainObject.newInstance(context, objectId)`로 객체를 얻고 `setName(context, candidate)`로 이름을 변경합니다.
+   실행 컨텍스트는 변경하지 않으며, 이 API도 changename 권한 검사를 받습니다.
 6. 변경 실패 시 트랜잭션이 update 상태인지, 자기 이름이 원래대로인지,
    동일 type/name/revision을 가진 다른 객체가 실제 조회되는지 확인합니다.
    세 조건을 모두 만족할 때만 최대번호를 다시 조회하고 다음 후보로 재시도합니다(최대 100회).
@@ -101,6 +102,8 @@ prepare_trigger_registration.py는 기존 전용 이름을 사용하는 다른 �
 이번 변경은 JDK 17에서 --release 8로 원본 JPO 및 테스트용 매핑을 넣은 임시 JPO를
 대역 SDK와 컴파일하고 JpoOnlyNumberingTest를 실행했습니다.
 테스트용 사본에만 test-user → MX 매핑을 추가하며 배포 원본은 바꾸지 않습니다.
+DomainObject 대역의 setName 호출에서 정상 변경·충돌·권한 실패를 재현하며,
+JPO가 MQL modify로 이름을 바꾸면 테스트가 실패하도록 검사합니다.
 0001 시작, 기존 최대번호 다음 발급, 9999→A001, A999→B001, Z998→Z999,
 상한 초과, 충돌 재시도, 권한 오류 전파, 중단된 트랜잭션, changename 결과 불일치,
 대상 제외, 이중 채번 방지, 잘못된 번호·날짜·미설정 사업부를 확인했습니다.

@@ -11,8 +11,15 @@ public class DomainObject {
     public static final Map<String, String> values = new HashMap<>();
     public static final List<String> calls = new ArrayList<>();
     public static boolean failWrite;
+    public interface NameHandler { void setName(Context context, String id, String name) throws Exception; }
+    public static NameHandler nameHandler;
     private final String id;
     public DomainObject(String id) { this.id = id; }
+    public static DomainObject newInstance(Context context, String id) { return new DomainObject(id); }
+    public void setName(Context context, String name) throws Exception {
+        if (nameHandler == null) throw new IllegalStateException("Missing test name handler");
+        nameHandler.setName(context, id, name);
+    }
     public void lockForUpdate(Context context) { calls.add("lock:" + id); }
     public String getAttributeValue(Context context, String attribute) {
         calls.add("read:" + id); return values.get(id);

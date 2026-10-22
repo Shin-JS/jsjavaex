@@ -1,5 +1,6 @@
 import matrix.db.Context;
 import matrix.db.MQLCommand;
+import com.matrixone.apps.domain.DomainObject;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -17,6 +18,17 @@ public class JpoOnlyNumberingTest {
         boolean conflict, permissionFailure, aborted, changedName;
         Context context = new Context();
         void install() {
+            DomainObject.nameHandler = (ctx, id, candidate) -> {
+                check(ctx == context && "own-id".equals(id));
+                renames++;
+                if (permissionFailure) throw new Exception("permission denied");
+                if (conflict && renames == 1) {
+                    maxSuffix = "0001";
+                    if (aborted) context.transactionType = 0;
+                    throw new Exception("simulated duplicate");
+                }
+                name = changedName ? "changed-by-trigger" : candidate;
+            };
             MQLCommand.handler = (cmd, args) -> {
                 if (cmd.startsWith("print")) {
                     if (cmd.contains("sdxECType") || args.contains("attribute[sdxECType]")) {
@@ -31,17 +43,7 @@ public class JpoOnlyNumberingTest {
                         ? type + "|" + PREFIX + "0001||other-id" : "";
                 if (cmd.startsWith("temp")) return maxSuffix == null ? ""
                         : type + "|" + PREFIX + maxSuffix + "||" + PREFIX + maxSuffix;
-                if (cmd.startsWith("modify")) {
-                    renames++;
-                    if (permissionFailure) throw new Exception("permission denied");
-                    if (conflict && renames == 1) {
-                        maxSuffix = "0001";
-                        if (aborted) context.transactionType = 0;
-                        throw new Exception("simulated duplicate");
-                    }
-                    name = changedName ? "changed-by-trigger" : args.get(1);
-                    return "";
-                }
+                if (cmd.startsWith("modify")) throw new AssertionError("Rename must use DomainObject.setName");
                 throw new AssertionError(cmd);
             };
         }

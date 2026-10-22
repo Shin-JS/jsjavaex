@@ -1,5 +1,6 @@
 import matrix.db.Context;
 import matrix.db.MQLCommand;
+import com.matrixone.apps.domain.DomainObject;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -139,9 +140,8 @@ public class sdxEcrNumbering_mxJPO {
             }
             String candidate = prefix + suffix;
             try {
-                String renamed = MQLCommand.exec(context, "modify bus $1 name $2",
-                        Arrays.asList(objectId, candidate));
-                if (renamed == null) throw new IllegalStateException("Missing rename result buffer");
+                DomainObject object = DomainObject.newInstance(context, objectId);
+                object.setName(context, candidate);
             } catch (Exception renameFailure) {
                 // Retry only if the outer transaction survived, our name is
                 // unchanged, and another object occupies this exact T/N/R.
