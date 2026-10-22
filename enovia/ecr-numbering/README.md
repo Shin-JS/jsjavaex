@@ -1,3 +1,18 @@
+# ECR No: Create Action JPO 내부 채번
+
+2026-10-22: 현재 구현은 **JPO 한 파일에서 최대번호 조회 후 rename 충돌 시 재시도**하는 방식입니다.
+[jpo/sdxEcrNumbering_mxJPO.java](jpo/sdxEcrNumbering_mxJPO.java)에 채번 로직을 모두 넣었습니다.
+카운터 객체·커스텀 속성·interface·별도 유틸리티 JAR가 필요 없습니다.
+
+배포/설정/동시성 조건은 [TRIGGER-INTEGRATION.md](TRIGGER-INTEGRATION.md)를 따릅니다.
+**resolveDivision의 실제 사용자/credential 매핑은 배포 전에 채워야 합니다.**
+동시성은 DB 유일성 범위 및 충돌 후 트랜잭션 상태에 의존하며 실제 서버 검증은 미완료입니다.
+
+이전 src 구현, properties와 Adapter 패치는 아래의 과거 구현 설명에 해당합니다.
+현재 JPO와 별도의 Adapter 채번을 동시에 사용하지 않습니다.
+
+---
+
 # ECR No: Create Action 트리거 채번
 
 2026-10-21: 현재 전환안은 **즉시 실행 Create Action JPO**입니다. [TRIGGER-INTEGRATION.md](TRIGGER-INTEGRATION.md)의 배포·기존 OOTB 트리거 보존·검증 순서를 따릅니다. 대상은 정확한 `sdxECChangeAction` 타입 + `sdxECR` 정책이며 `sdxECO`는 제외합니다. 서버 배포/등록은 아직 하지 않았습니다.
