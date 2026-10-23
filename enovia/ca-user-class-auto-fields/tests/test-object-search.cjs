@@ -1,6 +1,8 @@
 // OOTB 검색/모델 계약 대역 검사. 실제 대시보드의 6W 검색 실행은 별도 확인합니다.
 const fs = require('fs'), vm = require('vm'), assert = require('assert/strict');
 let api, selected, searches = [], destroyed = 0, changed = 0, observer;
+let bundleLoaded=false, failBundle=false, failModule=false;
+const requests=[];
 class Element {
  constructor() { this.children=[]; this.parentNode=null; this.style={}; this.classList={add(){},remove(){}}; }
  appendChild(n){this.children.push(n);n.parentNode=this;}
@@ -24,11 +26,23 @@ const form={fields:[line]}, session={type:'sdxECChangeAction'}, facet={skeleton:
 }};
 const context={document:{createElement:()=>new Element()},MutationObserver:class {
  constructor(fn){observer=fn;}observe(){}disconnect(){observer=null;}
-},define(id,deps,factory){api=factory((ids,done)=>done(util,Model));}};
+},define(id,deps,factory){api=factory((ids,done,fail)=>{
+ requests.push(Array.from(ids));
+ if(ids[0]==='DS/ENOXSearchUIController/ENOXSearchUIController'){
+  if(failBundle){fail(new Error('bundle 404'));return;}
+  bundleLoaded=true;done();return;
+ }
+ assert.ok(bundleLoaded,'번들 로드 전에 내부 모듈을 요청하면 별도 파일 404 발생');
+ assert.deepEqual(Array.from(ids),['DS/ENOXSearchUIController/ObjectOpenSearchUtil','DS/EditPropWidget/models/EditPropAttributeModel']);
+ if(failModule){fail(new Error('module unavailable'));return;}
+ done(util,Model);
+});}};
 vm.runInNewContext(fs.readFileSync(require('path').join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAObjectSearch.js'),'utf8'),context);
 const cleanup=api.install(facet,session,{allowedTypes:'Model',valueField:'name'});
 assert.equal(target.children.length,2);
 target.children[0].click();
+assert.equal(requests[0][0],'DS/ENOXSearchUIController/ENOXSearchUIController');
+assert.equal(requests[1][0],'DS/ENOXSearchUIController/ObjectOpenSearchUtil');
 assert.equal(searches[0].multiSel,false);assert.equal(searches[0].allowedTypes,'Model');
 selected([{name:'MODEL-001',id:'PHYSICAL-ID'}]);
 assert.equal(current.valueDB,'MODEL-001');assert.equal(current.value,'MODEL-001');
@@ -43,4 +57,13 @@ selected([{name:'late-result'}]);assert.equal(changed,1);
 const before=target.children.length;
 api.install(facet,{type:'Change Action'},{});assert.equal(target.children.length,before);
 api.install(facet,{type:'sdxECChangeAction'},{enabled:false});assert.equal(target.children.length,before);
-console.log('PASS: single selection, configured types, model change/serialization flags, cancel, missing value, multiple results, duplicate mount, context error, disposal/late result, type/setting isolation');
+// 번들/내부 모듈 실패 후 재시도할 수 있고 생성 폼은 유지됩니다.
+failBundle=true;
+const retrySession={type:'sdxECChangeAction'}, retryCleanup=api.install(facet,retrySession,{});
+const count=searches.length;
+target.children[0].click();assert.match(target.children[1].textContent,/번들/);assert.equal(searches.length,count);
+failBundle=false;failModule=true;
+target.children[0].click();assert.match(target.children[1].textContent,/모듈/);assert.equal(searches.length,count);
+failModule=false;target.children[0].click();assert.equal(searches.length,count+1);
+retryCleanup();
+console.log('PASS: bundle-first loading, bundle/module failure and retry, single selection, configured types, model change/serialization flags, cancel, missing value, multiple results, duplicate mount, context error, disposal/late result, type/setting isolation');

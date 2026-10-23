@@ -50,19 +50,27 @@ define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", [
             }
             if (search) { open(); return; }
             loading = true;
-            require(["DS/ENOXSearchUIController/ObjectOpenSearchUtil", "DS/EditPropWidget/models/EditPropAttributeModel"], function (SearchUtil, Model) {
-                AttributeModel = Model;
-                loading = false;
-                if (disposed || session.disposed) return;
-                try {
-                    // AMD export를 직접 초기화하면 다른 화면의 callback/socket을 덮어쓰므로 인스턴스 분리.
-                    search = Object.create(SearchUtil);
-                    search.initialize();
-                    open();
-                } catch (error) { message("객체 검색 초기화에 실패했습니다: " + error.message); }
+            // ObjectOpenSearchUtil은 이 번들 안에 정의됩니다. 번들을 먼저 로드해야
+            // RequireJS가 존재하지 않는 ObjectOpenSearchUtil.js를 요청하지 않습니다.
+            require(["DS/ENOXSearchUIController/ENOXSearchUIController"], function () {
+                if (disposed || session.disposed) { loading = false; return; }
+                require(["DS/ENOXSearchUIController/ObjectOpenSearchUtil", "DS/EditPropWidget/models/EditPropAttributeModel"], function (SearchUtil, Model) {
+                    AttributeModel = Model;
+                    loading = false;
+                    if (disposed || session.disposed) return;
+                    try {
+                        // AMD export를 직접 초기화하면 다른 화면의 callback/socket을 덮어쓰므로 인스턴스 분리.
+                        search = Object.create(SearchUtil);
+                        search.initialize();
+                        open();
+                    } catch (error) { message("객체 검색 초기화에 실패했습니다: " + error.message); }
+                }, function () {
+                    loading = false;
+                    if (!disposed) message("객체 검색 모듈을 불러오지 못했습니다.");
+                });
             }, function () {
                 loading = false;
-                if (!disposed) message("객체 검색 모듈을 불러오지 못했습니다.");
+                if (!disposed && !session.disposed) message("객체 검색 번들을 불러오지 못했습니다.");
             });
         }
         function unmount() {
