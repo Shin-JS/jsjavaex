@@ -12,8 +12,9 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     "require",
     "DS/sdxECCAAutoClass/sdxECCAClassRuleService",
     "DS/sdxECCAAutoClass/sdxECCAOrganizationProvider",
-    "DS/sdxECCAAutoClass/sdxECCAClassAttributeService"
-], function (require, ClassRuleService, OrganizationProvider, ClassAttributeService) {
+    "DS/sdxECCAAutoClass/sdxECCAClassAttributeService",
+    "DS/sdxECCAAutoClass/sdxECCAObjectSearch"
+], function (require, ClassRuleService, OrganizationProvider, ClassAttributeService, ObjectSearch) {
     "use strict";
 
     /** 대화상자마다 별도 세션을 만들어 초기화·속성 로딩·UI·생성 검증을 연결합니다. */
@@ -70,6 +71,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             clearTimeout(session.timer);
             clearTimeout(session.dialogBindTimer);
             session.bindingDialog = null;
+            if (session.cleanupObjectSearch) session.cleanupObjectSearch();
             if (session.cancelRequest) session.cancelRequest();
             if (session.cleanupValidation) session.cleanupValidation();
             session.listeners.forEach(function (fn) { fn(session); });
@@ -282,12 +284,17 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         view.onSubmit = wrapped;
     }
 
-    /** 폼 영역만 준비하며 검색 UI는 만들지 않습니다. OOTB 폼을 이동합니다. */
+    /** OOTB 분류 폼을 이동하고 대상 타입의 모델 검색을 연결합니다. */
     function sdxECCAInstallAutoFields(facet, options) {
         var session = options.sdxECCAAutoSession;
         if (!session) return;
         facet.sdxECCAAutoSession = session;
         facet.sdxECCAAutoDisposed = false;
+        session.cleanupObjectSearch = ObjectSearch.install(facet, session, {
+            enabled: widget.getValue("sdxECCAEnableModelSearch"),
+            allowedTypes: widget.getValue("sdxECCAModelSearchTypes"),
+            valueField: widget.getValue("sdxECCAModelSearchValueField")
+        });
         try { sdxECCABindCreatePolicy(facet, session); }
         catch (error) { session.fail(error); }
         session.readCurrentType = function () {
@@ -298,7 +305,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         };
         var root = document.createElement("div");
         var style = document.createElement("style");
-        style.textContent = ".sdxECCAClassFields .flexLine .formLabel .mandIcon { font-size: 7px; font-family: DSFontIcon; color: rgb(234, 79, 55) !important; }";
+        style.textContent = ".sdxECCAObjectSearchValue { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; } .sdxECCAObjectSearchValue > .formTweakerContainer { flex: 1; min-width: 0; } .sdxECCAObjectSearchButton { cursor: pointer; min-width: 28px; height: 28px; border: 1px solid #b4b6ba; border-radius: 3px; background: white; } .sdxECCAObjectSearchError { width: 100%; color: #b32020; } .sdxECCAClassFields .flexLine .formLabel .mandIcon { font-size: 7px; font-family: DSFontIcon; color: rgb(234, 79, 55) !important; }";
         root.appendChild(style);
         var status = document.createElement("div");
         status.setAttribute("role", "status");

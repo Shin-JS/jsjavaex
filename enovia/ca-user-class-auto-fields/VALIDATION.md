@@ -111,3 +111,12 @@ bindDialog 지연 연결 보완: 동기 버튼 집계 호출 없음, 같은 dial
 - 네이티브 집계가 preserveValidationState로 재진입해도 한 번만 집계하는 검사 통과.
 - auto-fields, class-mandatory, amd-headers 및 R2024x 원본 기반 validation/button-state 검사 통과.
 - 실제 설치 서버의 버튼 상태와 생성 응답은 재배포 후 확인이 필요합니다.
+
+## 2026-10-23 sdxECModel 검색
+
+`node tests/test-object-search.cjs` 통과: 타입 제한/단일 선택 전달, 기존 속성 모델의
+value/valueDB 및 변경 플래그 반영, 취소/저장 필드 누락/복수 선택 시 값 유지,
+중복 장착 방지, 문맥 오류/종료 후 지연 선택 무시, 다른 타입/비활성 설정 제외.
+기존 auto-fields/class-mandatory/class-code/amd-headers 검사도 통과했습니다.
+실제 대시보드에서 돋보기 위치·6W 검색창, 선택 응답 최상위 name 필드,
+최종 생성 Payload의 sdxECModel 값과 생성 객체 속성 저장을 확인해야 합니다.

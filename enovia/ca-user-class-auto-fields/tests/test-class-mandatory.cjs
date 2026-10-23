@@ -5,7 +5,7 @@ let request, nextResponse, nextError, disposed=false, fail=null;
 const context=vm.createContext({console,Promise,Map,Set,Error,setTimeout,clearTimeout,
  define(id,deps,factory){modules[id]=factory(...Array.from(deps,d=>d==='require'?requireAMD:modules[d]));}});
 function requireAMD(ids,done){assert.equal(ids[0],'DS/WAFData/WAFData');done({authenticatedRequest(url,opts){request={url,opts};if(nextError)opts.onFailure();else opts.onComplete(nextResponse);}});}
-for(const name of ['sdxECCAClassRuleService','sdxECCAOrganizationProvider','sdxECCAClassAttributeService','sdxECCAAutoClass'])
+for(const name of ['sdxECCAClassRuleService','sdxECCAOrganizationProvider','sdxECCAClassAttributeService','sdxECCAObjectSearch','sdxECCAAutoClass'])
  vm.runInContext(fs.readFileSync(path.join(root,'webapps/sdxECCAAutoClass',name+'.js'),'utf8'),context);
 const service=modules['DS/sdxECCAAutoClass/sdxECCAClassAttributeService'], api=modules['DS/sdxECCAAutoClass/sdxECCAAutoClass'];
 const response=value=>({results:[{physicalID:'C1',data:[{name:'sdxClassAttrMandatory',value}]}]});

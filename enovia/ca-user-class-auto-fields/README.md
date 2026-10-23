@@ -1,5 +1,42 @@
 # 클래스 자동 표시 · 유형 고정 · 부서 조회 연결 준비
 
+## sdxECModel 돋보기 검색 연동 (2026-10-23)
+
+기존 자동 분류 세션이 적용되는 전용 위젯의 `sdxECChangeAction` 생성창에서
+`sdxECModel` 입력 옆에 돋보기 버튼을 추가합니다. `publicAttributes`/`extensionAttributes`의
+기존 모델을 사용하므로 검색 선택값은 OOTB 검증·BL·직렬화를 거쳐 생성 요청에 포함됩니다.
+문자열 속성값 저장이며 객체 간 relationship을 생성하는 기능은 아닙니다.
+
+이번 배포는 아래 **두 파일을 함께** 적용합니다. 기존 OOTB 연결 위치는 그대로 사용합니다.
+
+- `webapps/sdxECCAAutoClass/sdxECCAAutoClass.js` 교체
+- `webapps/sdxECCAAutoClass/sdxECCAObjectSearch.js` 추가
+
+대상 위젯의 기존 설정 위치에서 필요 시 다음을 지정합니다.
+
+```js
+widget.setValue("sdxECCAEnableModelSearch", true);
+widget.setValue("sdxECCAModelSearchTypes", ""); // 전체 타입. 확정된 실제 타입명으로 제한 가능
+widget.setValue("sdxECCAModelSearchValueField", "name"); // 검색 결과의 최상위 문자열 필드
+```
+
+버튼은 기본 활성화되며 `false`로 끌 수 있습니다. 검색 대상 타입은 아직 확정되지 않아
+기본값은 전체 타입입니다. `sdxECModel`은 속성명이므로 검색 타입명으로 가정하지 않습니다.
+타입 제한은 실제 타입명 문자열 또는 배열로 지정합니다. 기본 저장값은 선택 결과의 `name`이며,
+실제 응답에서 확인된 `id` 등을 저장하려면 `sdxECCAModelSearchValueField`를 변경합니다.
+지정한 필드가 결과에 없으면 값을 바꾸지 않고 안내합니다. 다른 필드로 임의 대체하지 않습니다.
+표시값과 저장값은 같은 문자열입니다. 검색 취소 시 기존 입력값을 유지합니다.
+
+`ObjectOpenSearchUtil`을 버튼 클릭 시 로딩하여 단일 선택 6W 검색을 엽니다.
+기존 입력은 계속 사용할 수 있고, 검색 실패 안내는 해당 필드 아래에 표시합니다.
+숨김/읽기 전용 속성에는 버튼을 붙이지 않습니다. 폼이 다시 생성되면 버튼을 다시 연결하고,
+팝업 종료 시 observer·버튼 이벤트·검색 소켓을 정리합니다. 종료/문맥 오류 후의 선택 결과는 무시합니다.
+검색 모듈이 참조하는 tenant는 OOTB 그대로 `widget.data.x3dPlatformId`를 사용합니다.
+3DDashboard의 검색 서비스/SearchComServer가 준비된 환경이 필요합니다.
+
+검사: `node tests/test-object-search.cjs` 및 기존 auto-fields/class-mandatory/class-code/amd-headers 검사.
+실제 서버에서 검색창 표시, 응답의 `name`/`id` 구조, `sdxECModel` 최종 Payload 및 저장값은 미확인입니다.
+
 ## 클래스 코드와 활성 상태로 자동 선택 (2026-10-21)
 
 `sdxClassCode`가 정확히 `EC_MX`이고 활성 상태인 `General Class`의 ID를 조회하여
@@ -81,8 +118,8 @@ code가 현재 기본 모드입니다. 이 모드에는 `sdxECCAFixedClassId`가
 원본 이름이 없는 Text 속성은 숨기기만 하고, 원본 정의는 있지만 저장 결과에 값이 없으면
 초기값으로 대체하지 않고 오류를 표시하여 제출을 막습니다.
 
-기존 OOTB 연결이 적용되어 있으면 `webapps/sdxECCAAutoClass/sdxECCAAutoClass.js`만
-교체하면 됩니다. 기존 Policy 처리와 `sdxECType` 고정은 유지합니다.
+Text 처리 자체의 변경 파일은 `webapps/sdxECCAAutoClass/sdxECCAAutoClass.js`입니다.
+최신 버전은 위 검색 연동 모듈도 함께 배포해야 합니다. 기존 Policy 처리와 `sdxECType` 고정은 유지합니다.
 로컬 대역 검사로 숨김·최신값 복사·빈값·대상 누락 복원·다른 타입 제외를 검증했습니다.
 실제 플랫폼에서 팝업 표시와 최종 요청 Payload 및 저장된 속성값 확인은 별도로 필요합니다.
 

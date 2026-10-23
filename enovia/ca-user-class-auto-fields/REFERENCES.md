@@ -76,3 +76,17 @@ ENOTabView sharedContext.setValidation → refreshValidationStatus,
 ENONewDialogController.evaluateValidationStatus/disableFormSubmit/resetButtons를 확인했습니다.
 ClassifPropModel의 onChangeAttributes 이벤트를 사용하고 화면 종료 시 removeEvent로 해제합니다.
 
+
+## sdxECModel 검색 연동 (2026-10-23)
+
+- [ENOXSearchUIController.js](https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/ENOXSearchUIController/ENOXSearchUIController.js), blob `18e4a1e11da160952f54fab683d4872f88996951`:
+  번들 내부 `DS/ENOXSearchUIController/ObjectOpenSearchUtil`의 initialize/launchSearch/destroy와
+  in_apps_callback 배열, allowedTypes, multiSel, widget.data.x3dPlatformId 계약 확인.
+  ObjectOpenSearchUtil.js라는 별도 파일 경로가 아니라 이 번들에 정의된 AMD 모듈입니다.
+- R2024x `ENONewWidget.js`: `ENOListView.propModel`, `_parseModel`의 isModified/valueDB 처리 확인.
+- R2024x `EditPropWidget.js`: `getFormSection().getOrganizers()`, `_forms[].fields[]`,
+  `_idAttr`와 `.formValue`, TweakerManager._modelChangeValue의 새 AttributeModel 생성 후
+  부모 모델 set(identifier, model) 방식 확인. 같은 방식으로 입력 검증과 변경 이벤트를 연결합니다.
+
+참조 저장소 기본 브랜치 main에는 소스가 없으므로 원본은 명시적으로 master에서 조회했습니다.
+이는 공개 런타임 소스 대조이며 설치 서버의 검색 서비스/응답 실행 검증은 아닙니다.

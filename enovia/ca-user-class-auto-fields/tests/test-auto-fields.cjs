@@ -31,7 +31,7 @@ const modules = {};
 context.define = function (id, dependencies, factory) {
  modules[id] = factory(...Array.from(dependencies, dep => dep === 'require' ? context.require : modules[dep]));
 };
-for (const file of ['sdxECCAClassRuleService', 'sdxECCAOrganizationProvider', 'sdxECCAClassAttributeService', 'sdxECCAAutoClass']) {
+for (const file of ['sdxECCAClassRuleService', 'sdxECCAOrganizationProvider', 'sdxECCAClassAttributeService', 'sdxECCAObjectSearch','sdxECCAAutoClass']) {
  vm.runInContext(fs.readFileSync(path.join(root, 'webapps/sdxECCAAutoClass', file + '.js'),'utf8'),context);
 }
 const api = modules['DS/sdxECCAAutoClass/sdxECCAAutoClass'];

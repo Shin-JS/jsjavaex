@@ -8,6 +8,11 @@ widget.setValue("sdxECCAClassCode", "EC_MX");
 widget.setValue("sdxECCALibraryTitle", "EC Library");
 widget.setValue("sdxECCATypeDisplay", "hidden");
 
+// sdxECModel 검색: 타입명 확정 후 실제 타입명으로 제한합니다. 빈 문자열은 전체 타입입니다.
+widget.setValue("sdxECCAEnableModelSearch", true);
+widget.setValue("sdxECCAModelSearchTypes", "");
+widget.setValue("sdxECCAModelSearchValueField", "name");
+
 제목이 EC Library인 라이브러리 바로 아래에서 sdxClassCode가 EC_MX이고 활성 상태인 General Class가 정확히 1개일 때 자동 선택합니다.
 code 모드에서는 기존 sdxECCAFixedClassId를 사용하지 않습니다.
 기존 OOTB REST API를 사용하므로 JSP나 별도 서버 코드는 배포하지 않습니다.
