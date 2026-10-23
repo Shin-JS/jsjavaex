@@ -12,9 +12,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     "require",
     "DS/sdxECCAAutoClass/sdxECCAClassRuleService",
     "DS/sdxECCAAutoClass/sdxECCAOrganizationProvider",
-    "DS/sdxECCAAutoClass/sdxECCAClassAttributeService",
-    "DS/sdxECCAAutoClass/sdxECCAObjectSearch"
-], function (require, ClassRuleService, OrganizationProvider, ClassAttributeService, ObjectSearch) {
+    "DS/sdxECCAAutoClass/sdxECCAClassAttributeService"
+], function (require, ClassRuleService, OrganizationProvider, ClassAttributeService) {
     "use strict";
 
     /** 대화상자마다 별도 세션을 만들어 초기화·속성 로딩·UI·생성 검증을 연결합니다. */
@@ -70,6 +69,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             session.disposed = true;
             clearTimeout(session.timer);
             clearTimeout(session.dialogBindTimer);
+            clearTimeout(session.objectSearchTimer);
             session.bindingDialog = null;
             if (session.cleanupObjectSearch) session.cleanupObjectSearch();
             if (session.cancelRequest) session.cancelRequest();
@@ -290,11 +290,6 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (!session) return;
         facet.sdxECCAAutoSession = session;
         facet.sdxECCAAutoDisposed = false;
-        session.cleanupObjectSearch = ObjectSearch.install(facet, session, {
-            enabled: widget.getValue("sdxECCAEnableModelSearch"),
-            allowedTypes: widget.getValue("sdxECCAModelSearchTypes"),
-            valueField: widget.getValue("sdxECCAModelSearchValueField")
-        });
         try { sdxECCABindCreatePolicy(facet, session); }
         catch (error) { session.fail(error); }
         session.readCurrentType = function () {
@@ -341,7 +336,32 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 state.status === "ready" ? "" : "지정 클래스 속성을 준비하고 있습니다…";
             host.style.display = state.attributesLoaded ? "" : "none";
         });
+        sdxECCAScheduleObjectSearch(facet, session);
+    }
 
+    /** 검색 모듈은 기존 생성 폼 초기화가 끝난 다음 선택적으로 연결합니다. */
+    function sdxECCAScheduleObjectSearch(facet, session) {
+        if (session.type !== "sdxECChangeAction") return;
+        var enabled = widget.getValue("sdxECCAEnableModelSearch");
+        if (enabled === false || enabled === "false") return;
+        var config = {
+            enabled: enabled,
+            allowedTypes: widget.getValue("sdxECCAModelSearchTypes"),
+            valueField: widget.getValue("sdxECCAModelSearchValueField")
+        };
+        function report(error) {
+            if (!session.disposed) console.error("[sdxECCAObjectSearch] 검색 연결 실패. 생성창은 계속 사용 가능합니다.", error);
+        }
+        session.objectSearchTimer = setTimeout(function () {
+            if (session.disposed) return;
+            try {
+                require(["DS/sdxECCAAutoClass/sdxECCAObjectSearch"], function (ObjectSearch) {
+                    if (session.disposed) return;
+                    try { session.cleanupObjectSearch = ObjectSearch.install(facet, session, config); }
+                    catch (error) { report(error); }
+                }, report);
+            } catch (error) { report(error); }
+        }, 0);
     }
 
     /** 기존 폼 객체를 한 번 이동하고, 종료 시 돌려놓을 원래 위치를 기억합니다. */
@@ -470,6 +490,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (!session || session.disposed || session.bindingDialog === dialog) return;
         session.bindingDialog = dialog;
         clearTimeout(session.dialogBindTimer);
+            clearTimeout(session.objectSearchTimer);
         // setup/Promise 콜백 스택이 끝난 뒤 연결합니다. 초기화 안에서 버튼 복원으로 재진입하지 않습니다.
         session.dialogBindTimer = setTimeout(function () {
             session.dialogBindTimer = null;

@@ -10,7 +10,8 @@ define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", [
         var valueField = config.valueField || "name";
         function fieldModel() {
             var model = facet.listview && facet.listview.propModel;
-            var fields = model && model.getAttributeFromField("name", "sdxECModel");
+            var fields = model && typeof model.getAttributeFromField === "function" &&
+                model.getAttributeFromField("name", "sdxECModel");
             return fields && fields[0];
         }
         function message(text) { if (mounted) mounted.error.textContent = text; }
@@ -78,13 +79,14 @@ define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", [
             var current = fieldModel(), target = null;
             var ui = facet.listview && facet.listview.propUI;
             var section = ui && ui.getFormSection && ui.getFormSection();
-            var organizers = section && section.getOrganizers();
+            var organizers = section && typeof section.getOrganizers === "function" && section.getOrganizers();
             if (current && current.visible !== false && !current.readOnly) {
                 Object.keys(organizers || {}).forEach(function (key) {
                     (organizers[key]._forms || []).forEach(function (form) {
                         (form.fields || []).forEach(function (line) {
                             if (line._idAttr === current.getIdentifier()) {
-                                target = line.elements.flexLine.querySelector(".formValue");
+                                var flexLine = line.elements && line.elements.flexLine;
+                                target = flexLine && flexLine.querySelector(".formValue");
                             }
                         });
                     });
@@ -113,10 +115,21 @@ define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", [
         }
         // Form의 비동기 tweaker 생성과 updateFacet 후 폼 교체를 함께 처리합니다.
         if (typeof MutationObserver !== "undefined") {
-            observer = new MutationObserver(mount);
+            observer = new MutationObserver(function () {
+                try { mount(); }
+                catch (error) {
+                    observer.disconnect();
+                    console.error("[sdxECCAObjectSearch] 검색 버튼 연결 실패.", error);
+                }
+            });
             observer.observe(facet.skeleton, {childList: true, subtree: true});
         }
-        mount();
+        try { mount(); }
+        catch (error) {
+            if (observer) observer.disconnect();
+            unmount();
+            throw error;
+        }
         return function () {
             disposed = true;
             if (observer) observer.disconnect();

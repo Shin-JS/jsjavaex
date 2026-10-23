@@ -2,6 +2,12 @@
 
 ## sdxECModel 돋보기 검색 연동 (2026-10-23)
 
+생성 팝업이 로딩 상태에 머무는 현상 보고 후, 검색 모듈을 main의 필수 AMD 의존성에서
+제거했습니다. 기존 폼 초기화를 완료한 뒤 비동기로 버튼을 설치하며, 모듈 로딩/버튼 설치
+실패는 콘솔의 `[sdxECCAObjectSearch]` 메시지로 남기고 기존 생성창 초기화를 중단하지 않습니다.
+이는 코드에서 확인한 초기화 중단 가능성에 대한 수정이며 실제 서버의 중단 지점은 아직 미확인입니다.
+`node tests/test-search-initialization.cjs`로 모듈 누락/설치 예외/종료 후 응답을 검사했습니다.
+
 기존 자동 분류 세션이 적용되는 전용 위젯의 `sdxECChangeAction` 생성창에서
 `sdxECModel` 입력 옆에 돋보기 버튼을 추가합니다. `publicAttributes`/`extensionAttributes`의
 기존 모델을 사용하므로 검색 선택값은 OOTB 검증·BL·직렬화를 거쳐 생성 요청에 포함됩니다.
