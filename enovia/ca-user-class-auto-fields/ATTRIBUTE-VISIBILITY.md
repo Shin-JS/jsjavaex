@@ -30,13 +30,10 @@ com/sdx/ecca/rest/SdxEccaAttributeService.java
 POST /3dspace/resources/v1/modeler/sdxECCA/attributes/visibility
 ```
 
-요청 예시는 다음과 같습니다. 실제로는 등록창의 기본/확장 속성명을 JS가 수집합니다.
+요청 본문은 속성 이름만 담은 JSON 배열입니다. 등록창의 기본/확장 속성명을 JS가 수집하며 타입명이나 typeInfo 전체는 보내지 않습니다.
 
 ```json
-{
-    "type": "sdxECChangeAction",
-    "attributes": ["sdxECModel", "실제속성명"]
-}
+["sdxECModel", "실제속성명"]
 ```
 
 응답 예시는 다음과 같습니다. 브라우저 주소창의 GET으로 JSON 본문을 보낼 수는 없습니다. 위젯에서 실행한 POST 요청을 Network에서 확인합니다.
@@ -196,3 +193,55 @@ URL 설정이 없으면 새 모듈/웹서비스를 요청하지 않습니다. �
 ## 검사 범위
 
 커스텀 JS의 대상 범위·요청 중복 제거·CSRF·응답 누락/실패 시 표시 유지·기존 값/필수 설정 보존·BL 갱신·지연 응답·세션 정리를 검사했습니다. Java는 실제 Jakarta API/JSON 구현으로 컴파일하고 서비스 흐름을 실행했지만 ENOVIA 인증/DB 호출은 테스트 대역입니다. 실제 2025 원본에 연결한 기존 검증도 수행했습니다. 서버 프로젝트의 실제 플랫폼 라이브러리를 사용한 컴파일, Modeler 등록, 권한, UI 저장은 배포 환경에서 확인해야 합니다.
+
+## 6. 이전 버전에서 배열 수신 방식으로 변경하는 경우
+
+이미 Searchable 조회 버전을 적용하셨다면 아래 두 파일의 변경 부분만 적용합니다. URL, Modeler, 기존 AutoClassService 연결 코드는 그대로 사용합니다.
+
+### Java — readVisibility의 인자와 이름 처리 변경
+
+`SdxEccaAttributeService.java`에서 `String body`를 `List<String> attributeNames`로 바꾸고 `java.util.List`를 import합니다.
+
+```java
+public Response readVisibility(
+        @jakarta.ws.rs.core.Context HttpServletRequest request,
+        List<String> attributeNames) {
+```
+
+`Set<String> names = readNames(body);` 한 줄을 같은 위치의 아래 코드로 교체합니다. 이후의 일괄 조회 코드는 유지합니다.
+
+```java
+            // 변경: 전달받은 배열의 최소 확인과 중복 제거
+            if (attributeNames == null || attributeNames.isEmpty() || attributeNames.size() > 300) {
+                return error(400, "INVALID_REQUEST");
+            }
+            Set<String> names = new LinkedHashSet<String>();
+            for (String name : attributeNames) {
+                if (name == null || name.trim().isEmpty() || name.length() > 256 ||
+                        !name.matches("[\\p{L}\\p{N}_ .:-]+")) {
+                    return error(400, "INVALID_REQUEST");
+                }
+                names.add(name);
+            }
+```
+
+`readNames(String body)` 메소드는 전체 삭제합니다. 사용하지 않는 `JsonReader`, `StringReader` import도 삭제합니다. `JsonArray`, `JsonString`은 응답 메타데이터 처리에서 사용하므로 유지합니다.
+
+### JS — POST 본문 한 곳 변경
+
+`sdxECCAAttributeVisibility.js`에서 아래 부분을 찾습니다.
+
+```javascript
+JSON.stringify({type: session.type, attributes: Array.from(names)})
+```
+
+다음으로 교체합니다.
+
+```javascript
+// 변경: 속성 이름 배열만 전송
+JSON.stringify(Array.from(names))
+```
+
+서버와 JS는 함께 적용합니다. 응답 구조와 false일 때만 숨기는 동작은 동일합니다.
+
+`List<String>` 본문 변환은 설치 서버의 JSON Provider가 담당합니다. 배포 후 이 POST가 200인지 확인해야 합니다. 415 또는 MessageBodyReader 오류가 발생한다면 서버의 JSON Provider 등록을 확인합니다. 로컬 검사는 Java 메소드에 List를 직접 전달하는 단위 검사이며 실제 HTTP 본문 변환을 검증하지는 않습니다.

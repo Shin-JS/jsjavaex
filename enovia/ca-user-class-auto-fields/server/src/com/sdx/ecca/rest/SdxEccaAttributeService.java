@@ -7,7 +7,6 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonException;
 import jakarta.json.JsonObject;
-import jakarta.json.JsonReader;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,9 +16,9 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
-import java.io.StringReader;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
@@ -39,7 +38,7 @@ public class SdxEccaAttributeService extends RestService {
     @Produces("application/json")
     public Response readVisibility(
             @jakarta.ws.rs.core.Context HttpServletRequest request,
-            String body) {
+            List<String> attributeNames) {
         Context userContext = null;
         try {
             // 2025 ENONewServices와 같은 인증 Context 취득 방식입니다.
@@ -47,7 +46,19 @@ public class SdxEccaAttributeService extends RestService {
             userContext = getAuthenticatedContext(request, true);
             if (userContext == null) return error(401, "LOGIN_REQUIRED");
 
-            Set<String> names = readNames(body);
+            // JSON 배열은 서버의 JSON Provider가 List<String>으로 변환합니다.
+            if (attributeNames == null || attributeNames.isEmpty() || attributeNames.size() > 300) {
+                return error(400, "INVALID_REQUEST");
+            }
+            Set<String> names = new LinkedHashSet<String>();
+            for (String name : attributeNames) {
+                // 패턴 조회를 막고 정확한 속성명만 전달합니다.
+                if (name == null || name.trim().isEmpty() || name.length() > 256 ||
+                        !name.matches("[\\p{L}\\p{N}_ .:-]+")) {
+                    return error(400, "INVALID_REQUEST");
+                }
+                names.add(name);
+            }
             // ENOAttributesCore.getAttributeDescription에서 사용하는 일괄 조회 API입니다.
             // 전체 Dictionary나 객체의 속성값을 조회하지 않습니다.
             Map<String, JsonObject> rows = MQLServices.getPropertiesOfAdminType(
@@ -76,34 +87,6 @@ public class SdxEccaAttributeService extends RestService {
                 }
             }
         }
-    }
-
-    static Set<String> readNames(String body) {
-        if (body == null || body.length() > 32768) throw new IllegalArgumentException("Invalid body");
-        JsonObject input;
-        try (JsonReader reader = Json.createReader(new StringReader(body))) {
-            input = reader.readObject();
-        }
-        if (!(input.get("type") instanceof JsonString) || !TARGET_TYPE.equals(input.getString("type"))) {
-            throw new IllegalArgumentException("Unsupported type");
-        }
-        if (!(input.get("attributes") instanceof JsonArray)) throw new IllegalArgumentException("Invalid attributes");
-        JsonArray attributes = input.getJsonArray("attributes");
-        if (attributes == null || attributes.isEmpty() || attributes.size() > 300) {
-            throw new IllegalArgumentException("Invalid attribute count");
-        }
-        Set<String> names = new LinkedHashSet<String>();
-        for (JsonValue value : attributes) {
-            if (!(value instanceof JsonString)) throw new IllegalArgumentException("Invalid name");
-            String name = ((JsonString) value).getString();
-            // 일괄 조회에 패턴을 넘기지 않도록 정확한 속성명만 허용합니다.
-            if (name.trim().isEmpty() || name.length() > 256 ||
-                    !name.matches("[\\p{L}\\p{N}_ .:-]+")) {
-                throw new IllegalArgumentException("Invalid name");
-            }
-            names.add(name);
-        }
-        return names;
     }
 
     static JsonObject makeResponse(Set<String> names, Map<String, JsonObject> rows) {

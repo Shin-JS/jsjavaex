@@ -59,7 +59,7 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
     assert.equal(f.fields.Hide.value, 'Hide-value');
     assert.equal(f.fields.Hide.mandatory, true);
     const sent = JSON.parse(requests[1].options.data);
-    assert.deepEqual(sent.attributes, ['Show', 'Hide', 'Missing', 'AlreadyHidden']);
+    assert.deepEqual(sent, ['Show', 'Hide', 'Missing', 'AlreadyHidden']);
     f.fields.Hide.visible = true; f.notify();
     assert.equal(f.fields.Hide.visible, false); // BL 갱신으로 표시가 바뀌어도 재적용
     cleanup();f.fields.Hide.visible = true;f.notify();assert.equal(f.fields.Hide.visible, true);

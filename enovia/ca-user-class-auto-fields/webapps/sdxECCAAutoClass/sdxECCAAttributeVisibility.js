@@ -89,7 +89,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeVisibility", ["require"], function (
                         }
                         headers[csrf.name] = csrf.value;
                         return requestJson(WAFData, base + options.url, "POST", headers,
-                            JSON.stringify({type: session.type, attributes: Array.from(names)}))
+                            JSON.stringify(Array.from(names)))
                             .then(function (response) { return readResponse(response, names); });
                     });
             });
