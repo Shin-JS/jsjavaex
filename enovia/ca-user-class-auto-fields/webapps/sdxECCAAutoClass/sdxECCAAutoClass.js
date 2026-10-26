@@ -72,6 +72,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             clearTimeout(session.objectSearchTimer);
             session.bindingDialog = null;
             if (session.cleanupObjectSearch) session.cleanupObjectSearch();
+            if (session.unsubscribeAttributeVisibility) session.unsubscribeAttributeVisibility();
+            if (session.cleanupAttributeVisibility) session.cleanupAttributeVisibility();
             if (session.cancelRequest) session.cancelRequest();
             if (session.cleanupValidation) session.cleanupValidation();
             session.listeners.forEach(function (fn) { fn(session); });
@@ -139,8 +141,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         properties.options.sdxECCAAutoSession = session;
         classification.options.sdxECCAAutoSession = session;
         classification.alwaysCalled = true;
-        // 대상 생성창의 탭 버튼만 숨깁니다. 분류 facet의 검증/저장은 유지합니다.
-        classification.visible = false;
+        // 속성/분류/북마크 탭 선택 영역은 OOTB 표시 상태를 유지합니다.
         if (configError) session.fail(configError);
     }
 
@@ -338,7 +339,37 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 state.status === "ready" ? "" : "지정 클래스 속성을 준비하고 있습니다…";
             host.style.display = state.attributesLoaded ? "" : "none";
         });
+        sdxECCAScheduleAttributeVisibility(facet, session);
         sdxECCAScheduleObjectSearch(facet, session);
+    }
+
+    /** 서버 배포 후 우리 위젯에 조회 URL을 설정했을 때만 실행합니다. */
+    function sdxECCAScheduleAttributeVisibility(facet, session) {
+        if (session.type !== "sdxECChangeAction") return;
+        var url = widget.getValue("sdxECCAAttributeVisibilityUrl");
+        if (!url) return;
+        var started = false;
+        function report(error) {
+            if (!session.disposed) {
+                console.warn("[sdxECCA] 속성 표시 설정을 적용하지 못해 기존 표시를 유지합니다.", error);
+            }
+        }
+        session.unsubscribeAttributeVisibility = session.subscribe(function (state) {
+            var service = state.controller && state.controller.PLMNewCommonWebService;
+            if (started || state.disposed || state.status === "error" || !service) return;
+            started = true;
+            try {
+                require(["DS/sdxECCAAutoClass/sdxECCAAttributeVisibility"], function (Visibility) {
+                    if (state.disposed || state.status === "error") return;
+                    Promise.resolve().then(function () {
+                        return Visibility.install(facet, state, {url: url, service: service});
+                    }).then(function (cleanup) {
+                        if (state.disposed) cleanup();
+                        else state.cleanupAttributeVisibility = cleanup;
+                    }).catch(report);
+                }, report);
+            } catch (error) { report(error); }
+        });
     }
 
     /** 검색 모듈은 기존 생성 폼 초기화가 끝난 다음 선택적으로 연결합니다. */

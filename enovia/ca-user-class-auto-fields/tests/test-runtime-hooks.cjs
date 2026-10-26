@@ -43,7 +43,7 @@ let facets=helper.getFacetList(data(),[{name:'classificationFacet'}],{});assert(
 const autoRows=collect(fs.readFileSync(path.join(root,'webapps/sdxECCAAutoClass/sdxECCAAutoClass.js'),'utf8'));
 const auto=vm.runInNewContext('('+autoRows[0].source+')',{widget,setTimeout:()=>1,clearTimeout(){},Set,Map})(()=>{}, {},{},{});
 widgetValues.sdxECCAEnableAutoClassByOrganization=true;widgetValues.sdxECCAAutoClassType='sdxECChangeAction';widget.sdxECCARuntime=auto;
-facets=helper.getFacetList(data(),[{name:'classificationFacet'}],{});assert(facets[0].options.sdxECCAAutoSession);assert.equal(facets[1].visible,false);assert.equal(facets[1].alwaysCalled,true);
+facets=helper.getFacetList(data(),[{name:'classificationFacet'}],{});assert(facets[0].options.sdxECCAAutoSession);assert.notEqual(facets[1].visible,false);assert.equal(facets[1].alwaysCalled,true);
 const next=helper.getFacetList(data(),[{name:'classificationFacet'}],{});assert.notEqual(next[0].options.sdxECCAAutoSession,facets[0].options.sdxECCAAutoSession);
 const other=data();other.defaultAttributes.Type.value='Change Request';assert(!helper.getFacetList(other,[{name:'classificationFacet'}],{})[0].options.sdxECCAAutoSession);
 delete widget.sdxECCARuntime;widgetValues.sdxECCAEnableAutoClassByOrganization=false;
