@@ -9,12 +9,12 @@ const helper=fs.readFileSync(__dirname+'/entry-guard.js','utf8');
 let source=original.source.replace('{','{'+helper+'\n');
 const anchor='launchCreateChangeActionDialog:function(r){';
 assert.equal(source.split(anchor).length,2);
-source=source.replace(anchor,anchor+'if(sdxECCA2025TryLaunch(r,s,typeof widget==="undefined"?null:widget))return;');
+source=source.replace(anchor,anchor+'if(sdxECCATryLaunch(r,s,typeof widget==="undefined"?null:widget))return;');
 function run(factorySource,enabled,mode){
- const events=[],widget={getValue:key=>key==='sdxECCAUsePrivateCreate2025'?enabled:undefined};
+ const events=[],widget={getValue:key=>key==='sdxECCAUsePrivateCreate'?enabled:undefined};
  const localRequire=(names,success,failure)=>{
   if(typeof names==='string')return {cloudProbeUtils:{genericCommandClickEventForAnalytics(){events.push('analytics');}}};
-  events.push('private-require');assert.equal(names[0],'DS/sdxECCA2025/sdxECCA2025');
+  events.push('private-require');assert.equal(names[0],'DS/sdxECCA/sdxECCA');
   if(mode==='throw')throw Error('loader failed');
   if(mode==='missing')failure(Error('module missing'));
   else success({launch(){events.push('private-launch');if(mode==='launch-error')throw Error('private failed');}});

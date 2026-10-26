@@ -2,7 +2,7 @@
 'use strict';
 // Vendor sources stay on the deployment machine. This generator never overwrites them.
 const fs = require('fs'), path = require('path'), vm = require('vm'), crypto = require('crypto');
-const ROOT = 'DS/sdxECCA2025/';
+const ROOT = 'DS/sdxECCA/';
 const bundles = ['ENONewWidget', 'ClassificationsFacet', 'ClassificationProp', 'EditPropWidget',
     'IPClassifyUtil', 'IPClassifyActive', 'PLMNewLibraryActive', 'PLMNewFolderActive'];
 const customNames = ['sdxECCAAutoClass', 'sdxECCAClassRuleService', 'sdxECCAOrganizationProvider',
@@ -117,15 +117,15 @@ function build({sourceDir, customDir, outDir}) {
         output.push('define(' + JSON.stringify(mappings[row.id]) + ',' + JSON.stringify(deps) + ',(' + source + '));');
     }
     output.push('define(' + JSON.stringify(ROOT + 'appSettings') + ',[],function(){return ' + JSON.stringify(JSON.stringify(settings)) + ';});');
-    output.push('define(' + JSON.stringify(ROOT + 'sdxECCA2025') + ',[' + JSON.stringify(mappings[caId]) + '],function(CreateCA){return {launch:function(command){if(typeof widget==="undefined"||![true,"true"].includes(widget.getValue("sdxECCAEnableAutoClassByOrganization")))throw new Error("Enable the private CA entry in the target widget only");return CreateCA.launchCreateChangeActionDialog(command);}};});');
+    output.push('define(' + JSON.stringify(ROOT + 'sdxECCA') + ',[' + JSON.stringify(mappings[caId]) + '],function(CreateCA){return {launch:function(command){if(typeof widget==="undefined"||![true,"true"].includes(widget.getValue("sdxECCAEnableAutoClassByOrganization")))throw new Error("Enable the private CA entry in the target widget only");return CreateCA.launchCreateChangeActionDialog(command);}};});');
     const code = output.join('\n');
-    new vm.Script(code, {filename: 'sdxECCA2025.js'}); // validate syntax before creating output
-    const outFile = path.join(outDir, 'webapps', 'sdxECCA2025', 'sdxECCA2025.js');
+    new vm.Script(code, {filename: 'sdxECCA.js'}); // validate syntax before creating output
+    const outFile = path.join(outDir, 'webapps', 'sdxECCA', 'sdxECCA.js');
     const inputFiles = Object.keys(hashes).map(p => fs.realpathSync(p));
     if (inputFiles.includes(path.resolve(outFile))) throw new Error('Refusing to overwrite an input');
     fs.mkdirSync(path.dirname(outFile), {recursive: true});
     fs.writeFileSync(outFile, code + '\n');
-    const manifest = {baseline: '2025', entry: ROOT + 'sdxECCA2025', inputHashes: hashes,
+    const manifest = {baseline: '2025', entry: ROOT + 'sdxECCA', inputHashes: hashes,
         modules: mappings, outputSha256: crypto.createHash('sha256').update(code + '\n').digest('hex')};
     fs.writeFileSync(path.join(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
     return {outFile, manifest, code};

@@ -12,9 +12,9 @@ try {
     for (const [name, bytes] of Object.entries(before)) assert.deepEqual(fs.readFileSync(path.join(sourceDir,name)), bytes, 'input changed: '+name);
     const privateRows = collect(result.outFile), rows = new Map(privateRows.map(r=>[r.id,r]));
     assert(privateRows.length > 100);
-    assert(privateRows.every(r=>r.id.startsWith('DS/sdxECCA2025/')));
+    assert(privateRows.every(r=>r.id.startsWith('DS/sdxECCA/')));
     for (const row of privateRows) for (const dep of row.deps) {
-        if (dep.startsWith('DS/sdxECCA2025/')) assert(rows.has(dep), 'missing private dependency: '+dep);
+        if (dep.startsWith('DS/sdxECCA/')) assert(rows.has(dep), 'missing private dependency: '+dep);
         assert(!/^DS\/(ENONewWidget|ClassificationsFacet|ClassificationProp|EditPropWidget|IPClassifyUtil|IPClassifyActive|PLMNewLibraryActive|PLMNewFolderActive)\//.test(dep), 'unisolated dependency: '+dep);
     }
     // Register originals, then the private bundle in the same loader. No redefinition is allowed.
@@ -66,7 +66,7 @@ try {
     const originalLauncher=registry.get('DS/ENONewWidget/ENONewLauncher');
     assert.throws(()=>{const missing=new Map(registry);missing.delete(autoId);function load(id,seen=new Set()){
         if(seen.has(id))return;seen.add(id);const row=missing.get(id);if(!row)throw new Error('missing '+id);
-        for(const dep of row.deps)if(dep.startsWith('DS/sdxECCA2025/'))load(dep,seen);
+        for(const dep of row.deps)if(dep.startsWith('DS/sdxECCA/'))load(dep,seen);
     }load(result.manifest.entry);},/missing/);
     assert.equal(registry.get('DS/ENONewWidget/ENONewLauncher'),originalLauncher);
     let launched=false;

@@ -2,7 +2,7 @@
 
 **사용자 적용은 [수동 적용 안내](manual/README.md)와 [주석 변경 조각](manual/source-patches/)을 사용합니다. jsjavaex에 수정 부분만 제공하며 Node 실행이나 다른 레포지토리의 전체 소스 링크가 필요하지 않습니다. 아래 내용과 생성기는 개발자 검증용 별도 방식입니다. 두 연결 방식을 중복 적용하지 않습니다.**
 
-2025 원본을 기준으로 CA 생성에 필요한 AMD 모듈을 `DS/sdxECCA2025/private/...`에 복제하여 연결합니다. 2024는 비교 참고용이며 빌드 입력으로 지원하지 않습니다.
+2025 원본을 기준으로 CA 생성에 필요한 AMD 모듈을 `DS/sdxECCA/private/...`에 복제하여 연결합니다. 2024는 비교 참고용이며 빌드 입력으로 지원하지 않습니다.
 
 공통 OOTB 파일 변경, 공통 모듈 이름 재등록, RequireJS 전역 map/paths 변경, `undef`, 공통 prototype 수정은 사용하지 않습니다. 전용 모듈 실패 시 커스텀 생성창만 실패하도록 의존성 경로를 분리합니다. 서버의 type/policy/trigger 같은 데이터 모델 변경을 격리하는 기능은 아닙니다.
 
@@ -10,7 +10,7 @@
 
 1. 먼저 현재 배포 파일을 백업합니다.
 2. 기존에 수정했던 공통 `ENONewWidget.js`, `ClassificationsFacet.js`, `ClassificationProp.js`, `ENOChgGovernanceUX.js`를 **현재 서버와 동일한 2025 릴리스/핫픽스의 원본**으로 복원합니다. 예전 `zca*`/`sdxECCA*` 의존성·호출·함수와 공용 HTML 설정을 남기지 않습니다. 이 단계가 빠지면 과거 공통 의존성의 영향이 남습니다. 2024 파일로 복원하지 않습니다.
-3. 아래 빌드 결과를 **새 경로** `3dspace/webapps/sdxECCA2025/sdxECCA2025.js`에 배포합니다. 기존 OOTB 디렉터리에 덮어쓰지 않습니다.
+3. 아래 빌드 결과를 **새 경로** `3dspace/webapps/sdxECCA/sdxECCA.js`에 배포합니다. 기존 OOTB 디렉터리에 덮어쓰지 않습니다.
 4. 대상 커스텀 위젯의 CA 생성 버튼만 아래 전용 진입점으로 바꿉니다. 공용 `ChgCreateChangeAction`은 수정하지 않습니다. 같은 위젯의 CO/CR 버튼은 기존 진입점을 사용합니다.
 5. 배포 환경의 기존 캐시 갱신 절차를 수행하고 대상·일반 위젯을 각각 새로 엽니다.
 
@@ -42,11 +42,11 @@ JSON 원본 위치는 `ClassificationsFacet/assets/classificationAppsRequire_set
 PowerShell 예시:
 
 ```powershell
-node .\enovia\ca-user-class-auto-fields\isolation-2025\build.cjs C:\sdx-ca\original-2025 C:\sdx-ca\output
-node .\enovia\ca-user-class-auto-fields\isolation-2025\test.cjs C:\sdx-ca\original-2025
+node .\enovia\ca-user-class-auto-fields\isolation\build.cjs C:\sdx-ca\original-2025 C:\sdx-ca\output
+node .\enovia\ca-user-class-auto-fields\isolation\test.cjs C:\sdx-ca\original-2025
 ```
 
-출력은 `output/webapps/sdxECCA2025/sdxECCA2025.js`와 `output/manifest.json`입니다. Manifest에는 입력 SHA-256, 원래 ID와 전용 ID의 대응, 결과 SHA-256을 기록합니다. 이번에 대조한 2025 원본에서는 187개 모듈이 생성됩니다.
+출력은 `output/webapps/sdxECCA/sdxECCA.js`와 `output/manifest.json`입니다. Manifest에는 입력 SHA-256, 원래 ID와 전용 ID의 대응, 결과 SHA-256을 기록합니다. 이번에 대조한 2025 원본에서는 187개 모듈이 생성됩니다.
 
 ## 대상 위젯의 CA 생성 버튼
 
@@ -69,17 +69,17 @@ widget.setValue("sdxECCAModelSearchValueField", "name");
 
 ```javascript
 function launchPrivateChangeAction(command) {
-    require(["DS/sdxECCA2025/sdxECCA2025"], function (CreateCA) {
+    require(["DS/sdxECCA/sdxECCA"], function (CreateCA) {
         try {
             CreateCA.launch(command);
         } catch (error) {
             if (command) command.isClickProcessing = false;
-            console.error("[sdxECCA2025] 생성창 초기화 실패", error);
+            console.error("[sdxECCA] 생성창 초기화 실패", error);
             // 대상 위젯의 기존 오류 표시 함수로 error.message를 표시합니다.
         }
     }, function (error) {
         if (command) command.isClickProcessing = false;
-        console.error("[sdxECCA2025] 전용 모듈 로딩 실패", error);
+        console.error("[sdxECCA] 전용 모듈 로딩 실패", error);
         // 공용 CA 생성으로 자동 우회하지 않습니다. 대상 위젯에서 오류를 표시합니다.
     });
 }

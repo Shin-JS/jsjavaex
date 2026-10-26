@@ -6,7 +6,7 @@
 
 | 대상 | 작업 | 제공 코드 |
 |---|---|---|
-| 새 `3dspace/webapps/sdxECCA2025/sdxECCA2025.js` | 아래 절차로 로컬 원본을 복사하고 필요한 부분만 수정 | [전용 복사본 변경 조각](source-patches/) |
+| 새 `3dspace/webapps/sdxECCA/sdxECCA.js` | 아래 절차로 로컬 원본을 복사하고 필요한 부분만 수정 | [전용 복사본 변경 조각](source-patches/) |
 | 공통 `ENOChgGovernanceUX.js`의 CA 진입 AMD 모듈 | 대상 옵션 검사 함수 추가와 진입부 한 줄 추가 | [entry-guard.js](entry-guard.js) |
 | 우리 위젯 전용 HTML의 기존 설정 위치 | 기존 설정 갱신 및 전용 진입 옵션 추가 | [widget-settings.js](widget-settings.js) |
 
@@ -20,7 +20,7 @@
 
 ## 1. 로컬 원본을 새 전용 파일에 복사
 
-`3dspace/webapps/sdxECCA2025/sdxECCA2025.js`를 새로 만듭니다. 다음 순서로 **각 파일 내용**을 이어 붙입니다. 파일과 파일 사이에는 새 줄에 세미콜론 `;` 하나를 둡니다. 이는 텍스트 복사 작업이며 명령어를 실행하지 않습니다.
+`3dspace/webapps/sdxECCA/sdxECCA.js`를 새로 만듭니다. 다음 순서로 **각 파일 내용**을 이어 붙입니다. 파일과 파일 사이에는 새 줄에 세미콜론 `;` 하나를 둡니다. 이는 텍스트 복사 작업이며 명령어를 실행하지 않습니다.
 
 먼저 로컬의 변경 전 2025 원본에서 다음 8개 파일을 복사합니다. 각각 `3dspace/webapps/폴더명/파일명.js`에 있습니다.
 
@@ -53,7 +53,7 @@ DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction
 
 ## 2. 전용 파일의 표시된 부분만 수정
 
-새 `sdxECCA2025.js` 안에서 다음 변경 메모를 적용합니다. **메모 파일 전체를 기존 JS에 덮어쓰는 것이 아닙니다.** 각 메모의 대상 AMD 모듈을 찾아 `[수정 전]` 부분만 `[수정 후]` 코드로 바꿉니다. 설명 주석까지 실행 코드에 넣지 않아도 됩니다.
+새 `sdxECCA.js` 안에서 다음 변경 메모를 적용합니다. **메모 파일 전체를 기존 JS에 덮어쓰는 것이 아닙니다.** 각 메모의 대상 AMD 모듈을 찾아 `[수정 전]` 부분만 `[수정 후]` 코드로 바꿉니다. 설명 주석까지 실행 코드에 넣지 않아도 됩니다.
 
 | 새 파일 안에서 찾을 원본 모듈 묶음 | 수정 부분 메모 |
 |---|---|
@@ -66,7 +66,7 @@ DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction
 
 ## 3. 새 파일 안의 AMD 이름만 전용 이름으로 치환
 
-VS Code에서 **새 `sdxECCA2025.js` 파일 하나만 열고**, 찾기·바꾸기의 정규식 옵션을 켭니다. 워크스페이스 전체 치환을 하지 않습니다.
+VS Code에서 **새 `sdxECCA.js` 파일 하나만 열고**, 찾기·바꾸기의 정규식 옵션을 켭니다. 워크스페이스 전체 치환을 하지 않습니다.
 
 찾기:
 
@@ -77,7 +77,7 @@ VS Code에서 **새 `sdxECCA2025.js` 파일 하나만 열고**, 찾기·바꾸�
 바꾸기:
 
 ```text
-$1DS/sdxECCA2025/private/$2/
+$1DS/sdxECCA/private/$2/
 ```
 
 위 정규식은 모듈 이름과 의존성을 함께 변경합니다. `i18n!`, `css!`, `text!`로 시작하는 공유 리소스 경로와 `assets`는 기존 경로를 유지합니다. `wizardView` 문자열은 원본의 별도 조회 식별자이므로 치환에서 제외합니다. 이 패턴은 확인한 2025 원본에서 검사했습니다.
@@ -93,10 +93,10 @@ $1DS/sdxECCA2025/private/$2/
 바꾸기:
 
 ```text
-"DS/sdxECCA2025/private/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction"
+"DS/sdxECCA/private/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction"
 ```
 
-마지막에 세미콜론을 하나 두고 **[tail-modules.js](tail-modules.js) 전체**를 붙여넣습니다. 새로 작성한 설정·진입 모듈이므로 이 두 모듈만 전체 추가 코드로 제공합니다. 이 단계 이후에는 위 이름 치환을 다시 하지 않습니다.
+마지막에 세미콜론을 하나 두고 **[sdxECCA.js 신규 진입 코드](../../webapps/sdxECCA/sdxECCA.js) 전체**를 붙여넣습니다. 새로 작성한 설정·진입 모듈이므로 이 두 모듈만 전체 추가 코드로 제공합니다. 이 단계 이후에는 위 이름 치환을 다시 하지 않습니다.
 
 새 파일은 전용 AMD 이름만 정의하며 공통 모듈 이름을 다시 정의하면 안 됩니다. `define("DS/ENONewWidget/` 등 원래 이름으로 남은 모듈 정의가 없는지 확인합니다. `i18n!DS/...` 같은 공유 리소스 참조가 남는 것은 정상입니다.
 
@@ -113,7 +113,7 @@ DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction
 그리고 같은 모듈의 `launchCreateChangeActionDialog:function(r){` 바로 뒤에 아래 한 줄을 추가합니다.
 
 ```javascript
-if (sdxECCA2025TryLaunch(r, s, typeof widget === "undefined" ? null : widget)) return;
+if (sdxECCATryLaunch(r, s, typeof widget === "undefined" ? null : widget)) return;
 ```
 
 여기서 `s`는 확인한 2025 원본의 마지막 factory 인자인 AMD `require`입니다. 설치 소스의 인자 이름이 다르면 의존성 배열의 `"require"`와 대응하는 인자를 사용합니다. **define 의존성 배열은 바꾸지 않습니다.** CA 모듈의 나머지 원래 코드는 유지합니다.
@@ -127,7 +127,7 @@ if (sdxECCA2025TryLaunch(r, s, typeof widget === "undefined" ? null : widget)) r
 이번에 추가되는 진입 옵션은 다음입니다.
 
 ```javascript
-widget.setValue("sdxECCAUsePrivateCreate2025", true);
+widget.setValue("sdxECCAUsePrivateCreate", true);
 ```
 
 이 옵션은 우리 위젯에서만 설정합니다. 일반 위젯에서는 전용 모듈을 요청하지 않고 원래 생성 코드가 실행됩니다. 공용 HTML에 설정하지 않습니다.

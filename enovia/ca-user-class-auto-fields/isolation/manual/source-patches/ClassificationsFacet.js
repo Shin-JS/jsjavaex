@@ -1,5 +1,5 @@
 /* 적용 메모 — 전체 파일 교체용 코드가 아닙니다.
- * 수정 대상: 새 전용 sdxECCA2025.js에 복사한 ClassificationsFacet의 해당 AMD 모듈.
+ * 수정 대상: 새 전용 sdxECCA.js에 복사한 ClassificationsFacet의 해당 AMD 모듈.
  * 공통 원본에 이 조각을 적용하지 않습니다.
  * 아래 부분 변경을 마친 다음 README의 전용 이름 치환을 적용합니다.
  * 각 [수정 전]을 해당 AMD 모듈 안에서 찾아 [수정 후]로 바꿉니다.
@@ -89,7 +89,7 @@ r.classifPropModels.push(s),sdxECCAAutoClass.tagClassModel(r,s,e),v.publish(
 "text!DS/ClassificationsFacet/assets/classificationAppsRequire_setting.json"
 */
 /* [의존성 한 항목 수정 후]
-"DS/sdxECCA2025/appSettings"
+"DS/sdxECCA/appSettings"
 */
 
 /* [변경 1 — 수정 전]

@@ -16,10 +16,10 @@ for(const row of rows){const edits=spec[row.id];if(!edits)continue;
  if(edits.dependencyChange){const item=edits.dependencyChange;assert(row.deps.includes(item.from));row.deps=row.deps.map(d=>d===item.from?item.to:d);}
  for(const change of edits.changes)row.source=once(row.source,change.from,change.to,row.id);
 }
-const rename=source=>source.replace(/(["'])DS\/(ENONewWidget|ClassificationsFacet|ClassificationProp|EditPropWidget|IPClassifyUtil|IPClassifyActive|PLMNewLibraryActive|PLMNewFolderActive|sdxECCAAutoClass)\/(?!assets\/|ENONew\/View\/facet\/wizardView["'])/g,'$1DS/sdxECCA2025/private/$2/')
- .replaceAll('"'+ca+'"','"DS/sdxECCA2025/private/'+ca.slice(3)+'"');
+const rename=source=>source.replace(/(["'])DS\/(ENONewWidget|ClassificationsFacet|ClassificationProp|EditPropWidget|IPClassifyUtil|IPClassifyActive|PLMNewLibraryActive|PLMNewFolderActive|sdxECCAAutoClass)\/(?!assets\/|ENONew\/View\/facet\/wizardView["'])/g,'$1DS/sdxECCA/private/$2/')
+ .replaceAll('"'+ca+'"','"DS/sdxECCA/private/'+ca.slice(3)+'"');
 const text=rows.map(r=>'define('+JSON.stringify(r.id)+','+JSON.stringify(r.deps)+',('+r.source+'));').join('\n;\n');
-const final=rename(text)+'\n;\n'+fs.readFileSync(path.join(__dirname,'tail-modules.js'),'utf8');
+const final=rename(text)+'\n;\n'+fs.readFileSync(path.join(__dirname,'../../webapps/sdxECCA/sdxECCA.js'),'utf8');
 const captured=new Map();new vm.Script(final).runInNewContext({define:(id,deps,factory)=>{assert(!captured.has(id));captured.set(id,{deps:Array.from(deps),source:factory.toString()});}});
 const outDir=fs.mkdtempSync(require('os').tmpdir()+'/sdx-manual-');
 try{
@@ -30,8 +30,8 @@ try{
   assert.deepEqual(actual.deps,expected.deps,newId+' dependency mismatch');
   assert.equal(actual.source,expected.source,newId+' factory mismatch');
  }
- const entry=captured.get('DS/sdxECCA2025/sdxECCA2025');assert.equal(entry.deps[0],generated.manifest.modules[ca]);
- const settings=vm.runInNewContext('('+captured.get('DS/sdxECCA2025/appSettings').source+')')();
+ const entry=captured.get('DS/sdxECCA/sdxECCA');assert.equal(entry.deps[0],generated.manifest.modules[ca]);
+ const settings=vm.runInNewContext('('+captured.get('DS/sdxECCA/appSettings').source+')')();
  const apps=JSON.parse(settings);assert(captured.has(apps.facets.library.require));assert(captured.has(apps.facets.bookmarks.require));
  // Apply the replacements to the actual bundle text, preserving all original separators.
  const rawRows=new Map();for(const bundle of bundles)for(const r of collect(path.join(sourceDir,bundle+'.js')))rawRows.set(r.id,r);
@@ -45,7 +45,7 @@ try{
  }pasted.push(code);}
  const caRow=rows.find(r=>r.id===ca);pasted.push('define('+JSON.stringify(caRow.id)+','+JSON.stringify(caRow.deps)+',('+caRow.source+'))');
  for(const name of custom)pasted.push(fs.readFileSync(path.join(customDir,name+'.js'),'utf8'));
- const rawPasted=rename(pasted.join('\n;\n'))+'\n;\n'+fs.readFileSync(path.join(__dirname,'tail-modules.js'),'utf8');
- const actualIds=[];new vm.Script(rawPasted).runInNewContext({define:(id)=>actualIds.push(id)});assert.equal(actualIds.length,187);assert.equal(new Set(actualIds).size,187);assert(actualIds.every(id=>id.startsWith('DS/sdxECCA2025/')));
+ const rawPasted=rename(pasted.join('\n;\n'))+'\n;\n'+fs.readFileSync(path.join(__dirname,'../../webapps/sdxECCA/sdxECCA.js'),'utf8');
+ const actualIds=[];new vm.Script(rawPasted).runInNewContext({define:(id)=>actualIds.push(id)});assert.equal(actualIds.length,187);assert.equal(new Set(actualIds).size,187);assert(actualIds.every(id=>id.startsWith('DS/sdxECCA/')));
  console.log('PASS: all documented fragments reconstruct 185 factories/dependencies identically; 187 private modules register from the actual copied bundle text.');
 }finally{fs.rmSync(outDir,{recursive:true,force:true});}

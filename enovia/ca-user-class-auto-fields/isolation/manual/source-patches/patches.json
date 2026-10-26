@@ -365,7 +365,7 @@
     ],
     "dependencyChange": {
       "from": "text!DS/ClassificationsFacet/assets/classificationAppsRequire_setting.json",
-      "to": "DS/sdxECCA2025/appSettings"
+      "to": "DS/sdxECCA/appSettings"
     }
   }
 }

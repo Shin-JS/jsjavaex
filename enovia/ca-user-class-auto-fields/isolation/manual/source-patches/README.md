@@ -7,6 +7,6 @@
 - [ClassificationProp.js](ClassificationProp.js): 분류 속성 폼 생성 전·후 처리.
 - [ENOChgGovernanceUX.js](ENOChgGovernanceUX.js): 복사한 전용 CA 모듈의 타입 지정과 사용자 기본 타입 저장 조건.
 
-위 변경은 **새 sdxECCA2025.js 안의 복사본에만** 적용합니다. 공통 원본 파일에 그대로 적용하지 않습니다. 공통 CA 진입부의 변경은 별도 [entry-guard.js](../entry-guard.js)를 사용합니다.
+위 변경은 **새 sdxECCA.js 안의 복사본에만** 적용합니다. 공통 원본 파일에 그대로 적용하지 않습니다. 공통 CA 진입부의 변경은 별도 [entry-guard.js](../entry-guard.js)를 사용합니다.
 
 적용 순서는 [수동 적용 안내](../README.md)를 따릅니다. `patches.json`은 같은 변경 조각을 자동 비교하는 개발자 검사 데이터이며 서버에 배포하거나 실행할 파일이 아닙니다.
