@@ -2,6 +2,7 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert/strict'),path=require('path');
 let api, dependencies, pending=[], loads=0, installed=0, reports=0, mode='missing', config={};
 let success;
+const clearedTimers=[];
 const source=fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAutoClass.js'),'utf8')
  .replace('installFields: sdxECCAInstallAutoFields,','installFields: sdxECCAInstallAutoFields, testSchedule: sdxECCAScheduleObjectSearch,');
 const requireStub=(ids,done,fail)=>{
@@ -14,6 +15,7 @@ const requireStub=(ids,done,fail)=>{
 vm.runInNewContext(source,{
  console:{error(){reports++;}},widget:{getValue:k=>config[k]},
  setTimeout(fn){pending.push(fn);return pending.length;},
+ clearTimeout(id){clearedTimers.push(id);},
  define(id,deps,factory){dependencies=Array.from(deps);api=factory(requireStub,{}, {}, {});}
 });
 assert.ok(!dependencies.includes('DS/sdxECCAAutoClass/sdxECCAObjectSearch'));
@@ -27,4 +29,17 @@ mode='ok';s=session();api.testSchedule({},s);pending.shift()();assert.equal(inst
 s=session();api.testSchedule({},s);s.disposed=true;const before=loads;pending.shift()();assert.equal(loads,before);
 config.sdxECCAEnableModelSearch=false;api.testSchedule({},session());assert.equal(pending.length,0);
 config={};api.testSchedule({},{type:'Change Action'});assert.equal(pending.length,0);
+// 생성창 연결이 직전에 예약한 검색 연결을 취소하면 돋보기 버튼이 생성되지 않습니다.
+s=session();s.refreshValidation=()=>{};
+api.testSchedule({},s);
+const searchTimer=s.objectSearchTimer;
+const dialog={facets:[{options:{sdxECCAAutoSession:s}}],evaluateValidationStatus(){}};
+api.bindDialog(dialog);
+assert.ok(!clearedTimers.includes(searchTimer),'bindDialog must preserve pending search installation');
+const installedBeforeBind=installed;
+pending.shift()();
+assert.equal(installed,installedBeforeBind+1);
+pending.shift()();
+assert.equal(s.dialog,dialog);
 console.log('PASS: no mandatory search AMD dependency, deferred installation, missing module/render exception isolation, late result/closed session, disabled/other type exclusion');
+

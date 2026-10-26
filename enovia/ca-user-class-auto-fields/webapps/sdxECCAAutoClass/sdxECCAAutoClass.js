@@ -492,7 +492,6 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (!session || session.disposed || session.bindingDialog === dialog) return;
         session.bindingDialog = dialog;
         clearTimeout(session.dialogBindTimer);
-            clearTimeout(session.objectSearchTimer);
         // setup/Promise 콜백 스택이 끝난 뒤 연결합니다. 초기화 안에서 버튼 복원으로 재진입하지 않습니다.
         session.dialogBindTimer = setTimeout(function () {
             session.dialogBindTimer = null;
