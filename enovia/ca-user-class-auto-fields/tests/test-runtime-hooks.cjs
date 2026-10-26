@@ -9,7 +9,7 @@ for(const [id,spec] of Object.entries(specs)){
  const bundle=id.split('/')[1];
  const note=fs.readFileSync(path.join(root,'webapps',bundle,bundle+'.js'),'utf8');
  assert(note.includes('[출발 상태] 이전 zca/sdxECCA 수정이 없는 2025 원본.'));
- const start=note.indexOf('/* ============================================================\n * [대상 AMD 모듈] '+id);assert(start>=0,id+' missing note');
+ const start=note.indexOf('[대상 AMD 모듈] '+id);assert(start>=0,id+' missing note');
  const next=note.indexOf('/* [2025 OOTB 헤더 유지]',start);const block=note.slice(start,next<0?undefined:next);
  assert(block.includes(spec.setup),id+' setup differs from actual note');
  spec.changes.forEach((edit,index)=>{
@@ -70,4 +70,28 @@ function caRun(enabled,mode){widgetValues.sdxECCAEnableAutoClassByOrganization=e
 for(const flag of [undefined,false,'false'])assert.deepEqual(caRun(flag).events,['original-create']);
 assert.deepEqual(caRun(true).events,['custom-request','original-create']);
 for(const mode of ['missing','throw']){const result=caRun(true,mode);assert.deepEqual(result.events,['custom-request']);assert.equal(result.command.isClickProcessing,false);assert.deepEqual(caRun(false).events,['original-create']);}
+// ENONewWidget B4: exercise the actual init-created callback and preserve event order.
+delete widget.sdxECCARuntime;
+const listId='DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet';
+const listArgs=patched.get(listId).deps.map(()=>({}));
+listArgs[0]={createElement:()=>({})};listArgs[2]={extend:definition=>definition};
+listArgs[3]=function(){this.propUI={inject(){}};this.buildModel=()=>{};this.loadView=()=>{};};
+const listMethods=run(listId,listArgs),order=[];let callbackCount=0,received;
+const facet=Object.assign({},listMethods,{_parent(){},publishInfoForObjectInit(){},publishAttributeInfo:field=>order.push('publish:'+field.name)});
+const listOptions={data:{},events:{onResize(){},onChangeAttribute:event=>{callbackCount++;received=event;order.push('original-callback');}}};
+facet.init(listOptions);
+const event={
+ 'New-SecurityContext':{name:'SecurityContext',valueDB:'ctx'},
+ 'New-Type':{name:'Type',valueDB:'sdxECChangeAction'},
+ Title:{name:'Title',valueDB:'Sample'}
+};
+listOptions.events.onChangeAttribute(event);
+assert.equal(callbackCount,1);assert.equal(received,event);
+assert.deepEqual(order,['publish:SecurityContext','publish:Type','publish:Title','original-callback']);
+order.length=0;
+facet.sdxECCAAutoSession={checkContext:value=>order.push('context:'+value),checkType:value=>order.push('type:'+value)};
+listOptions.events.onChangeAttribute(event);
+assert.equal(callbackCount,2);
+assert.deepEqual(order,['context:ctx','publish:SecurityContext','type:sdxECChangeAction','publish:Type','publish:Title','original-callback']);
+listOptions.events.publishAttribute({name:'Bound'});assert.equal(order.at(-1),'publish:Bound');
 console.log('PASS: four actual 2025 bundles parse; original AMD dependencies retained; normal creation works without custom files; late runtime loading; scoped sessions; 2025 submit recovery; custom failure contained.');

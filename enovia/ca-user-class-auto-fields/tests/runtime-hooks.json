@@ -4,11 +4,11 @@
     "changes": [
       {
         "from": "return o.options.data=e",
-        "to": "o.options.data=e"
+        "to": "o.options.data = e"
       },
       {
         "from": "})),a},getDefaultFacet:",
-        "to": "}));var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.attachBridge(e,a,i);return a},getDefaultFacet:"
+        "to": "}));\n\nvar sdxECCAApi = sdxECCAGetApi();\nif (sdxECCAApi) {\n    sdxECCAApi.attachBridge(e, a, i);\n}\n\nreturn a;\n},\ngetDefaultFacet:"
       }
     ]
   },
@@ -17,23 +17,23 @@
     "changes": [
       {
         "from": "this._parent(t),this.skeleton=",
-        "to": "this._parent(t);var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.prepareFixedType(t.data,t.sdxECCAAutoSession);this.skeleton="
+        "to": "this._parent(t);\n\nvar sdxECCAApi = sdxECCAGetApi();\nif (sdxECCAApi) {\n    sdxECCAApi.prepareFixedType(t.data, t.sdxECCAAutoSession);\n}\n\nthis.skeleton ="
       },
       {
         "from": "this.listview.loadView()},updateFacet:",
-        "to": "this.listview.loadView();if(sdxECCAApi)sdxECCAApi.installFields(this,t)},updateFacet:"
+        "to": "this.listview.loadView();\n\nif (sdxECCAApi) {\n    sdxECCAApi.installFields(this, t);\n}\n},\nupdateFacet:"
       },
       {
         "from": "updateFacet:function(e){",
-        "to": "updateFacet:function(e){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.checkFacetContext(this,e);"
+        "to": "updateFacet: function (e) {\n    var sdxECCAApi = sdxECCAGetApi();\n    if (sdxECCAApi) {\n        sdxECCAApi.checkFacetContext(this, e);\n    }\n"
       },
       {
-        "from": "var n=e[t];i.publishAttributeInfo(n)",
-        "to": "var n=e[t];if(i.sdxECCAAutoSession){if(t===\"New-SecurityContext\")i.sdxECCAAutoSession.checkContext(n.valueDB);else if(t===\"New-Type\")i.sdxECCAAutoSession.checkType(n.valueDB)}i.publishAttributeInfo(n)"
+        "from": "var o=t.events.onChangeAttribute;t.events.onChangeAttribute=e=>{for(var t in e){var n=e[t];i.publishAttributeInfo(n)}o(e)},t.events.publishAttribute=this.publishAttributeInfo.bind(this),",
+        "to": "var o = t.events.onChangeAttribute;\n\nt.events.onChangeAttribute = e => {\n    for (var t in e) {\n        var n = e[t];\n\n        // [추가] 우리 생성창에 세션이 있을 때만 문맥/유형을 확인합니다.\n        if (i.sdxECCAAutoSession) {\n            if (t === \"New-SecurityContext\") {\n                i.sdxECCAAutoSession.checkContext(n.valueDB);\n            } else if (t === \"New-Type\") {\n                i.sdxECCAAutoSession.checkType(n.valueDB);\n            }\n        }\n\n        // [원본 유지] 항목마다 속성 정보를 발행합니다.\n        i.publishAttributeInfo(n);\n    }\n\n    // [원본 유지] 원래 콜백은 반복문 밖에서 한 번 호출합니다.\n    o(e);\n};\n\nt.events.publishAttribute = this.publishAttributeInfo.bind(this);\n"
       },
       {
         "from": "destroy:function(){this.listview.destroy()",
-        "to": "destroy:function(){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.destroyFields(this);this.listview.destroy()"
+        "to": "destroy: function () {\n    var sdxECCAApi = sdxECCAGetApi();\n    if (sdxECCAApi) {\n        sdxECCAApi.destroyFields(this);\n    }\n\n    this.listview.destroy()"
       }
     ]
   },
@@ -42,19 +42,19 @@
     "changes": [
       {
         "from": "o.myDialog=o.buildDialog(a),o.manageButtons(),t.activateDraftMode",
-        "to": "o.myDialog=o.buildDialog(a);o.manageButtons();var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.bindDialog(o);t.activateDraftMode"
+        "to": "o.myDialog = o.buildDialog(a);\no.manageButtons();\n\nvar sdxECCAApi = sdxECCAGetApi();\nif (sdxECCAApi) {\n    sdxECCAApi.bindDialog(o);\n}\n\nt.activateDraftMode"
       },
       {
         "from": "onSubmitDialog:function(e){",
-        "to": "onSubmitDialog:function(e){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi&&!sdxECCAApi.canSubmitDialog(this)){this.resetButtonLabel();this.disableFormInput(false,false,true);return;}"
+        "to": "onSubmitDialog: function (e) {\n    var sdxECCAApi = sdxECCAGetApi();\n    if (sdxECCAApi && !sdxECCAApi.canSubmitDialog(this)) {\n        this.resetButtonLabel();\n        this.disableFormInput(false, false, true);\n        return;\n    }\n"
       },
       {
-        "from": "i?this.removeLoadingOverlay():this.addLoadingOverlay()},",
-        "to": "i?this.removeLoadingOverlay():this.addLoadingOverlay();var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.preserveValidationState(this)},"
+        "from": "disableFormInput:function(e=!0,t=!0,i=!1){this.disableSubmitButton(e),this.disableRepeatButton(t),i?this.removeLoadingOverlay():this.addLoadingOverlay()},",
+        "to": "disableFormInput: function (e = true, t = true, i = false) {\n    this.disableSubmitButton(e);\n    this.disableRepeatButton(t);\n\n    if (i) {\n        this.removeLoadingOverlay();\n    } else {\n        this.addLoadingOverlay();\n    }\n\n    // [추가] 버튼 복원 뒤 우리 분류 검증 결과를 반영합니다.\n    var sdxECCAApi = sdxECCAGetApi();\n    if (sdxECCAApi) {\n        sdxECCAApi.preserveValidationState(this);\n    }\n},"
       },
       {
         "from": "destroy:function(){this.myDialog",
-        "to": "destroy:function(){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.disposeDialog(this);this.myDialog"
+        "to": "destroy: function () {\n    var sdxECCAApi = sdxECCAGetApi();\n    if (sdxECCAApi) {\n        sdxECCAApi.disposeDialog(this);\n    }\n\n    this.myDialog"
       }
     ]
   },
