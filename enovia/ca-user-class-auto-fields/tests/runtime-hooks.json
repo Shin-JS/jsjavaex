@@ -1,0 +1,113 @@
+{
+  "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper": {
+    "setup": "// 해당 AMD factory 안, return/클래스 정의보다 앞에 한 번 추가합니다.\nfunction sdxECCAGetApi() {\n    return typeof widget === \"undefined\" ? null : widget.sdxECCARuntime;\n}\n",
+    "changes": [
+      {
+        "from": "return o.options.data=e",
+        "to": "o.options.data=e"
+      },
+      {
+        "from": "})),a},getDefaultFacet:",
+        "to": "}));var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.attachBridge(e,a,i);return a},getDefaultFacet:"
+      }
+    ]
+  },
+  "DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet": {
+    "setup": "// 해당 AMD factory 안, return/클래스 정의보다 앞에 한 번 추가합니다.\nfunction sdxECCAGetApi() {\n    return typeof widget === \"undefined\" ? null : widget.sdxECCARuntime;\n}\n",
+    "changes": [
+      {
+        "from": "this._parent(t),this.skeleton=",
+        "to": "this._parent(t);var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.prepareFixedType(t.data,t.sdxECCAAutoSession);this.skeleton="
+      },
+      {
+        "from": "this.listview.loadView()},updateFacet:",
+        "to": "this.listview.loadView();if(sdxECCAApi)sdxECCAApi.installFields(this,t)},updateFacet:"
+      },
+      {
+        "from": "updateFacet:function(e){",
+        "to": "updateFacet:function(e){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.checkFacetContext(this,e);"
+      },
+      {
+        "from": "var n=e[t];i.publishAttributeInfo(n)",
+        "to": "var n=e[t];if(i.sdxECCAAutoSession){if(t===\"New-SecurityContext\")i.sdxECCAAutoSession.checkContext(n.valueDB);else if(t===\"New-Type\")i.sdxECCAAutoSession.checkType(n.valueDB)}i.publishAttributeInfo(n)"
+      },
+      {
+        "from": "destroy:function(){this.listview.destroy()",
+        "to": "destroy:function(){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.destroyFields(this);this.listview.destroy()"
+      }
+    ]
+  },
+  "DS/ENONewWidget/ENONew/Controller/ENONewDialogController": {
+    "setup": "// 해당 AMD factory 안, return/클래스 정의보다 앞에 한 번 추가합니다.\nfunction sdxECCAGetApi() {\n    return typeof widget === \"undefined\" ? null : widget.sdxECCARuntime;\n}\n",
+    "changes": [
+      {
+        "from": "o.myDialog=o.buildDialog(a),o.manageButtons(),t.activateDraftMode",
+        "to": "o.myDialog=o.buildDialog(a);o.manageButtons();var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.bindDialog(o);t.activateDraftMode"
+      },
+      {
+        "from": "onSubmitDialog:function(e){",
+        "to": "onSubmitDialog:function(e){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi&&!sdxECCAApi.canSubmitDialog(this)){this.resetButtonLabel();this.disableFormInput(false,false,true);return;}"
+      },
+      {
+        "from": "i?this.removeLoadingOverlay():this.addLoadingOverlay()},",
+        "to": "i?this.removeLoadingOverlay():this.addLoadingOverlay();var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.preserveValidationState(this)},"
+      },
+      {
+        "from": "destroy:function(){this.myDialog",
+        "to": "destroy:function(){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.disposeDialog(this);this.myDialog"
+      }
+    ]
+  },
+  "DS/ClassificationsFacet/PLMNewClassificationFacet": {
+    "setup": "// 해당 AMD factory 안, return/클래스 정의보다 앞에 한 번 추가합니다.\nfunction sdxECCAGetApi() {\n    return typeof widget === \"undefined\" ? null : widget.sdxECCARuntime;\n}\n",
+    "changes": [
+      {
+        "from": "init:function(e){var i=e;",
+        "to": "init:function(e){var i=e,sdxECCAFacet=this;"
+      },
+      {
+        "from": "securityContext=e}}))}",
+        "to": "securityContext=e;if(sdxECCAFacet.sdxECCAAutoSession){sdxECCAFacet.sdxECCAAutoContext=e;sdxECCAFacet.sdxECCAAutoSession.checkContext(e)}}}));var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.connectClassification(this,e)}"
+      },
+      {
+        "from": "return securityContext}",
+        "to": "return this.sdxECCAAutoSession?this.sdxECCAAutoContext:securityContext}"
+      },
+      {
+        "from": "destroy:function(){t.is(",
+        "to": "destroy:function(){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.disconnectClassification(this);t.is("
+      }
+    ]
+  },
+  "DS/ClassificationsFacet/PLMNewCommomCmpUXController": {
+    "setup": "// 해당 AMD factory 안, return/클래스 정의보다 앞에 한 번 추가합니다.\nfunction sdxECCAGetApi() {\n    return typeof widget === \"undefined\" ? null : widget.sdxECCARuntime;\n}\n",
+    "changes": [
+      {
+        "from": "r.classifPropModels.push(s),v.publish(",
+        "to": "r.classifPropModels.push(s);var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.tagClassModel(r,s,e);v.publish("
+      }
+    ]
+  },
+  "DS/ClassificationProp/facets/Properties/ClassifPropController": {
+    "setup": "// 해당 AMD factory 안, return/클래스 정의보다 앞에 한 번 추가합니다.\nfunction sdxECCAGetApi() {\n    return typeof widget === \"undefined\" ? null : widget.sdxECCARuntime;\n}\n",
+    "changes": [
+      {
+        "from": "n.getListHandle.handle=null,n._onCompleteLoadModel(a,{initTable:!e,buildBehavior:t?h.FORCE_DEFAULT:h.NO_CHANGES})",
+        "to": "n.getListHandle.handle=null;var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi&&!sdxECCAApi.prepareAttributes(i,a))return;n._onCompleteLoadModel(a,{initTable:!e,buildBehavior:t?h.FORCE_DEFAULT:h.NO_CHANGES});if(sdxECCAApi)sdxECCAApi.notifyAttributesLoaded(i,a)"
+      }
+    ]
+  },
+  "DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction": {
+    "setup": "// ChgCreateChangeAction의 AMD factory 안, return { ... } 앞에 추가합니다.\nfunction sdxECCAIsEnabled() {\n    if (typeof widget === \"undefined\") return false;\n    var enabled = widget.getValue(\"sdxECCAEnableAutoClassByOrganization\");\n    return enabled === true || enabled === \"true\";\n}\n\nfunction sdxECCALaunch(options, Launcher, localRequire, command) {\n    if (!sdxECCAIsEnabled()) {\n        // 일반 위젯은 커스텀 파일을 요청하지 않고 원래 흐름으로 실행합니다.\n        return (new Launcher).CreateNew(options);\n    }\n    function fail(error) {\n        if (command) command.isClickProcessing = false;\n        console.error(\"[sdxECCA] 생성창 준비에 실패했습니다.\", error);\n    }\n    try {\n        localRequire([\"DS/sdxECCA/sdxECCA\"], function (entry) {\n            try {\n                entry.launch(options, function (configuredOptions) {\n                    return (new Launcher).CreateNew(configuredOptions);\n                });\n            } catch (error) { fail(error); }\n        }, fail);\n    } catch (error) { fail(error); }\n}\n",
+    "changes": [
+      {
+        "from": "(new e).CreateNew(d)",
+        "to": "sdxECCALaunch(d,e,s,r)"
+      },
+      {
+        "from": "u[n.keys.createKeys.CA_DEF_TYPE]=e.result[0].type,i.saveUserPreference(u)",
+        "to": "sdxECCAIsEnabled()||(u[n.keys.createKeys.CA_DEF_TYPE]=e.result[0].type,i.saveUserPreference(u))"
+      }
+    ]
+  }
+}

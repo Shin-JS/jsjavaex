@@ -1,92 +1,139 @@
-/* OOTB 파일 변경·추가 부분만 적은 적용 메모입니다. 전체 파일 교체용이 아닙니다.
- * 함수 본문은 webapps/sdxECCAAutoClass/sdxECCAAutoClass.js로 이동했습니다.
- * 예전 sdxECCA... 함수 선언은 제거하고 아래 호출을 적용합니다. 중복 설치하지 않습니다.
- * 커스텀 의존성/인자는 항상 마지막입니다. 기존 의존성 순서는 바꾸지 않습니다.
+/* 기존 작업 폴더의 OOTB 수정 메모 — 파일 전체 덮어쓰기용이 아닙니다.
+ * 기준: 2025. 기존 생성/분류 코드는 유지하고 아래 연결 부분만 갱신합니다.
+ * [먼저 제거] 과거 추가한 define 의존성 "DS/sdxECCAAutoClass/sdxECCAAutoClass"와
+ * 그에 대응하는 마지막 factory 인자 sdxECCAAutoClass만 제거합니다.
+ * 기존 OOTB 의존성/인자는 순서를 포함해 유지합니다. 별도 원복/소스 복사는 하지 않습니다.
+ * 이미 넣은 커스텀 호출은 아래 조건부 호출로 교체합니다. 중복 추가하지 않습니다.
+ * 아래 수정 전은 위치를 찾기 위한 변경 전 2025 원본 조각입니다.
  */
 
-/* [의존성/인자] DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper
- * 원본 define의 의존성 배열과 factory 인자를 아래처럼 바꿉니다. 본문은 유지합니다.
- * ["DS/ENONewWidget/utils/ENONewFacetConstants", "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls", "i18n!DS/ENONewWidget/assets/nls/ENONewFacetNls", "DS/sdxECCAAutoClass/sdxECCAAutoClass"]
- * function(e,t,i,sdxECCAAutoClass){ ...기존 본문... }
- */
-/* getFacetList(e,t,i)의 최종 facet 배열 a를 반환하기 직전:
- *     sdxECCAAutoClass.attachBridge(e,a,i);
- * 대상 위젯에서 widget.setValue("sdxECCACreatePolicy", "sdxECR" 또는 "sdxECO")로 설정합니다.
- * 호출부가 Policy를 직접 가지고 있으면 네 번째 인자로 전달할 수도 있습니다:
- *     sdxECCAAutoClass.attachBridge(e,a,i,createPolicy);
- * 네 번째 인자는 위젯 설정보다 우선하며 대화상자 세션마다 별도로 보관합니다.
- * 기존 sdxECCAAttachAutoBridge(e,a,i) 호출을 위 호출로 바꿉니다.
- * e는 data, a는 최종 배열, i는 settings입니다. 함수 밖에 넣지 않습니다.
+/* [2025 OOTB 헤더 유지] DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper
+ * ["DS/ENONewWidget/utils/ENONewFacetConstants","i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls","i18n!DS/ENONewWidget/assets/nls/ENONewFacetNls"]
+ * function(e,t,i)
+ * 위 원래 의존성/인자는 유지하고 과거 커스텀 의존성/인자만 제거합니다.
  */
 
-/* [의존성/인자] DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet
- * 원본 define의 의존성 배열과 factory 인자를 아래처럼 바꿉니다. 본문은 유지합니다.
- * ["UWA/Core", "DS/UIKIT/Scroller", "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase", "DS/ENONewWidget/ENONew/View/ENOListView", "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper", "DS/sdxECCAAutoClass/sdxECCAAutoClass"]
- * function(e,t,i,n,a,sdxECCAAutoClass){ ...기존 본문... }
- */
-/* init(t)의 _parent(t) 뒤, listview.buildModel(t.data)보다 앞:
- *     sdxECCAAutoClass.prepareFixedType(t.data,t.sdxECCAAutoSession);
- * init(t)의 listview.loadView() 뒤:
- *     sdxECCAAutoClass.installFields(this,t);
- * updateFacet(e) 첫 줄:
- *     sdxECCAAutoClass.checkFacetContext(this,e);
- * destroy()의 listview.destroy() 앞:
- *     sdxECCAAutoClass.destroyFields(this);
+/* ============================================================
+ * [대상 AMD 모듈] DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper
+ * [추가 위치] 이 factory 안, 원래 return 또는 클래스 선언보다 앞.
+ * use strict가 있으면 그 문장 다음에 넣어 strict 동작을 유지합니다.
+ * 함수를 파일 맨 끝이나 다른 factory에 넣지 않습니다.
+ * ============================================================ */
+// 해당 AMD factory 안, return/클래스 정의보다 앞에 한 번 추가합니다.
+function sdxECCAGetApi() {
+    return typeof widget === "undefined" ? null : widget.sdxECCARuntime;
+}
+
+
+/* [변경 1 — 수정 전 / 위치 확인]
+return o.options.data=e
+*/
+/* [변경 1 — 수정 후]
+o.options.data=e
+*/
+
+/* [변경 2 — 수정 전 / 위치 확인]
+})),a},getDefaultFacet:
+*/
+/* [변경 2 — 수정 후]
+}));var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.attachBridge(e,a,i);return a},getDefaultFacet:
+*/
+
+/* [2025 OOTB 헤더 유지] DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet
+ * ["UWA/Core","DS/UIKIT/Scroller","DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase","DS/ENONewWidget/ENONew/View/ENOListView","DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper"]
+ * function(e,t,i,n,a)
+ * 위 원래 의존성/인자는 유지하고 과거 커스텀 의존성/인자만 제거합니다.
  */
 
-/* [onChangeAttribute — 현재 설치 소스의 publishAttributeInfo 방식]
- * 사용자 제공 원본 콜백:
- *     e => {for(var t in e){var n=e[t];i.publishAttributeInfo(n)}o(e)}
- * 기존 onChangeAttribute 할당 대상은 그대로 두고, 우변 콜백을 아래처럼 변경합니다.
- * i는 기존 ENOListViewFacet 인스턴스, o는 원래 onChangeAttribute 콜백입니다.
- * for문의 t는 이벤트 키이며 바깥 init(t)의 옵션 인자와 구분해서 읽습니다.
- *
- * e => {
- *     for (var t in e) {
- *         var n = e[t];
- *
- *         if (i.sdxECCAAutoSession) {
- *             if (t === "New-SecurityContext") {
- *                 i.sdxECCAAutoSession.checkContext(n.valueDB);
- *             } else if (t === "New-Type") {
- *                 i.sdxECCAAutoSession.checkType(n.valueDB);
- *             }
- *         }
- *
- *         i.publishAttributeInfo(n);
- *     }
- *     o(e);
- * }
- *
- * publishAttributeInfo(n)는 항목마다, o(e)는 반복문 뒤에 한 번 호출하도록 유지합니다.
- * 세션이 없는 다른 위젯에서는 원래 두 호출만 실행됩니다.
- * New-SecurityContext/New-Type 키와 n.valueDB가 유지되는 설치 소스 기준입니다.
- * 이 방식에서는 예전 publishInfo 분기 코드를 추가로 중복 삽입하지 않습니다.
+/* ============================================================
+ * [대상 AMD 모듈] DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet
+ * [추가 위치] 이 factory 안, 원래 return 또는 클래스 선언보다 앞.
+ * use strict가 있으면 그 문장 다음에 넣어 strict 동작을 유지합니다.
+ * 함수를 파일 맨 끝이나 다른 factory에 넣지 않습니다.
+ * ============================================================ */
+// 해당 AMD factory 안, return/클래스 정의보다 앞에 한 번 추가합니다.
+function sdxECCAGetApi() {
+    return typeof widget === "undefined" ? null : widget.sdxECCARuntime;
+}
+
+
+/* [변경 1 — 수정 전 / 위치 확인]
+this._parent(t),this.skeleton=
+*/
+/* [변경 1 — 수정 후]
+this._parent(t);var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.prepareFixedType(t.data,t.sdxECCAAutoSession);this.skeleton=
+*/
+
+/* [변경 2 — 수정 전 / 위치 확인]
+this.listview.loadView()},updateFacet:
+*/
+/* [변경 2 — 수정 후]
+this.listview.loadView();if(sdxECCAApi)sdxECCAApi.installFields(this,t)},updateFacet:
+*/
+
+/* [변경 3 — 수정 전 / 위치 확인]
+updateFacet:function(e){
+*/
+/* [변경 3 — 수정 후]
+updateFacet:function(e){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.checkFacetContext(this,e);
+*/
+
+/* [변경 4 — 수정 전 / 위치 확인]
+var n=e[t];i.publishAttributeInfo(n)
+*/
+/* [변경 4 — 수정 후]
+var n=e[t];if(i.sdxECCAAutoSession){if(t==="New-SecurityContext")i.sdxECCAAutoSession.checkContext(n.valueDB);else if(t==="New-Type")i.sdxECCAAutoSession.checkType(n.valueDB)}i.publishAttributeInfo(n)
+*/
+
+/* [변경 5 — 수정 전 / 위치 확인]
+destroy:function(){this.listview.destroy()
+*/
+/* [변경 5 — 수정 후]
+destroy:function(){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.destroyFields(this);this.listview.destroy()
+*/
+
+/* [2025 OOTB 헤더 유지] DS/ENONewWidget/ENONew/Controller/ENONewDialogController
+ * ["UWA/Controls/Abstract","DS/Windows/ImmersiveFrame","DS/Controls/ComboBox","DS/Controls/Button","DS/Windows/Dialog","DS/Controls/ModalLoader","DS/ENONewWidget/ENONew/Events","DS/ENONewWidget/ENONew/View/ENOListView","DS/ENONewWidget/ENONew/View/ENOTabView","DS/ENONewWidget/ENONew/View/TabUtility","DS/ENONewWidget/ENONew/View/ENOWizardView","DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper","i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls"]
+ * function(e,t,i,n,a,o,r,s,c,l,d,u,f)
+ * 위 원래 의존성/인자는 유지하고 과거 커스텀 의존성/인자만 제거합니다.
  */
 
-/* [의존성/인자] DS/ENONewWidget/ENONew/Controller/ENONewDialogController
- * 원본 define의 의존성 배열과 factory 인자를 아래처럼 바꿉니다. 본문은 유지합니다.
- * ["UWA/Controls/Abstract", "DS/Windows/ImmersiveFrame", "DS/Controls/ComboBox", "DS/Controls/Button", "DS/Windows/Dialog", "DS/Controls/ModalLoader", "DS/ENONewWidget/ENONew/Events", "DS/ENONewWidget/ENONew/View/ENOListView", "DS/ENONewWidget/ENONew/View/ENOTabView", "DS/ENONewWidget/ENONew/View/ENOWizardView", "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper", "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls", "DS/sdxECCAAutoClass/sdxECCAAutoClass"]
- * function(e,t,i,n,a,o,r,s,c,l,u,d,sdxECCAAutoClass){ ...기존 본문... }
- */
-/* setup() 안에서 buildContent/buildToolbar 완료 후 myDialog 생성과 footer 버튼 구성이 끝난 위치:
- *     sdxECCAAutoClass.bindDialog(o);
- * o는 이 then 콜백이 캡처한 ENONewDialogController입니다. 실제 설치 코드의 변수명에 맞춥니다.
- * R2024x의 setup에서는 o.myDialog=o.buildDialog(a),o.manageButtons(),... 처리 다음,
- * UWA.Promise.all([l,c]).then(function(e){ ... }) 콜백의 마지막에 추가합니다.
- * this.View와 this.myDialog가 준비되기 전에 넣지 않습니다.
- * 이 연결은 필수 검증 결과를 생성 버튼에 전달하며 분류 탭의 오류 아이콘 변경은 호출하지 않습니다.
- */
-/* onSubmitDialog(e) 첫 줄(기존 ServiceCallback 실행보다 앞):
- * 이 연결은 준비 상태와 이동한 분류 폼의 OOTB 검증을 생성 흐름에 연결합니다.
- * 별도 빈 값 판정은 하지 않습니다. 기본 ENOListView 검증은 기본 속성 모델만 처리하므로
- * 실제 분류 facet의 UIController.validateModels 호출도 필요합니다.
- *     if(!sdxECCAAutoClass.canSubmitDialog(this)){this.resetButtons();return;}
- * resetButtons()의 기존 처리 마지막(함수 안):
- *     sdxECCAAutoClass.preserveValidationState(this);
- * 이 호출은 OOTB가 버튼을 복원한 뒤 분류/다른 facet이 무효하면 생성 버튼만 다시 비활성화합니다.
- * destroy() 첫 줄:
- *     sdxECCAAutoClass.disposeDialog(this);
- * 기존 생성, 취소, postCreation 처리는 그대로 유지합니다.
- */
+/* ============================================================
+ * [대상 AMD 모듈] DS/ENONewWidget/ENONew/Controller/ENONewDialogController
+ * [추가 위치] 이 factory 안, 원래 return 또는 클래스 선언보다 앞.
+ * use strict가 있으면 그 문장 다음에 넣어 strict 동작을 유지합니다.
+ * 함수를 파일 맨 끝이나 다른 factory에 넣지 않습니다.
+ * ============================================================ */
+// 해당 AMD factory 안, return/클래스 정의보다 앞에 한 번 추가합니다.
+function sdxECCAGetApi() {
+    return typeof widget === "undefined" ? null : widget.sdxECCARuntime;
+}
 
+
+/* [변경 1 — 수정 전 / 위치 확인]
+o.myDialog=o.buildDialog(a),o.manageButtons(),t.activateDraftMode
+*/
+/* [변경 1 — 수정 후]
+o.myDialog=o.buildDialog(a);o.manageButtons();var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.bindDialog(o);t.activateDraftMode
+*/
+
+/* [변경 2 — 수정 전 / 위치 확인]
+onSubmitDialog:function(e){
+*/
+/* [변경 2 — 수정 후]
+onSubmitDialog:function(e){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi&&!sdxECCAApi.canSubmitDialog(this)){this.resetButtonLabel();this.disableFormInput(false,false,true);return;}
+*/
+
+/* [변경 3 — 수정 전 / 위치 확인]
+i?this.removeLoadingOverlay():this.addLoadingOverlay()},
+*/
+/* [변경 3 — 수정 후]
+i?this.removeLoadingOverlay():this.addLoadingOverlay();var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.preserveValidationState(this)},
+*/
+
+/* [변경 4 — 수정 전 / 위치 확인]
+destroy:function(){this.myDialog
+*/
+/* [변경 4 — 수정 후]
+destroy:function(){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.disposeDialog(this);this.myDialog
+*/

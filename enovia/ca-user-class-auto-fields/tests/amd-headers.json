@@ -6,27 +6,32 @@
       "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls",
       "i18n!DS/ENONewWidget/assets/nls/ENONewFacetNls"
     ],
+    "modifiedDependencies": [
+      "DS/ENONewWidget/utils/ENONewFacetConstants",
+      "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls",
+      "i18n!DS/ENONewWidget/assets/nls/ENONewFacetNls"
+    ],
     "originalArguments": [
       "e",
       "t",
       "i"
     ],
-    "modifiedDependencies": [
-      "DS/ENONewWidget/utils/ENONewFacetConstants",
-      "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls",
-      "i18n!DS/ENONewWidget/assets/nls/ENONewFacetNls",
-      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
-    ],
     "modifiedArguments": [
       "e",
       "t",
-      "i",
-      "sdxECCAAutoClass"
+      "i"
     ]
   },
   {
     "module": "DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet",
     "originalDependencies": [
+      "UWA/Core",
+      "DS/UIKIT/Scroller",
+      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase",
+      "DS/ENONewWidget/ENONew/View/ENOListView",
+      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper"
+    ],
+    "modifiedDependencies": [
       "UWA/Core",
       "DS/UIKIT/Scroller",
       "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase",
@@ -40,21 +45,12 @@
       "n",
       "a"
     ],
-    "modifiedDependencies": [
-      "UWA/Core",
-      "DS/UIKIT/Scroller",
-      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase",
-      "DS/ENONewWidget/ENONew/View/ENOListView",
-      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper",
-      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
-    ],
     "modifiedArguments": [
       "e",
       "t",
       "i",
       "n",
-      "a",
-      "sdxECCAAutoClass"
+      "a"
     ]
   },
   {
@@ -69,6 +65,22 @@
       "DS/ENONewWidget/ENONew/Events",
       "DS/ENONewWidget/ENONew/View/ENOListView",
       "DS/ENONewWidget/ENONew/View/ENOTabView",
+      "DS/ENONewWidget/ENONew/View/TabUtility",
+      "DS/ENONewWidget/ENONew/View/ENOWizardView",
+      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper",
+      "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls"
+    ],
+    "modifiedDependencies": [
+      "UWA/Controls/Abstract",
+      "DS/Windows/ImmersiveFrame",
+      "DS/Controls/ComboBox",
+      "DS/Controls/Button",
+      "DS/Windows/Dialog",
+      "DS/Controls/ModalLoader",
+      "DS/ENONewWidget/ENONew/Events",
+      "DS/ENONewWidget/ENONew/View/ENOListView",
+      "DS/ENONewWidget/ENONew/View/ENOTabView",
+      "DS/ENONewWidget/ENONew/View/TabUtility",
       "DS/ENONewWidget/ENONew/View/ENOWizardView",
       "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper",
       "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls"
@@ -84,23 +96,9 @@
       "s",
       "c",
       "l",
+      "d",
       "u",
-      "d"
-    ],
-    "modifiedDependencies": [
-      "UWA/Controls/Abstract",
-      "DS/Windows/ImmersiveFrame",
-      "DS/Controls/ComboBox",
-      "DS/Controls/Button",
-      "DS/Windows/Dialog",
-      "DS/Controls/ModalLoader",
-      "DS/ENONewWidget/ENONew/Events",
-      "DS/ENONewWidget/ENONew/View/ENOListView",
-      "DS/ENONewWidget/ENONew/View/ENOTabView",
-      "DS/ENONewWidget/ENONew/View/ENOWizardView",
-      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper",
-      "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls",
-      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
+      "f"
     ],
     "modifiedArguments": [
       "e",
@@ -113,9 +111,9 @@
       "s",
       "c",
       "l",
-      "u",
       "d",
-      "sdxECCAAutoClass"
+      "u",
+      "f"
     ]
   },
   {
@@ -125,8 +123,20 @@
       "UWA/Core",
       "UWA/Class/Options",
       "UWA/Class/Events",
-      "DS/PADUtils/PADSettingsMgt",
       "DS/ClassificationProp/models/ClassifPropModel",
+      "DS/ClassificationProp/utils/ClassifPropControl",
+      "i18n!DS/ClassificationsFacet/assets/nls/PLMNewCommCmpSel",
+      "DS/ClassificationsFacet/InitClassificationCmpUI",
+      "DS/IPClassifyUtil/IPClassifyUtility",
+      "css!DS/ClassificationsFacet/ClassificationsFacet.css"
+    ],
+    "modifiedDependencies": [
+      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase",
+      "UWA/Core",
+      "UWA/Class/Options",
+      "UWA/Class/Events",
+      "DS/ClassificationProp/models/ClassifPropModel",
+      "DS/ClassificationProp/utils/ClassifPropControl",
       "i18n!DS/ClassificationsFacet/assets/nls/PLMNewCommCmpSel",
       "DS/ClassificationsFacet/InitClassificationCmpUI",
       "DS/IPClassifyUtil/IPClassifyUtility",
@@ -137,37 +147,22 @@
       "t",
       "i",
       "o",
-      "n",
       "s",
+      "n",
       "a",
       "r",
       "l"
-    ],
-    "modifiedDependencies": [
-      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase",
-      "UWA/Core",
-      "UWA/Class/Options",
-      "UWA/Class/Events",
-      "DS/PADUtils/PADSettingsMgt",
-      "DS/ClassificationProp/models/ClassifPropModel",
-      "i18n!DS/ClassificationsFacet/assets/nls/PLMNewCommCmpSel",
-      "DS/ClassificationsFacet/InitClassificationCmpUI",
-      "DS/IPClassifyUtil/IPClassifyUtility",
-      "css!DS/ClassificationsFacet/ClassificationsFacet.css",
-      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
     ],
     "modifiedArguments": [
       "e",
       "t",
       "i",
       "o",
-      "n",
       "s",
+      "n",
       "a",
       "r",
-      "l",
-      "sdxECCACss",
-      "sdxECCAAutoClass"
+      "l"
     ]
   },
   {
@@ -188,42 +183,17 @@
       "DS/TreeModel/TreeDocument",
       "DS/Controls/Popup",
       "DS/ClassificationProp/facets/Properties/Properties",
+      "DS/ClassificationProp/facets/Properties/PropertiesInfo",
       "DS/ClassificationProp/models/ClassifPropModel",
       "DS/ClassificationProp/ClassifPropWidget",
       "DS/ClassificationProp/constants/ClassifPropConstants",
       "DS/ClassificationProp/comm/EventManager",
-      "DS/PADUtils/PADSettingsMgt",
       "DS/ClassificationProp/utils/ClassifPropControl",
       "i18n!DS/ClassificationsFacet/assets/nls/PLMNewCommCmpSel",
       "DS/IPClassifyUtil/IPClassifyPreference",
       "DS/IPClassifyUtil/IPClassifyAlert",
+      "DS/IPClassifyUXUtil/CredentialsView",
       "css!DS/ClassificationsFacet/ClassificationsFacet.css"
-    ],
-    "originalArguments": [
-      "e",
-      "t",
-      "i",
-      "o",
-      "n",
-      "s",
-      "a",
-      "r",
-      "l",
-      "c",
-      "d",
-      "p",
-      "u",
-      "f",
-      "m",
-      "h",
-      "C",
-      "g",
-      "w",
-      "v",
-      "y",
-      "P",
-      "I",
-      "A"
     ],
     "modifiedDependencies": [
       "UWA/Controls/Abstract",
@@ -241,25 +211,25 @@
       "DS/TreeModel/TreeDocument",
       "DS/Controls/Popup",
       "DS/ClassificationProp/facets/Properties/Properties",
+      "DS/ClassificationProp/facets/Properties/PropertiesInfo",
       "DS/ClassificationProp/models/ClassifPropModel",
       "DS/ClassificationProp/ClassifPropWidget",
       "DS/ClassificationProp/constants/ClassifPropConstants",
       "DS/ClassificationProp/comm/EventManager",
-      "DS/PADUtils/PADSettingsMgt",
       "DS/ClassificationProp/utils/ClassifPropControl",
       "i18n!DS/ClassificationsFacet/assets/nls/PLMNewCommCmpSel",
       "DS/IPClassifyUtil/IPClassifyPreference",
       "DS/IPClassifyUtil/IPClassifyAlert",
-      "css!DS/ClassificationsFacet/ClassificationsFacet.css",
-      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
+      "DS/IPClassifyUXUtil/CredentialsView",
+      "css!DS/ClassificationsFacet/ClassificationsFacet.css"
     ],
-    "modifiedArguments": [
+    "originalArguments": [
       "e",
       "t",
       "i",
       "o",
-      "n",
       "s",
+      "n",
       "a",
       "r",
       "l",
@@ -277,9 +247,35 @@
       "y",
       "P",
       "I",
-      "A",
-      "sdxECCACss",
-      "sdxECCAAutoClass"
+      "b",
+      "A"
+    ],
+    "modifiedArguments": [
+      "e",
+      "t",
+      "i",
+      "o",
+      "s",
+      "n",
+      "a",
+      "r",
+      "l",
+      "c",
+      "d",
+      "p",
+      "u",
+      "f",
+      "m",
+      "h",
+      "C",
+      "g",
+      "w",
+      "v",
+      "y",
+      "P",
+      "I",
+      "b",
+      "A"
     ]
   },
   {
@@ -287,7 +283,7 @@
     "originalDependencies": [
       "UWA/Class/Model",
       "UWA/Core",
-      "DS/WidgetServices/securityContextServices/SecurityContextServices",
+      "DS/ClassificationProp/utils/ClassifSecurityContextServices",
       "DS/WidgetServices/WidgetServices",
       "DS/ClassificationProp/comm/EventManager",
       "DS/ClassificationProp/facets/Common/ClassifFacetsBase",
@@ -296,6 +292,29 @@
       "DS/ClassificationProp/models/ClassifPropAttributeModel",
       "DS/ClassificationProp/ajaxRequests/ClassifPropAjaxRequests",
       "DS/ClassificationProp/facets/Properties/Properties",
+      "DS/ClassificationProp/facets/Properties/PropertiesInfo",
+      "DS/ClassificationProp/constants/ClassifPropConstants",
+      "DS/ClassificationProp/constants/ConstantsMapping",
+      "DS/ClassificationProp/comm/DistantAjax",
+      "DS/ClassificationProp/utils/ClassifPropUtils",
+      "DS/ClassificationProp/utils/ClassifPropControl",
+      "DS/IPClassifyUtil/IPClassifyAlert",
+      "i18n!DS/ClassificationProp/assets/nls/langEditProp",
+      "DS/PlatformAPI/PlatformAPI"
+    ],
+    "modifiedDependencies": [
+      "UWA/Class/Model",
+      "UWA/Core",
+      "DS/ClassificationProp/utils/ClassifSecurityContextServices",
+      "DS/WidgetServices/WidgetServices",
+      "DS/ClassificationProp/comm/EventManager",
+      "DS/ClassificationProp/facets/Common/ClassifFacetsBase",
+      "DS/ClassificationProp/models/ClassifPropModel",
+      "DS/ClassificationProp/models/ClassifPropModelMerge",
+      "DS/ClassificationProp/models/ClassifPropAttributeModel",
+      "DS/ClassificationProp/ajaxRequests/ClassifPropAjaxRequests",
+      "DS/ClassificationProp/facets/Properties/Properties",
+      "DS/ClassificationProp/facets/Properties/PropertiesInfo",
       "DS/ClassificationProp/constants/ClassifPropConstants",
       "DS/ClassificationProp/constants/ConstantsMapping",
       "DS/ClassificationProp/comm/DistantAjax",
@@ -324,29 +343,8 @@
       "m",
       "g",
       "v",
-      "_"
-    ],
-    "modifiedDependencies": [
-      "UWA/Class/Model",
-      "UWA/Core",
-      "DS/WidgetServices/securityContextServices/SecurityContextServices",
-      "DS/WidgetServices/WidgetServices",
-      "DS/ClassificationProp/comm/EventManager",
-      "DS/ClassificationProp/facets/Common/ClassifFacetsBase",
-      "DS/ClassificationProp/models/ClassifPropModel",
-      "DS/ClassificationProp/models/ClassifPropModelMerge",
-      "DS/ClassificationProp/models/ClassifPropAttributeModel",
-      "DS/ClassificationProp/ajaxRequests/ClassifPropAjaxRequests",
-      "DS/ClassificationProp/facets/Properties/Properties",
-      "DS/ClassificationProp/constants/ClassifPropConstants",
-      "DS/ClassificationProp/constants/ConstantsMapping",
-      "DS/ClassificationProp/comm/DistantAjax",
-      "DS/ClassificationProp/utils/ClassifPropUtils",
-      "DS/ClassificationProp/utils/ClassifPropControl",
-      "DS/IPClassifyUtil/IPClassifyAlert",
-      "i18n!DS/ClassificationProp/assets/nls/langEditProp",
-      "DS/PlatformAPI/PlatformAPI",
-      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
+      "_",
+      "C"
     ],
     "modifiedArguments": [
       "e",
@@ -368,12 +366,21 @@
       "g",
       "v",
       "_",
-      "sdxECCAAutoClass"
+      "C"
     ]
   },
   {
     "module": "DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction",
     "originalDependencies": [
+      "DS/ENONewWidget/ENONewLauncher",
+      "DS/ENOChgServices/scripts/services/ChgServiceGlobalVariable",
+      "DS/ENOChgServices/scripts/services/UserPreferenceUtil",
+      "DS/ENOChgServices/scripts/services/DefaultPreferencesManager",
+      "i18n!DS/ENOChgGovernanceUX/assets/nls/ENOChgGovernanceNLS",
+      "DS/UIKIT/Mask",
+      "require"
+    ],
+    "modifiedDependencies": [
       "DS/ENONewWidget/ENONewLauncher",
       "DS/ENOChgServices/scripts/services/ChgServiceGlobalVariable",
       "DS/ENOChgServices/scripts/services/UserPreferenceUtil",
@@ -391,16 +398,6 @@
       "a",
       "s"
     ],
-    "modifiedDependencies": [
-      "DS/ENONewWidget/ENONewLauncher",
-      "DS/ENOChgServices/scripts/services/ChgServiceGlobalVariable",
-      "DS/ENOChgServices/scripts/services/UserPreferenceUtil",
-      "DS/ENOChgServices/scripts/services/DefaultPreferencesManager",
-      "i18n!DS/ENOChgGovernanceUX/assets/nls/ENOChgGovernanceNLS",
-      "DS/UIKIT/Mask",
-      "require",
-      "DS/sdxECCAAutoClass/sdxECCAAutoClass"
-    ],
     "modifiedArguments": [
       "e",
       "t",
@@ -408,8 +405,7 @@
       "n",
       "o",
       "a",
-      "s",
-      "sdxECCAAutoClass"
+      "s"
     ]
   }
 ]

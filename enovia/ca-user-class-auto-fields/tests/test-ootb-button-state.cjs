@@ -1,4 +1,4 @@
-// 공급사 코드를 복사하지 않고 실제 ENONewWidget의 버튼 상태 처리를 실행합니다.
+// 2025의 실제 ENONewWidget 버튼 처리(Ok/Save/콤보)를 검사합니다.
 // node tests/test-ootb-button-state.cjs /실제/ENONewWidget.js
 const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
 if(!process.argv[2])throw new Error('OOTB ENONewWidget.js 경로를 지정해 주세요.');
@@ -11,11 +11,11 @@ for(const id of names){
 }
 const base=modules[names[0]], methods=modules[names[1]];
 const property={facetValidation:true};
-const dialog=Object.assign({},methods,{footerButtons:{Ok:{value:'Ok',disabled:false},Apply:{value:'Apply',disabled:false},createBtnCombo:{disabled:false},Discard:{value:'Discard',disabled:false}},myDialog:{elements:{_checkbox:{disabled:false}}},removeLoadingOverlay(){}});
-const classification={facetValidation:true,setFacetValidation:base.setFacetValidation,getOccurrence(){return {setValidation(){dialog.evaluateValidationStatus();}};}};
-dialog.View={facets:[{content:property},{content:classification}]};
+const dialog=Object.assign({},methods,{viewType:'tabView',isPropertiesFormValid:true,footerButtons:{Ok:{value:'Ok',disabled:false},Save:{value:'Save',disabled:false},createBtnCombo:{disabled:false},Discard:{value:'Discard',disabled:false}},myDialog:{elements:{_checkbox:{disabled:false}}},removeLoadingOverlay(){}});
+const classification={options:{tabId:'classificationFacet'},facetValidation:true,setFacetValidation:base.setFacetValidation,getOccurrence(){return {setValidation(){dialog.evaluateValidationStatus();}};}};
+dialog.View={facets:[{content:property},{content:classification}],evaluateFacetValidation(){return !this.facets.some(entry=>entry.content.facetValidation===false);}};
 classification.setFacetValidation(false);
-for(const key of ['Ok','Apply','createBtnCombo'])assert.equal(dialog.footerButtons[key].disabled,true);
+for(const key of ['Ok','Save','createBtnCombo'])assert.equal(dialog.footerButtons[key].disabled,true);
 assert.equal(dialog.footerButtons.Discard.disabled,false);
 classification.setFacetValidation(true);assert.equal(dialog.footerButtons.Ok.disabled,false);
 property.facetValidation=false;classification.setFacetValidation(false);classification.setFacetValidation(true);
@@ -29,3 +29,4 @@ assert.equal(dialog.footerButtons.Ok.disabled,true);assert.equal(classification.
 classification.facetValidation=true;dialog.evaluateValidationStatus();
 assert.equal(dialog.footerButtons.Ok.disabled,false);assert.equal(classification.icon,'classification-book');
 console.log('PASS: actual OOTB setFacetValidation -> evaluateValidationStatus disables all create buttons, preserves cancel and other facet validity');
+

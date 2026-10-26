@@ -139,6 +139,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         properties.options.sdxECCAAutoSession = session;
         classification.options.sdxECCAAutoSession = session;
         classification.alwaysCalled = true;
+        // 대상 생성창의 탭 버튼만 숨깁니다. 분류 facet의 검증/저장은 유지합니다.
+        classification.visible = false;
         if (configError) session.fail(configError);
     }
 
@@ -883,4 +885,5 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         configureCreateType: sdxECCAConfigureFixedCreateType
     };
 });
+
 
