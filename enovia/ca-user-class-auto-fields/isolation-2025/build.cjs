@@ -11,7 +11,7 @@ const autoId = 'DS/sdxECCAAutoClass/sdxECCAAutoClass';
 const caId = 'DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction';
 function once(source, from, to, label) {
     if (source.split(from).length !== 2) throw new Error('2025 source mismatch: ' + label + ' [' + from + ']');
-    return source.replace(from, to);
+    return source.replace(from, () => to);
 }
 function collect(file) {
     const entries = [];

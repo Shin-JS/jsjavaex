@@ -1,0 +1,371 @@
+{
+  "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper": {
+    "changes": [
+      {
+        "from": "})),a},getDefaultFacet:",
+        "to": "})),sdxECCAAutoClass.attachBridge(e,a,i),a.forEach(function(f){if(f.facet.name===\"classificationFacet\"&&f.options.sdxECCAAutoSession)f.visible=false}),a},getDefaultFacet:"
+      }
+    ],
+    "dependencies": {
+      "before": [
+        "DS/ENONewWidget/utils/ENONewFacetConstants",
+        "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls",
+        "i18n!DS/ENONewWidget/assets/nls/ENONewFacetNls"
+      ],
+      "after": [
+        "DS/ENONewWidget/utils/ENONewFacetConstants",
+        "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls",
+        "i18n!DS/ENONewWidget/assets/nls/ENONewFacetNls",
+        "DS/sdxECCAAutoClass/sdxECCAAutoClass"
+      ]
+    },
+    "arguments": {
+      "before": "function(e,t,i)",
+      "after": "function(e,t,i,sdxECCAAutoClass)"
+    }
+  },
+  "DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet": {
+    "changes": [
+      {
+        "from": "this._parent(t),this.skeleton=",
+        "to": "this._parent(t),sdxECCAAutoClass.prepareFixedType(t.data,t.sdxECCAAutoSession),this.skeleton="
+      },
+      {
+        "from": "this.listview.loadView()},updateFacet:",
+        "to": "this.listview.loadView(),sdxECCAAutoClass.installFields(this,t)},updateFacet:"
+      },
+      {
+        "from": "updateFacet:function(e){",
+        "to": "updateFacet:function(e){sdxECCAAutoClass.checkFacetContext(this,e);"
+      },
+      {
+        "from": "var n=e[t];i.publishAttributeInfo(n)",
+        "to": "var n=e[t];if(i.sdxECCAAutoSession){if(t===\"New-SecurityContext\")i.sdxECCAAutoSession.checkContext(n.valueDB);else if(t===\"New-Type\")i.sdxECCAAutoSession.checkType(n.valueDB)}i.publishAttributeInfo(n)"
+      },
+      {
+        "from": "destroy:function(){this.listview.destroy()",
+        "to": "destroy:function(){sdxECCAAutoClass.destroyFields(this);this.listview.destroy()"
+      }
+    ],
+    "dependencies": {
+      "before": [
+        "UWA/Core",
+        "DS/UIKIT/Scroller",
+        "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase",
+        "DS/ENONewWidget/ENONew/View/ENOListView",
+        "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper"
+      ],
+      "after": [
+        "UWA/Core",
+        "DS/UIKIT/Scroller",
+        "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase",
+        "DS/ENONewWidget/ENONew/View/ENOListView",
+        "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper",
+        "DS/sdxECCAAutoClass/sdxECCAAutoClass"
+      ]
+    },
+    "arguments": {
+      "before": "function(e,t,i,n,a)",
+      "after": "function(e,t,i,n,a,sdxECCAAutoClass)"
+    }
+  },
+  "DS/ENONewWidget/ENONew/Controller/ENONewDialogController": {
+    "changes": [
+      {
+        "from": "o.myDialog=o.buildDialog(a),o.manageButtons(),",
+        "to": "o.myDialog=o.buildDialog(a),o.manageButtons(),sdxECCAAutoClass.bindDialog(o),"
+      },
+      {
+        "from": "onSubmitDialog:function(e){",
+        "to": "onSubmitDialog:function(e){if(!sdxECCAAutoClass.canSubmitDialog(this)){this.resetButtonLabel();this.disableFormInput(!1,!1,!0);return;}"
+      },
+      {
+        "from": "i?this.removeLoadingOverlay():this.addLoadingOverlay()},",
+        "to": "i?this.removeLoadingOverlay():this.addLoadingOverlay();sdxECCAAutoClass.preserveValidationState(this)},"
+      },
+      {
+        "from": "destroy:function(){this.myDialog",
+        "to": "destroy:function(){sdxECCAAutoClass.disposeDialog(this);this.myDialog"
+      },
+      {
+        "from": "for(eventID in ",
+        "to": "for(var eventID in "
+      },
+      {
+        "from": "var p=e.extend(",
+        "to": "var errorenousFacetsList;var p=e.extend("
+      }
+    ],
+    "dependencies": {
+      "before": [
+        "UWA/Controls/Abstract",
+        "DS/Windows/ImmersiveFrame",
+        "DS/Controls/ComboBox",
+        "DS/Controls/Button",
+        "DS/Windows/Dialog",
+        "DS/Controls/ModalLoader",
+        "DS/ENONewWidget/ENONew/Events",
+        "DS/ENONewWidget/ENONew/View/ENOListView",
+        "DS/ENONewWidget/ENONew/View/ENOTabView",
+        "DS/ENONewWidget/ENONew/View/TabUtility",
+        "DS/ENONewWidget/ENONew/View/ENOWizardView",
+        "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper",
+        "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls"
+      ],
+      "after": [
+        "UWA/Controls/Abstract",
+        "DS/Windows/ImmersiveFrame",
+        "DS/Controls/ComboBox",
+        "DS/Controls/Button",
+        "DS/Windows/Dialog",
+        "DS/Controls/ModalLoader",
+        "DS/ENONewWidget/ENONew/Events",
+        "DS/ENONewWidget/ENONew/View/ENOListView",
+        "DS/ENONewWidget/ENONew/View/ENOTabView",
+        "DS/ENONewWidget/ENONew/View/TabUtility",
+        "DS/ENONewWidget/ENONew/View/ENOWizardView",
+        "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper",
+        "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls",
+        "DS/sdxECCAAutoClass/sdxECCAAutoClass"
+      ]
+    },
+    "arguments": {
+      "before": "function(e,t,i,n,a,o,r,s,c,l,d,u,f)",
+      "after": "function(e,t,i,n,a,o,r,s,c,l,d,u,f,sdxECCAAutoClass)"
+    }
+  },
+  "DS/ClassificationsFacet/PLMNewClassificationFacet": {
+    "changes": [
+      {
+        "from": "init:function(e){var i=e;",
+        "to": "init:function(e){var i=e,sdxFacet=this;"
+      },
+      {
+        "from": "i.securityContext&&(securityContext=i.securityContext)",
+        "to": "i.securityContext&&(this.sdxECCAAutoContext=i.securityContext)"
+      },
+      {
+        "from": "securityContext=e}}))}",
+        "to": "sdxFacet.sdxECCAAutoContext=e;if(sdxFacet.sdxECCAAutoSession)sdxFacet.sdxECCAAutoSession.checkContext(e)}})),sdxECCAAutoClass.connectClassification(this,e)}"
+      },
+      {
+        "from": "return securityContext}",
+        "to": "return this.sdxECCAAutoContext}"
+      },
+      {
+        "from": "destroy:function(){t.is(",
+        "to": "destroy:function(){sdxECCAAutoClass.disconnectClassification(this);t.is("
+      }
+    ],
+    "dependencies": {
+      "before": [
+        "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase",
+        "UWA/Core",
+        "UWA/Class/Options",
+        "UWA/Class/Events",
+        "DS/ClassificationProp/models/ClassifPropModel",
+        "DS/ClassificationProp/utils/ClassifPropControl",
+        "i18n!DS/ClassificationsFacet/assets/nls/PLMNewCommCmpSel",
+        "DS/ClassificationsFacet/InitClassificationCmpUI",
+        "DS/IPClassifyUtil/IPClassifyUtility",
+        "css!DS/ClassificationsFacet/ClassificationsFacet.css"
+      ],
+      "after": [
+        "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase",
+        "UWA/Core",
+        "UWA/Class/Options",
+        "UWA/Class/Events",
+        "DS/ClassificationProp/models/ClassifPropModel",
+        "DS/ClassificationProp/utils/ClassifPropControl",
+        "i18n!DS/ClassificationsFacet/assets/nls/PLMNewCommCmpSel",
+        "DS/ClassificationsFacet/InitClassificationCmpUI",
+        "DS/IPClassifyUtil/IPClassifyUtility",
+        "css!DS/ClassificationsFacet/ClassificationsFacet.css",
+        "DS/sdxECCAAutoClass/sdxECCAAutoClass"
+      ]
+    },
+    "arguments": {
+      "before": "function(e,t,i,o,s,n,a,r,l)",
+      "after": "function(e,t,i,o,s,n,a,r,l,sdxUnused9,sdxECCAAutoClass)"
+    }
+  },
+  "DS/ClassificationsFacet/PLMNewCommomCmpUXController": {
+    "changes": [
+      {
+        "from": "r.classifPropModels.push(s),v.publish(",
+        "to": "r.classifPropModels.push(s),sdxECCAAutoClass.tagClassModel(r,s,e),v.publish("
+      }
+    ],
+    "dependencies": {
+      "before": [
+        "UWA/Controls/Abstract",
+        "UWA/Class/Options",
+        "UWA/Class/Events",
+        "DS/WUXAutoComplete/AutoComplete",
+        "DS/Controls/Button",
+        "DS/Controls/TooltipModel",
+        "DS/Windows/ImmersiveFrame",
+        "DS/Windows/Dialog",
+        "DS/Controls/Loader",
+        "DS/Controls/ModalContainer",
+        "DS/Controls/Accordeon",
+        "DS/ClassificationsFacet/utils/PLMNewClassificationFacetData",
+        "DS/TreeModel/TreeDocument",
+        "DS/Controls/Popup",
+        "DS/ClassificationProp/facets/Properties/Properties",
+        "DS/ClassificationProp/facets/Properties/PropertiesInfo",
+        "DS/ClassificationProp/models/ClassifPropModel",
+        "DS/ClassificationProp/ClassifPropWidget",
+        "DS/ClassificationProp/constants/ClassifPropConstants",
+        "DS/ClassificationProp/comm/EventManager",
+        "DS/ClassificationProp/utils/ClassifPropControl",
+        "i18n!DS/ClassificationsFacet/assets/nls/PLMNewCommCmpSel",
+        "DS/IPClassifyUtil/IPClassifyPreference",
+        "DS/IPClassifyUtil/IPClassifyAlert",
+        "DS/IPClassifyUXUtil/CredentialsView",
+        "css!DS/ClassificationsFacet/ClassificationsFacet.css"
+      ],
+      "after": [
+        "UWA/Controls/Abstract",
+        "UWA/Class/Options",
+        "UWA/Class/Events",
+        "DS/WUXAutoComplete/AutoComplete",
+        "DS/Controls/Button",
+        "DS/Controls/TooltipModel",
+        "DS/Windows/ImmersiveFrame",
+        "DS/Windows/Dialog",
+        "DS/Controls/Loader",
+        "DS/Controls/ModalContainer",
+        "DS/Controls/Accordeon",
+        "DS/ClassificationsFacet/utils/PLMNewClassificationFacetData",
+        "DS/TreeModel/TreeDocument",
+        "DS/Controls/Popup",
+        "DS/ClassificationProp/facets/Properties/Properties",
+        "DS/ClassificationProp/facets/Properties/PropertiesInfo",
+        "DS/ClassificationProp/models/ClassifPropModel",
+        "DS/ClassificationProp/ClassifPropWidget",
+        "DS/ClassificationProp/constants/ClassifPropConstants",
+        "DS/ClassificationProp/comm/EventManager",
+        "DS/ClassificationProp/utils/ClassifPropControl",
+        "i18n!DS/ClassificationsFacet/assets/nls/PLMNewCommCmpSel",
+        "DS/IPClassifyUtil/IPClassifyPreference",
+        "DS/IPClassifyUtil/IPClassifyAlert",
+        "DS/IPClassifyUXUtil/CredentialsView",
+        "css!DS/ClassificationsFacet/ClassificationsFacet.css",
+        "DS/sdxECCAAutoClass/sdxECCAAutoClass"
+      ]
+    },
+    "arguments": {
+      "before": "function(e,t,i,o,s,n,a,r,l,c,d,p,u,f,m,h,C,g,w,v,y,P,I,b,A)",
+      "after": "function(e,t,i,o,s,n,a,r,l,c,d,p,u,f,m,h,C,g,w,v,y,P,I,b,A,sdxUnused25,sdxECCAAutoClass)"
+    }
+  },
+  "DS/ClassificationProp/facets/Properties/ClassifPropController": {
+    "changes": [
+      {
+        "from": "n._onCompleteLoadModel(a,{initTable:!e,buildBehavior:t?h.FORCE_DEFAULT:h.NO_CHANGES})",
+        "to": "sdxECCAAutoClass.prepareAttributes(i,a)&&(n._onCompleteLoadModel(a,{initTable:!e,buildBehavior:t?h.FORCE_DEFAULT:h.NO_CHANGES}),sdxECCAAutoClass.notifyAttributesLoaded(i,a))"
+      }
+    ],
+    "dependencies": {
+      "before": [
+        "UWA/Class/Model",
+        "UWA/Core",
+        "DS/ClassificationProp/utils/ClassifSecurityContextServices",
+        "DS/WidgetServices/WidgetServices",
+        "DS/ClassificationProp/comm/EventManager",
+        "DS/ClassificationProp/facets/Common/ClassifFacetsBase",
+        "DS/ClassificationProp/models/ClassifPropModel",
+        "DS/ClassificationProp/models/ClassifPropModelMerge",
+        "DS/ClassificationProp/models/ClassifPropAttributeModel",
+        "DS/ClassificationProp/ajaxRequests/ClassifPropAjaxRequests",
+        "DS/ClassificationProp/facets/Properties/Properties",
+        "DS/ClassificationProp/facets/Properties/PropertiesInfo",
+        "DS/ClassificationProp/constants/ClassifPropConstants",
+        "DS/ClassificationProp/constants/ConstantsMapping",
+        "DS/ClassificationProp/comm/DistantAjax",
+        "DS/ClassificationProp/utils/ClassifPropUtils",
+        "DS/ClassificationProp/utils/ClassifPropControl",
+        "DS/IPClassifyUtil/IPClassifyAlert",
+        "i18n!DS/ClassificationProp/assets/nls/langEditProp",
+        "DS/PlatformAPI/PlatformAPI"
+      ],
+      "after": [
+        "UWA/Class/Model",
+        "UWA/Core",
+        "DS/ClassificationProp/utils/ClassifSecurityContextServices",
+        "DS/WidgetServices/WidgetServices",
+        "DS/ClassificationProp/comm/EventManager",
+        "DS/ClassificationProp/facets/Common/ClassifFacetsBase",
+        "DS/ClassificationProp/models/ClassifPropModel",
+        "DS/ClassificationProp/models/ClassifPropModelMerge",
+        "DS/ClassificationProp/models/ClassifPropAttributeModel",
+        "DS/ClassificationProp/ajaxRequests/ClassifPropAjaxRequests",
+        "DS/ClassificationProp/facets/Properties/Properties",
+        "DS/ClassificationProp/facets/Properties/PropertiesInfo",
+        "DS/ClassificationProp/constants/ClassifPropConstants",
+        "DS/ClassificationProp/constants/ConstantsMapping",
+        "DS/ClassificationProp/comm/DistantAjax",
+        "DS/ClassificationProp/utils/ClassifPropUtils",
+        "DS/ClassificationProp/utils/ClassifPropControl",
+        "DS/IPClassifyUtil/IPClassifyAlert",
+        "i18n!DS/ClassificationProp/assets/nls/langEditProp",
+        "DS/PlatformAPI/PlatformAPI",
+        "DS/sdxECCAAutoClass/sdxECCAAutoClass"
+      ]
+    },
+    "arguments": {
+      "before": "function(e,t,i,n,s,a,o,r,l,c,u,d,h,f,p,m,g,v,_,C)",
+      "after": "function(e,t,i,n,s,a,o,r,l,c,u,d,h,f,p,m,g,v,_,C,sdxECCAAutoClass)"
+    }
+  },
+  "DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction": {
+    "changes": [
+      {
+        "from": "(new e).CreateNew(d)",
+        "to": "(new e).CreateNew(sdxECCAAutoClass.configureCreateType(d))"
+      },
+      {
+        "from": "u[n.keys.createKeys.CA_DEF_TYPE]=e.result[0].type,i.saveUserPreference(u)",
+        "to": "sdxECCAAutoClass.isEnabled()||(u[n.keys.createKeys.CA_DEF_TYPE]=e.result[0].type,i.saveUserPreference(u))"
+      }
+    ],
+    "dependencies": {
+      "before": [
+        "DS/ENONewWidget/ENONewLauncher",
+        "DS/ENOChgServices/scripts/services/ChgServiceGlobalVariable",
+        "DS/ENOChgServices/scripts/services/UserPreferenceUtil",
+        "DS/ENOChgServices/scripts/services/DefaultPreferencesManager",
+        "i18n!DS/ENOChgGovernanceUX/assets/nls/ENOChgGovernanceNLS",
+        "DS/UIKIT/Mask",
+        "require"
+      ],
+      "after": [
+        "DS/ENONewWidget/ENONewLauncher",
+        "DS/ENOChgServices/scripts/services/ChgServiceGlobalVariable",
+        "DS/ENOChgServices/scripts/services/UserPreferenceUtil",
+        "DS/ENOChgServices/scripts/services/DefaultPreferencesManager",
+        "i18n!DS/ENOChgGovernanceUX/assets/nls/ENOChgGovernanceNLS",
+        "DS/UIKIT/Mask",
+        "require",
+        "DS/sdxECCAAutoClass/sdxECCAAutoClass"
+      ]
+    },
+    "arguments": {
+      "before": "function(e,t,i,n,o,a,s)",
+      "after": "function(e,t,i,n,o,a,s,sdxECCAAutoClass)"
+    }
+  },
+  "DS/ClassificationsFacet/InitClassificationCmpUI": {
+    "changes": [
+      {
+        "from": "getUI:function(t){",
+        "to": "getUI:function(t){if(t.isExportControl)throw new Error(\"Export control is not enabled in this private CA build\");"
+      }
+    ],
+    "dependencyChange": {
+      "from": "text!DS/ClassificationsFacet/assets/classificationAppsRequire_setting.json",
+      "to": "DS/sdxECCA2025/appSettings"
+    }
+  }
+}
