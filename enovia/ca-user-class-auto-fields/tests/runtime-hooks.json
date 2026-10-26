@@ -63,19 +63,19 @@
     "changes": [
       {
         "from": "init:function(e){var i=e;",
-        "to": "init:function(e){var i=e,sdxECCAFacet=this;"
+        "to": "init: function (e) {\n    var i = e;\n    var sdxECCAFacet = this;\n"
       },
       {
-        "from": "securityContext=e}}))}",
-        "to": "securityContext=e;if(sdxECCAFacet.sdxECCAAutoSession){sdxECCAFacet.sdxECCAAutoContext=e;sdxECCAFacet.sdxECCAAutoSession.checkContext(e)}}}));var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.connectClassification(this,e)}"
+        "from": "this.listenToPublishedInfo((function(e,t){if(\"currentSecurityContext\"===e){let e=t.value;securityContext=e}}))}",
+        "to": "this.listenToPublishedInfo(function (e, t) {\n    if (e === \"currentSecurityContext\") {\n        let currentContext = t.value;\n\n        // [원본 유지] 기존 권한 문맥을 갱신합니다.\n        securityContext = currentContext;\n\n        // [추가] 우리 생성창의 세션이 있을 때만 함께 확인합니다.\n        if (sdxECCAFacet.sdxECCAAutoSession) {\n            sdxECCAFacet.sdxECCAAutoContext = currentContext;\n            sdxECCAFacet.sdxECCAAutoSession.checkContext(currentContext);\n        }\n    }\n});\n\nvar sdxECCAApi = sdxECCAGetApi();\nif (sdxECCAApi) {\n    sdxECCAApi.connectClassification(this, e);\n}\n}"
       },
       {
         "from": "return securityContext}",
-        "to": "return this.sdxECCAAutoSession?this.sdxECCAAutoContext:securityContext}"
+        "to": "if (this.sdxECCAAutoSession) {\n    return this.sdxECCAAutoContext;\n}\n\nreturn securityContext;\n}"
       },
       {
         "from": "destroy:function(){t.is(",
-        "to": "destroy:function(){var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.disconnectClassification(this);t.is("
+        "to": "destroy: function () {\n    var sdxECCAApi = sdxECCAGetApi();\n    if (sdxECCAApi) {\n        sdxECCAApi.disconnectClassification(this);\n    }\n\n    t.is("
       }
     ]
   },
@@ -84,7 +84,7 @@
     "changes": [
       {
         "from": "r.classifPropModels.push(s),v.publish(",
-        "to": "r.classifPropModels.push(s);var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi)sdxECCAApi.tagClassModel(r,s,e);v.publish("
+        "to": "r.classifPropModels.push(s);\n\nvar sdxECCAApi = sdxECCAGetApi();\nif (sdxECCAApi) {\n    sdxECCAApi.tagClassModel(r, s, e);\n}\n\nv.publish("
       }
     ]
   },
@@ -93,20 +93,20 @@
     "changes": [
       {
         "from": "n.getListHandle.handle=null,n._onCompleteLoadModel(a,{initTable:!e,buildBehavior:t?h.FORCE_DEFAULT:h.NO_CHANGES})",
-        "to": "n.getListHandle.handle=null;var sdxECCAApi=sdxECCAGetApi();if(sdxECCAApi&&!sdxECCAApi.prepareAttributes(i,a))return;n._onCompleteLoadModel(a,{initTable:!e,buildBehavior:t?h.FORCE_DEFAULT:h.NO_CHANGES});if(sdxECCAApi)sdxECCAApi.notifyAttributesLoaded(i,a)"
+        "to": "n.getListHandle.handle = null;\n\nvar sdxECCAApi = sdxECCAGetApi();\n\n// [추가] 분류 폼이 만들어지기 전에 필수 입력 메타데이터를 준비합니다.\nif (sdxECCAApi && !sdxECCAApi.prepareAttributes(i, a)) {\n    return;\n}\n\n// [원본 유지] 기존 폼 생성 호출과 옵션을 유지합니다.\nn._onCompleteLoadModel(a, {\n    initTable: !e,\n    buildBehavior: t ? h.FORCE_DEFAULT : h.NO_CHANGES\n});\n\n// [추가] 실제 폼 생성 이후에 속성 로딩 완료를 알립니다.\nif (sdxECCAApi) {\n    sdxECCAApi.notifyAttributesLoaded(i, a);\n}"
       }
     ]
   },
   "DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction": {
-    "setup": "// ChgCreateChangeAction의 AMD factory 안, return { ... } 앞에 추가합니다.\nfunction sdxECCAIsEnabled() {\n    if (typeof widget === \"undefined\") return false;\n    var enabled = widget.getValue(\"sdxECCAEnableAutoClassByOrganization\");\n    return enabled === true || enabled === \"true\";\n}\n\nfunction sdxECCALaunch(options, Launcher, localRequire, command) {\n    if (!sdxECCAIsEnabled()) {\n        // 일반 위젯은 커스텀 파일을 요청하지 않고 원래 흐름으로 실행합니다.\n        return (new Launcher).CreateNew(options);\n    }\n    function fail(error) {\n        if (command) command.isClickProcessing = false;\n        console.error(\"[sdxECCA] 생성창 준비에 실패했습니다.\", error);\n    }\n    try {\n        localRequire([\"DS/sdxECCA/sdxECCA\"], function (entry) {\n            try {\n                entry.launch(options, function (configuredOptions) {\n                    return (new Launcher).CreateNew(configuredOptions);\n                });\n            } catch (error) { fail(error); }\n        }, fail);\n    } catch (error) { fail(error); }\n}\n",
+    "setup": "// 아래 두 함수를 같은 ChgCreateChangeAction factory 안에 한 번 추가합니다.\nfunction sdxECCAIsEnabled() {\n    if (typeof widget === \"undefined\") {\n        return false;\n    }\n\n    var enabled = widget.getValue(\"sdxECCAEnableAutoClassByOrganization\");\n    return enabled === true || enabled === \"true\";\n}\n\nfunction sdxECCALaunch(options, Launcher, localRequire, command) {\n    if (!sdxECCAIsEnabled()) {\n        // [원본 흐름] 일반 위젯은 커스텀 파일을 요청하지 않습니다.\n        return (new Launcher).CreateNew(options);\n    }\n\n    function fail(error) {\n        if (command) {\n            command.isClickProcessing = false;\n        }\n        console.error(\"[sdxECCA] 생성창 준비에 실패했습니다.\", error);\n    }\n\n    try {\n        localRequire([\"DS/sdxECCA/sdxECCA\"], function (entry) {\n            try {\n                entry.launch(options, function (configuredOptions) {\n                    return (new Launcher).CreateNew(configuredOptions);\n                });\n            } catch (error) {\n                fail(error);\n            }\n        }, fail);\n    } catch (error) {\n        fail(error);\n    }\n}\n",
     "changes": [
       {
         "from": "(new e).CreateNew(d)",
-        "to": "sdxECCALaunch(d,e,s,r)"
+        "to": "sdxECCALaunch(\n    d, // 원본 생성 옵션\n    e, // 원본 ENONewLauncher\n    s, // 원본 AMD require\n    r  // 원본 launchCreateChangeActionDialog 인자\n)"
       },
       {
-        "from": "u[n.keys.createKeys.CA_DEF_TYPE]=e.result[0].type,i.saveUserPreference(u)",
-        "to": "sdxECCAIsEnabled()||(u[n.keys.createKeys.CA_DEF_TYPE]=e.result[0].type,i.saveUserPreference(u))"
+        "from": "let u={};u[n.keys.createKeys.CA_DEF_TYPE]=e.result[0].type,i.saveUserPreference(u)",
+        "to": "let u = {};\n\n// [변경] 우리 위젯의 커스텀 타입을 공용 기본 타입으로 저장하지 않습니다.\nif (!sdxECCAIsEnabled()) {\n    u[n.keys.createKeys.CA_DEF_TYPE] = e.result[0].type;\n    i.saveUserPreference(u);\n}"
       }
     ]
   }

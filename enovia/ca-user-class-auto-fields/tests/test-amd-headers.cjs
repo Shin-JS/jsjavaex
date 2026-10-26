@@ -12,7 +12,9 @@ for(const row of fixtures){
  const text=fs.readFileSync(path.join(root,'webapps',fileByModule(row.module)),'utf8');
  const start=text.indexOf('/* [2025 OOTB 헤더 유지] '+row.module);assert(start>=0);
  const block=text.slice(start,text.indexOf('*/',start));
- assert.deepEqual(JSON.parse(block.match(/\n \* (\[[^\n]+\])/)[1]),row.originalDependencies);
+ const headerBody=block.slice(block.indexOf('\n')+1).split('\n').map(line=>line.replace(/^\s*\* ?/,'')).join('\n');
+ const dependencyJson=headerBody.slice(headerBody.indexOf('['),headerBody.lastIndexOf(']')+1);
+ assert.deepEqual(JSON.parse(dependencyJson),row.originalDependencies);
  assert.deepEqual(block.match(/function\(([^)]*)\)/)[1].split(','),row.originalArguments);
 }
 console.log('PASS: 7 original 2025 AMD headers preserved; no mandatory custom dependencies.');

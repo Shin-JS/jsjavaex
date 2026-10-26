@@ -62,14 +62,22 @@ entry.launch(options,configured=>{assert.equal(widget.sdxECCARuntime,runtime);as
 runtime.isEnabled=()=>false;assert.throws(()=>entry.launch(options,()=>assert.fail()),/설정/);delete widget.sdxECCARuntime;
 // Actual CA module: no custom file requested for normal widgets; target load failure is contained.
 const caId='DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction';
-function caRun(enabled,mode){widgetValues.sdxECCAEnableAutoClassByOrganization=enabled;const events=[];
- const Launcher=function(){};Launcher.prototype.CreateNew=function(o){events.push('original-create');assert.equal(o.type,'Change Action');};
- const req=(names,ok,fail)=>{if(typeof names==='string')return {cloudProbeUtils:{genericCommandClickEventForAnalytics(){}}};events.push('custom-request');assert.equal(names[0],'DS/sdxECCA/sdxECCA');if(mode==='missing')fail(Error('missing'));else if(mode==='throw')throw Error('loader');else ok({launch:(o,create)=>create(o)});};
- const args=[Launcher,{getGlobalVariable:()=>({tenant:'OnPremise',getSecurityContext:()=> 'ctx'})},{getUserPreference:()=> 'Change Action'},{keys:{createKeys:{CA_DEF_TYPE:'key'}}},{},{},req];
- const command={isClickProcessing:true};run(caId,args).launchCreateChangeActionDialog(command);return {events,command};}
+function caRun(enabled,mode){widgetValues.sdxECCAEnableAutoClassByOrganization=enabled;const events=[],savedPreferences=[];let createOptions;
+ const Launcher=function(){};Launcher.prototype.CreateNew=function(o){events.push('original-create');assert.equal(o.type,'Change Action');createOptions=o;};
+ const req=(names,ok,fail)=>{if(typeof names==='string')return {cloudProbeUtils:{genericCommandClickEventForAnalytics(){}},launchPropertyPanelContext(){events.push('panel-update');},displayObjectInfoInsideIDcard(){events.push('idcard-update');}};events.push('custom-request');assert.equal(names[0],'DS/sdxECCA/sdxECCA');if(mode==='missing')fail(Error('missing'));else if(mode==='throw')throw Error('loader');else ok({launch:(o,create)=>create(o)});};
+ const args=[Launcher,{getGlobalVariable:()=>({tenant:'OnPremise',getSecurityContext:()=> 'ctx'})},{getUserPreference:()=> 'Change Action',saveUserPreference:value=>savedPreferences.push(value)},{keys:{createKeys:{CA_DEF_TYPE:'key'}}},{},{mask(){}},req];
+ const command={isClickProcessing:true};run(caId,args,{document:{getElementsByClassName:()=>[]}}).launchCreateChangeActionDialog(command);return {events,command,createOptions,savedPreferences};}
 for(const flag of [undefined,false,'false'])assert.deepEqual(caRun(flag).events,['original-create']);
 assert.deepEqual(caRun(true).events,['custom-request','original-create']);
 for(const mode of ['missing','throw']){const result=caRun(true,mode);assert.deepEqual(result.events,['custom-request']);assert.equal(result.command.isClickProcessing,false);assert.deepEqual(caRun(false).events,['original-create']);}
+// Governance G2: original success UI updates are retained; only target default-type saving is skipped.
+for(const enabled of [false,true]){
+ const result=caRun(enabled);result.createOptions.events.onSuccess({result:[{identifier:'ca-id',type:enabled?'sdxECChangeAction':'Change Action'}]});
+ assert.equal(result.command.isClickProcessing,false);
+ assert.deepEqual(result.events.slice(-2),['panel-update','idcard-update']);
+ assert.equal(result.savedPreferences.length,enabled?0:1);
+ if(!enabled)assert.equal(result.savedPreferences[0].key,'Change Action');
+}
 // ENONewWidget B4: exercise the actual init-created callback and preserve event order.
 delete widget.sdxECCARuntime;
 const listId='DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet';
@@ -94,4 +102,21 @@ listOptions.events.onChangeAttribute(event);
 assert.equal(callbackCount,2);
 assert.deepEqual(order,['context:ctx','publish:SecurityContext','type:sdxECChangeAction','publish:Type','publish:Title','original-callback']);
 listOptions.events.publishAttribute({name:'Bound'});assert.equal(order.at(-1),'publish:Bound');
+// Classifications F2/F3: the expanded subscription preserves normal context and updates target sessions.
+const facetId='DS/ClassificationsFacet/PLMNewClassificationFacet';
+const facetArgs=patched.get(facetId).deps.map(()=>({}));
+facetArgs[0]={extend:(...args)=>args.at(-1)};
+facetArgs[1]={createElement:()=>({inject:()=>({})}),is:()=>false};
+facetArgs[5]={setIsPLMNewCreation(){}};
+facetArgs[7]=function(){this.getUI=()=>({});};
+facetArgs[8]={get3DSpaceUrl(){}};
+const facetMethods=run(facetId,facetArgs);let contextCallback;
+const classification=Object.assign({},facetMethods,{_parent(){},elements:{},options:{},listenToPublishedInfo:callback=>{contextCallback=callback;}});
+classification.init({securityContext:'initial-ctx'});
+contextCallback('currentSecurityContext',{value:'normal-ctx'});
+assert.equal(classification.plmNewContextProvider(),'normal-ctx');
+const contextChecks=[];
+classification.sdxECCAAutoSession={checkContext:value=>contextChecks.push(value)};
+contextCallback('currentSecurityContext',{value:'target-ctx'});
+assert.deepEqual(contextChecks,['target-ctx']);assert.equal(classification.plmNewContextProvider(),'target-ctx');
 console.log('PASS: four actual 2025 bundles parse; original AMD dependencies retained; normal creation works without custom files; late runtime loading; scoped sessions; 2025 submit recovery; custom failure contained.');

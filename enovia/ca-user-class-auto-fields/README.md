@@ -41,6 +41,17 @@
 | `ClassificationsFacet.js` | [분류 facet·모델 연결](webapps/ClassificationsFacet/ClassificationsFacet.js) |
 | `ClassificationProp.js` | [분류 속성 로딩 전·후 연결](webapps/ClassificationProp/ClassificationProp.js) |
 
+각 파일의 위치 표시는 다음과 같습니다. 파일 안에서 해당 문자를 검색하면 변경 위치 안내로 이동할 수 있습니다.
+
+| 파일 | 위치 표시 |
+|---|---|
+| `ENOChgGovernanceUX.js` | `G0` 함수 추가, `G1` 생성 호출, `G2` 기본 타입 저장 |
+| `ENONewWidget.js` | `A` facet 구성, `B` 기본 폼, `C` Dialog. 속성 변경 콜백은 `B4` |
+| `ClassificationsFacet.js` | `F0~F4` 분류 facet, `M0~M1` 클래스 모델 생성 |
+| `ClassificationProp.js` | `P0` 함수 추가, `P1` 분류 속성 로딩 콜백 |
+
+원본 검색용 조각은 그대로 표시하고, 교체 코드는 여러 줄로 정리했습니다. 검색 키와 교체 시작·끝 범위, 남겨야 하는 주변 코드도 메모에 적었습니다.
+
 각 메모는 다음 순서로 적용합니다.
 
 1. `[대상 AMD 모듈]` 이름을 원본 파일에서 검색합니다.

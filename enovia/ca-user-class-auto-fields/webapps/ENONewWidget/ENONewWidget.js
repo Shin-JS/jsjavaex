@@ -17,7 +17,11 @@
  */
 
 /* [2025 OOTB 헤더 유지] DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper
- * ["DS/ENONewWidget/utils/ENONewFacetConstants","i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls","i18n!DS/ENONewWidget/assets/nls/ENONewFacetNls"]
+ * [
+ *     "DS/ENONewWidget/utils/ENONewFacetConstants",
+ *     "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls",
+ *     "i18n!DS/ENONewWidget/assets/nls/ENONewFacetNls"
+ * ]
  * function(e,t,i)
  * 확인용 원본 헤더입니다. 의존성/인자는 변경하지 않습니다.
  */
@@ -60,7 +64,13 @@ getDefaultFacet:
 */
 
 /* [2025 OOTB 헤더 유지] DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet
- * ["UWA/Core","DS/UIKIT/Scroller","DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase","DS/ENONewWidget/ENONew/View/ENOListView","DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper"]
+ * [
+ *     "UWA/Core",
+ *     "DS/UIKIT/Scroller",
+ *     "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase",
+ *     "DS/ENONewWidget/ENONew/View/ENOListView",
+ *     "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper"
+ * ]
  * function(e,t,i,n,a)
  * 확인용 원본 헤더입니다. 의존성/인자는 변경하지 않습니다.
  */
@@ -174,7 +184,21 @@ destroy: function () {
 */
 
 /* [2025 OOTB 헤더 유지] DS/ENONewWidget/ENONew/Controller/ENONewDialogController
- * ["UWA/Controls/Abstract","DS/Windows/ImmersiveFrame","DS/Controls/ComboBox","DS/Controls/Button","DS/Windows/Dialog","DS/Controls/ModalLoader","DS/ENONewWidget/ENONew/Events","DS/ENONewWidget/ENONew/View/ENOListView","DS/ENONewWidget/ENONew/View/ENOTabView","DS/ENONewWidget/ENONew/View/TabUtility","DS/ENONewWidget/ENONew/View/ENOWizardView","DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper","i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls"]
+ * [
+ *     "UWA/Controls/Abstract",
+ *     "DS/Windows/ImmersiveFrame",
+ *     "DS/Controls/ComboBox",
+ *     "DS/Controls/Button",
+ *     "DS/Windows/Dialog",
+ *     "DS/Controls/ModalLoader",
+ *     "DS/ENONewWidget/ENONew/Events",
+ *     "DS/ENONewWidget/ENONew/View/ENOListView",
+ *     "DS/ENONewWidget/ENONew/View/ENOTabView",
+ *     "DS/ENONewWidget/ENONew/View/TabUtility",
+ *     "DS/ENONewWidget/ENONew/View/ENOWizardView",
+ *     "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper",
+ *     "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls"
+ * ]
  * function(e,t,i,n,a,o,r,s,c,l,d,u,f)
  * 확인용 원본 헤더입니다. 의존성/인자는 변경하지 않습니다.
  */

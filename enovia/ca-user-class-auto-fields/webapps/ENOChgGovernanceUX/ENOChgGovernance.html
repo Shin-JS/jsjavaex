@@ -1,20 +1,35 @@
-<!-- [원본에서 새로 적용할 설정 메모] 파일 전체 교체용이 아닙니다.
-     우리 커스텀 위젯 전용 HTML의 실제 실행되는 스크립트 위치에 아래 설정을 추가합니다.
-     공용 OOTB HTML이나 일반 위젯에는 넣지 않습니다.
-     별도 onLoad를 만들지 말고 현재 사용 중인 초기화 위치를 사용합니다.
+<!-- [H1 — 우리 커스텀 위젯 전용 HTML 설정]
+     이 파일 전체를 서버 HTML에 덮어쓰지 않습니다.
 
+     [찾을 위치]
+     우리 위젯 HTML에서 이미 사용 중인 초기화 스크립트 위치를 찾습니다.
+     widget.setValue 설정들이 있다면 같은 위치에서 아래 값을 맞춥니다.
+     설정이 없다면 우리 위젯의 초기화 코드 안에 아래 JavaScript만 추가합니다.
+     공용 OOTB HTML이나 일반 위젯에는 넣지 않습니다.
+     별도 onLoad를 만들지 않습니다.
+
+     [추가할 JavaScript — HTML 주석 기호는 복사하지 않습니다]
+
+// 1. 우리 위젯에서만 자동 분류를 활성화합니다.
 widget.setValue("sdxECCAEnableAutoClassByOrganization", true);
+
+// 2. 생성할 타입과 policy입니다.
 widget.setValue("sdxECCAAutoClassType", "sdxECChangeAction");
-widget.setValue("sdxECCAClassRuleMode", "code");
-widget.setValue("sdxECCAClassCode", "EC_MX");
-widget.setValue("sdxECCALibraryTitle", "EC Library");
-widget.setValue("sdxECCATypeDisplay", "hidden");
 widget.setValue("sdxECCACreatePolicy", "sdxECR");
+widget.setValue("sdxECCATypeDisplay", "hidden");
+
+// 3. 자동 선택할 클래스의 조건입니다.
+widget.setValue("sdxECCAClassRuleMode", "code");
+widget.setValue("sdxECCALibraryTitle", "EC Library");
+widget.setValue("sdxECCAClassCode", "EC_MX");
+
+// 4. sdxECModel 입력의 검색 설정입니다.
 widget.setValue("sdxECCAEnableModelSearch", true);
 widget.setValue("sdxECCAModelSearchTypes", "");
 widget.setValue("sdxECCAModelSearchValueField", "name");
 
-위 type/policy/클래스/검색 값만 실제 환경에 맞춥니다.
-같은 설정이 이미 있다면 중복 추가하지 않습니다.
-이 설정 외의 과거 zca/sdxECCA 브리지나 private 생성 진입 코드는 필요하지 않습니다.
+     [환경별 확인]
+     type/policy/클래스/검색 값만 실제 환경에 맞춥니다.
+     같은 설정이 이미 있다면 값을 갱신하고 중복 선언하지 않습니다.
+     이 설정 외의 과거 zca/sdxECCA 브리지나 private 생성 진입 코드는 필요하지 않습니다.
 -->
