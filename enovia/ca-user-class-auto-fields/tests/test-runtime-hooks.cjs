@@ -4,6 +4,19 @@ const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('nod
 const root=path.resolve(__dirname,'..'),sourceDir=process.argv[2];
 if(!sourceDir)throw Error('Usage: node tests/test-runtime-hooks.cjs <2025-original-directory>');
 const specs=JSON.parse(fs.readFileSync(path.join(__dirname,'runtime-hooks.json'),'utf8'));
+// 실제 사용자 메모도 원복된 OOTB 기준의 동일한 추가/교체 조각이어야 합니다.
+for(const [id,spec] of Object.entries(specs)){
+ const bundle=id.split('/')[1];
+ const note=fs.readFileSync(path.join(root,'webapps',bundle,bundle+'.js'),'utf8');
+ assert(note.includes('[출발 상태] 이전 zca/sdxECCA 수정이 없는 2025 원본.'));
+ const start=note.indexOf('/* ============================================================\n * [대상 AMD 모듈] '+id);assert(start>=0,id+' missing note');
+ const next=note.indexOf('/* [2025 OOTB 헤더 유지]',start);const block=note.slice(start,next<0?undefined:next);
+ assert(block.includes(spec.setup),id+' setup differs from actual note');
+ spec.changes.forEach((edit,index)=>{
+  assert(block.includes('/* [변경 '+(index+1)+' — 원본에서 찾을 부분]\n'+edit.from+'\n*/'),id+' original fragment differs');
+  assert(block.includes('/* [변경 '+(index+1)+' — 아래 코드로 교체]\n'+edit.to+'\n*/'),id+' replacement differs');
+ });
+}
 function collect(text){const rows=[];new vm.Script(text).runInNewContext({define:(id,deps,factory)=>rows.push({id,deps:Array.from(deps),source:factory.toString()})});return rows;}
 function replace(source,from,to){assert.equal(source.split(from).length,2,'source mismatch: '+from.slice(0,80));return source.replace(from,()=>to);}
 const original=new Map(),patched=new Map();

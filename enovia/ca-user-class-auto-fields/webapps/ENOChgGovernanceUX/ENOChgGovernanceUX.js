@@ -1,16 +1,16 @@
-/* 기존 작업 폴더의 OOTB 수정 메모 — 파일 전체 덮어쓰기용이 아닙니다.
- * 기준: 2025. 기존 생성/분류 코드는 유지하고 아래 연결 부분만 갱신합니다.
- * [먼저 제거] 과거 추가한 define 의존성 "DS/sdxECCAAutoClass/sdxECCAAutoClass"와
- * 그에 대응하는 마지막 factory 인자 sdxECCAAutoClass만 제거합니다.
- * 기존 OOTB 의존성/인자는 순서를 포함해 유지합니다. 별도 원복/소스 복사는 하지 않습니다.
- * 이미 넣은 커스텀 호출은 아래 조건부 호출로 교체합니다. 중복 추가하지 않습니다.
- * 아래 수정 전은 위치를 찾기 위한 변경 전 2025 원본 조각입니다.
+/* 변경 전 2025 OOTB 원본에 처음 적용하는 수정 메모입니다.
+ * 이 파일 전체를 OOTB에 덮어쓰지 않습니다.
+ * [출발 상태] 이전 zca/sdxECCA 수정이 없는 2025 원본.
+ * [추가] 각 대상 AMD factory 안에 표시된 함수를 한 번 추가합니다.
+ * [교체] 그 모듈 안의 모든 [변경 N]을 번호 순서대로 적용합니다.
+ * [수정 전]은 원본에서 찾을 정확한 코드 조각입니다.
+ * define 의존성/인자는 변경하지 않습니다. 새 커스텀 의존성을 추가하지 않습니다.
  */
 
 /* [2025 OOTB 헤더 유지] DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction
  * ["DS/ENONewWidget/ENONewLauncher","DS/ENOChgServices/scripts/services/ChgServiceGlobalVariable","DS/ENOChgServices/scripts/services/UserPreferenceUtil","DS/ENOChgServices/scripts/services/DefaultPreferencesManager","i18n!DS/ENOChgGovernanceUX/assets/nls/ENOChgGovernanceNLS","DS/UIKIT/Mask","require"]
  * function(e,t,i,n,o,a,s)
- * 위 원래 의존성/인자는 유지하고 과거 커스텀 의존성/인자만 제거합니다.
+ * 확인용 원본 헤더입니다. 의존성/인자를 추가하거나 제거하지 않습니다.
  */
 
 /* ============================================================
@@ -46,23 +46,22 @@ function sdxECCALaunch(options, Launcher, localRequire, command) {
     } catch (error) { fail(error); }
 }
 
-/* [기존 적용에서 교체할 호출]
-(new e).CreateNew(sdxECCAAutoClass.configureCreateType(d))
- * 위 호출도 아래 sdxECCALaunch(d,e,s,r) 한 호출로 바꿉니다.
- * 커스텀 타입 지정은 새 sdxECCA.js 안에서 실행합니다.
- * s는 2025 원본의 require 인자입니다.
+/* [호출 인자 확인]
+ * d: 원본의 생성 옵션, e: 원본 ENONewLauncher, s: 원본 AMD require,
+ * r: 원본 launchCreateChangeActionDialog의 인자입니다.
+ * 커스텀 타입 지정은 sdxECCA.js에서 처리하므로 원본 type/typeName을 직접 바꾸지 않습니다.
  */
 
-/* [변경 1 — 수정 전 / 위치 확인]
+/* [변경 1 — 원본에서 찾을 부분]
 (new e).CreateNew(d)
 */
-/* [변경 1 — 수정 후]
+/* [변경 1 — 아래 코드로 교체]
 sdxECCALaunch(d,e,s,r)
 */
 
-/* [변경 2 — 수정 전 / 위치 확인]
+/* [변경 2 — 원본에서 찾을 부분]
 u[n.keys.createKeys.CA_DEF_TYPE]=e.result[0].type,i.saveUserPreference(u)
 */
-/* [변경 2 — 수정 후]
+/* [변경 2 — 아래 코드로 교체]
 sdxECCAIsEnabled()||(u[n.keys.createKeys.CA_DEF_TYPE]=e.result[0].type,i.saveUserPreference(u))
 */
