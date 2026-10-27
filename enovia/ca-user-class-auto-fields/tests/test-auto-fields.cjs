@@ -252,6 +252,35 @@ for(const typeName of ['Change Action','Change Order','Change Request']) {
  const field={name:'ECPlanText',visible:true};typed.attributes={publicAttributes:[field]};
  api.prepareFixedType(typed,{type:typeName,fail(error){throw error;}});assert.equal(field.visible,true);
 }
+// 전역 이벤트와 무관하게 현재 모델/최종 직렬화 문맥을 각각 검증합니다.
+for (const scenario of ['same', 'model-before-submit', 'model-during-BL', 'payload', 'missing', 'empty', 'event']) {
+ config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAClassRuleMode:'fixed',sdxECCAFixedClassId:'C1'};
+ const typed=data();typed.defaultAttributes.Type.value='sdxECChangeAction';
+ const facets=metadata();api.attachBridge(typed,facets,{},'sdxECR');
+ const state=facets[0].options.sdxECCAAutoSession;
+ let current=state.context,finish;
+ const view={data:typed,propModel:{get(key){return key==='New-SecurityContext'?{valueDB:current}:undefined;}},onSubmit(callback){finish=callback;}};
+ const props={skeleton:new Element(),listview:view};api.installFields(props,{sdxECCAAutoSession:state});
+ state.status='ready';state.classId='C1';state.validateFields=()=>{};
+ state.controller={autoComplete:{selectedItems:[{getID:()=> 'C1'}]},accordeonCon:new Element()};
+ const dialog={facets};
+ if(scenario==='model-before-submit')current='ctx::Leader.Engineering.OtherSpace';
+ assert.equal(api.canSubmitDialog(dialog),scenario!=='model-before-submit');
+ let received;view.onSubmit(value=>{received=value;});
+ const outgoing={defaultAttributes:{Type:{value:state.type},SecurityContext:{value:state.context}},attributes:{publicAttributes:[]}};
+ if(scenario==='model-during-BL')current='ctx::Leader.Engineering.OtherSpace';
+ if(scenario==='payload')outgoing.defaultAttributes.SecurityContext.value='ctx::Leader.Engineering.OtherSpace';
+ if(scenario==='missing')delete outgoing.defaultAttributes.SecurityContext;
+ if(scenario==='empty')outgoing.defaultAttributes.SecurityContext.value='';
+ if(scenario==='event'){state.checkContext('changed');state.checkContext(state.context);}
+ finish(outgoing);
+ assert.equal(received,scenario==='same'?outgoing:false,scenario);
+ if(scenario==='same')assert.equal(outgoing.defaultAttributes.SecurityContext.value,state.context);
+ else {assert.equal(state.status,'error');assert.match(state.error.message,/권한 문맥/);}
+ state.dispose();
+}
+console.log('PASS: current model and serialized context guards reject missed events, BL races, absent/empty payload context and change-back; matching context is retained');
+
 // 모델 직렬화 후 정책이 Change Action으로 돌아가도 최종 콜백에서 복구합니다.
 {
  const cases=[];
