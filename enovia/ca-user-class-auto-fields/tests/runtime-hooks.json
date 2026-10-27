@@ -67,7 +67,7 @@
       },
       {
         "from": "this.listenToPublishedInfo((function(e,t){if(\"currentSecurityContext\"===e){let e=t.value;securityContext=e}}))}",
-        "to": "this.listenToPublishedInfo(function (e, t) {\n    if (e === \"currentSecurityContext\") {\n        let currentContext = t.value;\n\n        // [원본 유지] 기존 권한 문맥을 갱신합니다.\n        securityContext = currentContext;\n\n        // [추가] 우리 생성창의 세션이 있을 때만 함께 확인합니다.\n        if (sdxECCAFacet.sdxECCAAutoSession) {\n            sdxECCAFacet.sdxECCAAutoContext = currentContext;\n            sdxECCAFacet.sdxECCAAutoSession.checkContext(currentContext);\n        }\n    }\n});\n\nvar sdxECCAApi = sdxECCAGetApi();\nif (sdxECCAApi) {\n    sdxECCAApi.connectClassification(this, e);\n}\n}"
+        "to": "this.listenToPublishedInfo(function (e, t) {\n    if (e === \"currentSecurityContext\") {\n        let currentContext = t.value;\n\n        // [원본 유지] 기존 권한 문맥을 갱신합니다.\n        securityContext = currentContext;\n\n        // 전역 자격증명 변경만으로 생성창의 선택 문맥을 갱신하거나 실패시키지 않습니다.\n        // 실제 New-SecurityContext 필드 변경은 ENONewWidget의 checkContext가 검증합니다.\n    }\n});\n\nvar sdxECCAApi = sdxECCAGetApi();\nif (sdxECCAApi) {\n    sdxECCAApi.connectClassification(this, e);\n}\n}"
       },
       {
         "from": "return securityContext}",
