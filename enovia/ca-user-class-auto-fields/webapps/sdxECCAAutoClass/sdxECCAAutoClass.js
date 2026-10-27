@@ -330,7 +330,29 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         } catch (error) { session.fail(error); }
     }
 
-    /** OOTB BL/모델 직렬화가 끝난 콜백에서 최종 요청의 Policy를 확정합니다. */
+    /** 선택 사항인 모델 필드는 실제 검색 선택 또는 빈 값만 최종 저장에 반영합니다. */
+    function sdxECCAPrepareModelSelection(result, session, view) {
+        if (!session.modelSearchEnabled) return;
+        var selected = session.modelSearchSelection;
+        if (selected && (selected.context !== session.context || selected.type !== "sdxMTopAssy" ||
+            typeof selected.id !== "string" || !selected.id || typeof selected.value !== "string" || !selected.value)) {
+            throw new Error("모델을 현재 권한 문맥에서 다시 선택해 주세요.");
+        }
+        var value = selected ? selected.value : "";
+        ["publicAttributes", "extensionAttributes"].forEach(function (group) {
+            var original = view.data && view.data.attributes && view.data.attributes[group];
+            var rows = result.attributes && result.attributes[group];
+            var template = Array.isArray(original) && original.find(function (item) { return item && item.name === "sdxECModel"; });
+            var index = Array.isArray(rows) ? rows.findIndex(function (item) { return item && item.name === "sdxECModel"; }) : -1;
+            if (!template && index < 0) return;
+            if (!result.attributes) result.attributes = {};
+            if (!Array.isArray(rows)) rows = result.attributes[group] = [];
+            var attribute = Object.assign({}, template || rows[index], index < 0 ? null : rows[index], {value: value, modified: true});
+            if (index < 0) rows.push(attribute); else rows[index] = attribute;
+        });
+    }
+
+    /** OOTB BL/모델 직렬화가 끝난 콜백에서 문맥·정책·모델 선택값을 확정합니다. */
     function sdxECCABindCreatePolicy(facet, session) {
         if (session.type !== "sdxECChangeAction" || facet.sdxECCAPolicySubmitBinding) return;
         var view = facet.listview;
@@ -373,6 +395,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                     // 원래 기본 속성을 보존해 결과에 넣으면 createContent가 rawTypeInfo에도 반영합니다.
                     result.basicAttributes = Object.assign({}, view.data && view.data.basicAttributes, result.basicAttributes);
                     sdxECCAPreparePolicy(result, session);
+                    // BL이나 기본 tweaker가 전달한 임의 입력은 최종 요청에서도 저장하지 않습니다.
+                    sdxECCAPrepareModelSelection(result, session, view);
                     sdxECCACopyTextAttributes(result, session);
                 } catch (error) {
                     session.fail(error);
@@ -391,6 +415,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var session = options.sdxECCAAutoSession;
         if (!session) return;
         session.propertiesFacet = facet;
+        var searchEnabled = typeof widget !== "undefined" && widget.getValue("sdxECCAEnableModelSearch");
+        session.modelSearchEnabled = session.type === "sdxECChangeAction" && searchEnabled !== false && searchEnabled !== "false";
         facet.sdxECCAAutoSession = session;
         facet.sdxECCAAutoDisposed = false;
         try { sdxECCABindCreatePolicy(facet, session); }
@@ -489,7 +515,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (enabled === false || enabled === "false") return;
         var config = {
             enabled: enabled,
-            allowedTypes: widget.getValue("sdxECCAModelSearchTypes"),
+            allowedTypes: "sdxMTopAssy",
             valueField: widget.getValue("sdxECCAModelSearchValueField")
         };
         function report(error) {
