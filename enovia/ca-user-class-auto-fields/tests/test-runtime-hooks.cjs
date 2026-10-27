@@ -118,5 +118,6 @@ assert.equal(classification.plmNewContextProvider(),'normal-ctx');
 const contextChecks=[];
 classification.sdxECCAAutoSession={checkContext:value=>contextChecks.push(value)};
 contextCallback('currentSecurityContext',{value:'target-ctx'});
-assert.deepEqual(contextChecks,['target-ctx']);assert.equal(classification.plmNewContextProvider(),'target-ctx');
+assert.deepEqual(contextChecks,[], 'global credential updates must not invalidate the open CA dialog');
+assert.equal(classification.plmNewContextProvider(),'target-ctx');
 console.log('PASS: four actual 2025 bundles parse; original AMD dependencies retained; normal creation works without custom files; late runtime loading; scoped sessions; 2025 submit recovery; custom failure contained.');
