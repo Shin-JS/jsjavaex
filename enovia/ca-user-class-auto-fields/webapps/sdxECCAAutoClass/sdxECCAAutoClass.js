@@ -19,7 +19,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     /** 대화상자마다 별도 세션을 만들어 초기화·속성 로딩·UI·생성 검증을 연결합니다. */
     function sdxECCACreateAutoSession(context, type, rule) {
         var session = {
-            context: context, type: type, rule: rule, controller: null,
+            context: context, currentContext: context, type: type, rule: rule, controller: null,
             status: "loading", error: null, disposed: false, started: false, transitioning: false, contextChangeTimer: null,
             mandatory: null, mandatoryPrepared: false, mandatoryNames: [], attributesLoaded: false, fieldsMounted: false, validateFields: null,
             classId: null, classTitle: null, typeDisplay: "hidden", readCurrentType: null, listeners: new Set(), timer: null,
@@ -350,8 +350,22 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                     }
                     // 이벤트 누락 및 비동기 BL 실행 중 변경도 최종 직렬화 결과로 확인합니다.
                     session.checkContext(session.readCurrentContext());
-                    var security = result.defaultAttributes && result.defaultAttributes.SecurityContext;
-                    session.checkContext(security && security.value);
+                    if (!result.defaultAttributes) {
+                        throw new Error("생성 요청의 기본 속성이 누락되었습니다.");
+                    }
+                    var security = result.defaultAttributes.SecurityContext;
+                    // OOTB 직렬화가 생략한 문맥만 검증된 현재 선택값으로 보충합니다.
+                    // 기존 값이 있으면 덮어쓰지 않고 아래에서 일치 여부를 검사합니다.
+                    if (!security || security.value == null) {
+                        var selectedContext = session.readCurrentContext();
+                        session.checkContext(selectedContext);
+                        if (session.status === "error") throw session.error;
+                        security = Object.assign({}, security, {
+                            name: "SecurityContext", value: selectedContext
+                        });
+                        result.defaultAttributes.SecurityContext = security;
+                    }
+                    session.checkContext(security.value);
                     if (session.status === "error") throw session.error;
                     var type = result.defaultAttributes && result.defaultAttributes.Type;
                     if (!type || type.value !== session.type) throw new Error("생성 요청의 유형이 지정 유형과 다릅니다.");
@@ -390,8 +404,12 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         session.readCurrentContext = function () {
             var view = facet.listview;
             var field = view && view.propModel && view.propModel.get("New-SecurityContext");
-            return field ? field.valueDB : view && view.data && view.data.defaultAttributes &&
-                view.data.defaultAttributes.SecurityContext && view.data.defaultAttributes.SecurityContext.value;
+            var value;
+            if (field) {
+                value = typeof field.get === "function" ? field.get("valueDB") : undefined;
+                if (value == null) value = field.valueDB;
+            }
+            return value != null ? value : session.currentContext;
         };
         var root = document.createElement("div");
         var style = document.createElement("style");
