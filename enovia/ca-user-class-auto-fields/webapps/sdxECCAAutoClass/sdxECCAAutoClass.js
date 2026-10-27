@@ -55,7 +55,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         };
         session.checkContext = function (value) {
             // 입력한 값을 버리지 않도록 문맥 변경 시 다시 열도록 안내합니다.
-            if (value !== session.context) {
+            if (typeof value !== "string" || !value.trim() || value !== session.context) {
                 session.fail(new Error("권한 문맥이 변경되었습니다. 생성 화면을 닫고 다시 열어 주세요."));
             }
         };
@@ -91,6 +91,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             session.validateFields = null;
             session.showMessage = null;
             session.readCurrentType = null;
+            session.readCurrentContext = null;
         };
         session.timer = setTimeout(function () {
             session.fail(new Error("지정 클래스 속성 준비 시간이 초과되었습니다."));
@@ -268,6 +269,11 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 if (!result) { callback(result); return; }
                 if (session.disposed || session.status === "error") { callback(false); return; }
                 try {
+                    // 이벤트 누락 및 비동기 BL 실행 중 변경도 최종 직렬화 결과로 확인합니다.
+                    session.checkContext(session.readCurrentContext());
+                    var security = result.defaultAttributes && result.defaultAttributes.SecurityContext;
+                    session.checkContext(security && security.value);
+                    if (session.status === "error") throw session.error;
                     var type = result.defaultAttributes && result.defaultAttributes.Type;
                     if (!type || type.value !== session.type) throw new Error("생성 요청의 유형이 지정 유형과 다릅니다.");
                     // OOTB _parseModel은 basicAttributes를 결과에서 생략할 수 있습니다.
@@ -300,6 +306,12 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             var field = view && view.propModel && view.propModel.get("New-Type");
             return field ? field.valueDB : view && view.data && view.data.defaultAttributes &&
                 view.data.defaultAttributes.Type && view.data.defaultAttributes.Type.value;
+        };
+        session.readCurrentContext = function () {
+            var view = facet.listview;
+            var field = view && view.propModel && view.propModel.get("New-SecurityContext");
+            return field ? field.valueDB : view && view.data && view.data.defaultAttributes &&
+                view.data.defaultAttributes.SecurityContext && view.data.defaultAttributes.SecurityContext.value;
         };
         var root = document.createElement("div");
         var style = document.createElement("style");
@@ -497,6 +509,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             if (session.disposed || session.status !== "ready") {
                 throw session.error || new Error("지정 클래스 속성 준비가 완료되지 않았습니다.");
             }
+            session.checkContext(session.readCurrentContext && session.readCurrentContext());
+            if (session.status === "error") throw session.error;
             if (!session.readCurrentType || session.readCurrentType() !== session.type) {
                 throw new Error("현재 유형이 지정한 고정 유형과 다릅니다. 화면을 다시 열어 주세요.");
             }
