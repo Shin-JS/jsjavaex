@@ -253,7 +253,7 @@ for(const typeName of ['Change Action','Change Order','Change Request']) {
  api.prepareFixedType(typed,{type:typeName,fail(error){throw error;}});assert.equal(field.visible,true);
 }
 // 전역 이벤트와 무관하게 현재 모델/최종 직렬화 문맥을 각각 검증합니다.
-for (const scenario of ['same', 'model-before-submit', 'model-during-BL', 'payload', 'missing', 'empty', 'event']) {
+for (const scenario of ['same', 'model-before-submit', 'model-during-BL', 'payload', 'missing', 'missing-value', 'null-value', 'missing-defaults', 'empty', 'event']) {
  config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAClassRuleMode:'fixed',sdxECCAFixedClassId:'C1'};
  const typed=data();typed.defaultAttributes.Type.value='sdxECChangeAction';
  const facets=metadata();api.attachBridge(typed,facets,{},'sdxECR');
@@ -271,16 +271,43 @@ for (const scenario of ['same', 'model-before-submit', 'model-during-BL', 'paylo
  if(scenario==='model-during-BL')current='ctx::Leader.Engineering.OtherSpace';
  if(scenario==='payload')outgoing.defaultAttributes.SecurityContext.value='ctx::Leader.Engineering.OtherSpace';
  if(scenario==='missing')delete outgoing.defaultAttributes.SecurityContext;
+ if(scenario==='missing-value')outgoing.defaultAttributes.SecurityContext={nls:'Keep label',range:['keep-range']};
+ if(scenario==='null-value')outgoing.defaultAttributes.SecurityContext={value:null};
+ if(scenario==='missing-defaults')delete outgoing.defaultAttributes;
  if(scenario==='empty')outgoing.defaultAttributes.SecurityContext.value='';
  if(scenario==='event'){state.checkContext('changed');state.checkContext(state.context);}
  finish(outgoing);
- assert.equal(received,scenario==='same'?outgoing:false,scenario);
- if(scenario==='same')assert.equal(outgoing.defaultAttributes.SecurityContext.value,state.context);
+ const succeeds=['same','missing','missing-value','null-value'].includes(scenario);
+ assert.equal(received,succeeds?outgoing:false,scenario);
+ if(succeeds){
+  assert.equal(outgoing.defaultAttributes.SecurityContext.value,state.context);
+  assert.notEqual(state.status,'error');
+  if(scenario!=='same')assert.equal(outgoing.defaultAttributes.SecurityContext.name,'SecurityContext');
+  if(scenario==='missing-value'){assert.equal(outgoing.defaultAttributes.SecurityContext.nls,'Keep label');assert.deepEqual(outgoing.defaultAttributes.SecurityContext.range,['keep-range']);}
+ }
  else if(scenario==='model-before-submit'||scenario==='model-during-BL'){assert.equal(state.status,'loading');assert.equal(state.transitioning,true);}
- else {assert.equal(state.status,'error');assert.match(state.error.message,/권한 문맥/);}
+ else {assert.equal(state.status,'error');assert.match(state.error.message,scenario==='missing-defaults'?/기본 속성/:/권한 문맥/);}
  state.dispose();
 }
-console.log('PASS: current model and serialized context guards reject missed events, BL races, absent/empty payload context and change-back; matching context is retained');
+console.log('PASS: missing serialized SecurityContext/value is populated only from validated current context, metadata retained; explicit empty/mismatched context, missing defaults, missed events and BL races remain blocked');
+
+// 설치본이 New-SecurityContext 모델/기본 속성을 생략해도 명시적으로 추적한 선택값을 사용합니다.
+for(const shape of ['missing-field','empty-field','getter-field','property-field']) {
+ config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAClassRuleMode:'fixed',sdxECCAFixedClassId:'C1'};
+ const typed=data('SelectedOrganization');typed.defaultAttributes.Type.value='sdxECChangeAction';
+ const facets=metadata();api.attachBridge(typed,facets,{},'sdxECR');const state=facets[0].options.sdxECCAAutoSession;
+ const selected=state.context;assert.equal(state.currentContext,selected);
+ delete typed.defaultAttributes.SecurityContext;
+ const field=shape==='missing-field'?undefined:shape==='empty-field'?{}:shape==='getter-field'?{get:()=>selected}:{valueDB:selected};
+ let finish;const view={data:typed,propModel:{get:()=>field},onSubmit(callback){finish=callback;}};
+ api.installFields({listview:view,skeleton:new Element()},{sdxECCAAutoSession:state});
+ assert.equal(state.readCurrentContext(),selected,shape);
+ let received;view.onSubmit(result=>received=result);
+ finish({defaultAttributes:{Type:{value:state.type}},attributes:{publicAttributes:[]}});
+ assert.equal(received.defaultAttributes.SecurityContext.value,selected,shape);
+ state.currentContext='';if(shape==='missing-field'||shape==='empty-field')assert.equal(state.readCurrentContext(),'');
+ state.dispose();
+}
 
 // 실제 세션 교체: 새 controller/UI/context, 오래된 응답과 제출 콜백 격리.
 {
