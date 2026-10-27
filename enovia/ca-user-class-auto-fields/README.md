@@ -101,3 +101,7 @@
 직접 입력한 검색어는 저장하지 않습니다. 선택 후 다시 입력하면 기존 선택을 해제합니다.
 AutoClass·ObjectSearch 갱신과 새 ModelSearchService 배포가 필요합니다.
 [배포·참조 소스·검사 결과](MODEL-SEARCH.md)를 참고하십시오. Searchable 서비스 배포는 필요하지 않습니다.
+
+### 저장 직전 조직값 설정
+
+`sdxECCAAutoClass.js`의 `sdxECCAPrepareOrganization()`은 `publicAttributes`에 포함된 숨김 속성 `sdxECOrganization`을 최종 생성 요청에 반영합니다. 조직값 출처는 아직 미정이며, 추후 해당 생성 세션의 `session.organizationValue`에 문자열을 설정하면 적용됩니다. 미지정·빈 문자열은 기존 값을 유지합니다. SecurityContext에서 조직을 임의로 추출하지 않습니다. OOTB 검증 이후 처리하므로 숨김 필드의 필수 검증을 대신하지 않습니다.
