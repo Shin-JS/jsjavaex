@@ -276,6 +276,7 @@ for (const scenario of ['same', 'model-before-submit', 'model-during-BL', 'paylo
  finish(outgoing);
  assert.equal(received,scenario==='same'?outgoing:false,scenario);
  if(scenario==='same')assert.equal(outgoing.defaultAttributes.SecurityContext.value,state.context);
+ else if(scenario==='model-before-submit'||scenario==='model-during-BL'){assert.equal(state.status,'loading');assert.equal(state.transitioning,true);}
  else {assert.equal(state.status,'error');assert.match(state.error.message,/권한 문맥/);}
  state.dispose();
 }
@@ -283,7 +284,7 @@ console.log('PASS: current model and serialized context guards reject missed eve
 
 // 실제 세션 교체: 새 controller/UI/context, 오래된 응답과 제출 콜백 격리.
 {
- function openContextDialog(mode='fixed') {
+ function openContextDialog(mode='fixed',bind=true) {
   config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAClassRuleMode:mode,sdxECCAFixedClassId:'C1'};
   const typed=data();typed.defaultAttributes.Type={value:'sdxECChangeAction',range:['sdxECChangeAction'],persistData:[{name:'sdxECChangeAction'}]};typed.attributes={publicAttributes:[{name:'sdxECType'},{name:'ECPlan',value:'keep'}]};
   const entries=metadata();api.attachBridge(typed,entries,{},'sdxECR');
@@ -294,16 +295,38 @@ console.log('PASS: current model and serialized context guards reject missed eve
   facet.initUI={getController:()=>({plmNewLibraryActive:ui.ctrl})};
   facet.sdxECCARebuildUI=function(value){assert.equal(value,this.sdxECCAAutoSession.context);ui=makeController(this.sdxECCAAutoSession);all.push(ui);};
   api.connectClassification(facet,{sdxECCAAutoSession:state,securityContext:current});
-  const dialog={facets:entries,evaluateValidationStatus(){}};api.bindDialog(dialog);timers.get(state.dialogBindTimer)();
+  const dialog={facets:entries,evaluateValidationStatus(){}};api.bindDialog(dialog);if(bind)timers.get(state.dialogBindTimer)();
   function pump(){timers.get(facet.sdxECCAAutoTimer)();}
-  function change(value){current=value;props.sdxECCAAutoSession.changeContext(value);state=props.sdxECCAAutoSession;}
+  function finishChange(){const before=props.sdxECCAAutoSession;if(!before.dialog&&before.dialogBindTimer)timers.get(before.dialogBindTimer)();if(before.contextChangeTimer)timers.get(before.contextChangeTimer)();state=props.sdxECCAAutoSession;}
+  function change(value){current=value;props.sdxECCAAutoSession.changeContext(value);finishChange();}
   async function complete(){ui.request().onComplete({chains:new Map([['C1',[{physicalid:'C1',type:'General Class',label:'Class'}]]])});await flush();const model=ui.ctrl.classifPropModels[0];api.prepareAttributes(model,{attribute:[]});api.notifyAttributesLoaded(model,{attribute:[]});return model;}
-  return {entries,props,facet,dialog,view,all,pump,change,complete,setCurrent(value){current=value;},state:()=>props.sdxECCAAutoSession,ui:()=>ui,finish:()=>finish};
+  return {entries,props,facet,dialog,view,all,pump,change,finishChange,complete,setCurrent(value){current=value;},state:()=>props.sdxECCAAutoSession,ui:()=>ui,finish:()=>finish};
  }
+ // Initial credential callback may publish New-SecurityContext while still reading the same project data.
+ const startup=openContextDialog('fixed',false),initial=startup.state();
+ let rebuilding=false;const rebuild=startup.facet.sdxECCARebuildUI;
+ startup.facet.sdxECCARebuildUI=function(value){rebuilding=true;return rebuild.call(this,value);};
+ const credentialData={project:{prjCount:1}};
+ startup.setCurrent('ctx::Leader.Engineering.B');
+ initial.changeContext('ctx::Leader.Engineering.B');
+ assert.equal(initial.disposed,false);assert.equal(rebuilding,false);assert.equal(credentialData.project.prjCount,1);
+ assert.equal(initial.transitioning,true);assert.equal(api.canSubmitDialog(startup.dialog),false);
+ // Even an early timer must wait for C1's deferred dialog binding.
+ timers.get(initial.contextChangeTimer)();assert.equal(initial.disposed,false);assert.equal(rebuilding,false);
+ const scheduled=initial.contextChangeTimer;
+ startup.setCurrent('ctx::Leader.Engineering.C');initial.changeContext('ctx::Leader.Engineering.C');assert.equal(initial.contextChangeTimer,scheduled);
+ startup.finishChange();assert.equal(initial.disposed,true);assert.equal(rebuilding,true);assert.equal(startup.state().context,'ctx::Leader.Engineering.C');
+ startup.pump();await startup.complete();assert.equal(api.canSubmitDialog(startup.dialog),true);startup.state().dispose();
+ const cancelled=openContextDialog();const closedSession=cancelled.state();cancelled.setCurrent('B');closedSession.changeContext('B');
+ const queued=timers.get(closedSession.contextChangeTimer);closedSession.dispose();queued();assert.equal(cancelled.all.length,1);
+ console.log('PASS: startup credential callback is not re-entered; rebuild waits for original callback and dialog binding, coalesces final model context and cancels on close');
  const d=openContextDialog();d.pump();const a=d.state(),oldRequest=d.ui().request();
  const oldModel=await d.complete();assert.equal(api.canSubmitDialog(d.dialog),true);
  let oldSubmit;d.view.onSubmit(result=>oldSubmit=result);const pendingSubmit=d.finish();
- d.change('ctx::Leader.Engineering.B');const b=d.state();
+ d.setCurrent('ctx::Leader.Engineering.B');a.changeContext('ctx::Leader.Engineering.B');
+ assert.equal(a.disposed,false);assert.equal(a.transitioning,true);assert.equal(api.prepareAttributes(oldModel,{attribute:[]}),false);
+ oldRequest.onComplete({chains:new Map()});assert.equal(a.status,'loading');
+ d.finishChange();const b=d.state();
  assert.notEqual(a,b);assert.equal(a.disposed,true);assert.equal(b.status,'loading');assert.equal(d.facet.facetValidation,false);
  assert.equal(d.entries[0].options.sdxECCAAutoSession,b);assert.equal(d.entries[1].options.sdxECCAAutoSession,b);
  assert.equal(d.props.listview.data.attributes.publicAttributes[1].value,'keep');
@@ -346,11 +369,11 @@ console.log('PASS: current model and serialized context guards reject missed eve
  service.load=originalLoad;
  // Missing model event at click, or during BL: restart and reject that submit, then allow a fresh validated submit.
  const missed=openContextDialog();missed.pump();await missed.complete();const first=missed.state();
- missed.setCurrent('ctx::Leader.Engineering.B');assert.equal(api.canSubmitDialog(missed.dialog),false);assert.equal(first.disposed,true);
+ missed.setCurrent('ctx::Leader.Engineering.B');assert.equal(api.canSubmitDialog(missed.dialog),false);assert.equal(first.disposed,false);assert.equal(first.transitioning,true);missed.finishChange();assert.equal(first.disposed,true);
  missed.pump();await missed.complete();assert.equal(api.canSubmitDialog(missed.dialog),true);
  let rejected;missed.view.onSubmit(result=>rejected=result);const beforeBL=missed.state();
  missed.setCurrent('ctx::Leader.Engineering.C');missed.finish()({defaultAttributes:{SecurityContext:{value:beforeBL.context}}});
- assert.equal(rejected,false);assert.equal(beforeBL.disposed,true);missed.pump();await missed.complete();assert.equal(api.canSubmitDialog(missed.dialog),true);
+ assert.equal(rejected,false);assert.equal(beforeBL.disposed,false);missed.finishChange();assert.equal(beforeBL.disposed,true);missed.pump();await missed.complete();assert.equal(api.canSubmitDialog(missed.dialog),true);
  missed.state().dispose();
  console.log('PASS: context restart creates new session/controller, blocks submit while loading, re-queries code/paths/attributes with B, preserves base input, ignores A/B/C late data and submit, and allows validated B or fresh A submit');
 }
