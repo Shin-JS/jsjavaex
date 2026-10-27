@@ -29,7 +29,7 @@
       },
       {
         "from": "var o=t.events.onChangeAttribute;t.events.onChangeAttribute=e=>{for(var t in e){var n=e[t];i.publishAttributeInfo(n)}o(e)},t.events.publishAttribute=this.publishAttributeInfo.bind(this),",
-        "to": "var o = t.events.onChangeAttribute;\n\nt.events.onChangeAttribute = e => {\n    for (var t in e) {\n        var n = e[t];\n\n        // [추가] 우리 생성창에 세션이 있을 때만 문맥/유형을 확인합니다.\n        if (i.sdxECCAAutoSession) {\n            if (t === \"New-SecurityContext\") {\n                i.sdxECCAAutoSession.changeContext(n.valueDB);\n            } else if (t === \"New-Type\") {\n                i.sdxECCAAutoSession.checkType(n.valueDB);\n            }\n        }\n\n        // [원본 유지] 항목마다 속성 정보를 발행합니다.\n        i.publishAttributeInfo(n);\n    }\n\n    // [원본 유지] 원래 콜백은 반복문 밖에서 한 번 호출합니다.\n    o(e);\n};\n\nt.events.publishAttribute = this.publishAttributeInfo.bind(this);\n"
+        "to": "var o = t.events.onChangeAttribute;\n\nt.events.onChangeAttribute = e => {\n    for (var t in e) {\n        var n = e[t];\n\n        // [추가] 우리 생성창에 세션이 있을 때만 문맥/유형을 확인합니다.\n        if (i.sdxECCAAutoSession) {\n            if (t === \"New-SecurityContext\") {\n                i.sdxECCAAutoSession.currentContext = n.valueDB;\n                i.sdxECCAAutoSession.changeContext(n.valueDB);\n            } else if (t === \"New-Type\") {\n                i.sdxECCAAutoSession.checkType(n.valueDB);\n            }\n        }\n\n        // [원본 유지] 항목마다 속성 정보를 발행합니다.\n        i.publishAttributeInfo(n);\n    }\n\n    // [원본 유지] 원래 콜백은 반복문 밖에서 한 번 호출합니다.\n    o(e);\n};\n\nt.events.publishAttribute = this.publishAttributeInfo.bind(this);\n"
       },
       {
         "from": "destroy:function(){this.listview.destroy()",
