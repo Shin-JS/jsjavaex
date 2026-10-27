@@ -66,9 +66,23 @@ this.listenToPublishedInfo(function (e, t) {
         securityContext = currentContext;
 
         // 전역 자격증명 변경만으로 생성창의 선택 문맥을 갱신하거나 실패시키지 않습니다.
-        // 실제 New-SecurityContext 필드 변경은 ENONewWidget의 checkContext가 검증합니다.
+        // 실제 New-SecurityContext 필드 변경은 ENONewWidget의 changeContext가 재초기화합니다.
     }
 });
+
+// r은 이 factory의 기존 InitClassificationCmpUI 생성자입니다.
+// 새 UI 인스턴스의 속성 조회 context 클로저까지 새 문맥으로 만듭니다.
+this.sdxECCARebuildUI = function (context) {
+    var oldContainer = this.elements.container;
+    var options = Object.assign({}, e, {securityContext: context});
+    var nextUI = new r;
+    var container = nextUI.getUI(options);
+    if (oldContainer && oldContainer.parentNode) {
+        oldContainer.parentNode.replaceChild(container, oldContainer);
+    }
+    this.initUI = nextUI;
+    this.elements.container = container;
+};
 
 var sdxECCAApi = sdxECCAGetApi();
 if (sdxECCAApi) {
