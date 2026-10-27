@@ -20,7 +20,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     function sdxECCACreateAutoSession(context, type, rule) {
         var session = {
             context: context, type: type, rule: rule, controller: null,
-            status: "loading", error: null, disposed: false, started: false,
+            status: "loading", error: null, disposed: false, started: false, transitioning: false, contextChangeTimer: null,
             mandatory: null, mandatoryPrepared: false, mandatoryNames: [], attributesLoaded: false, fieldsMounted: false, validateFields: null,
             classId: null, classTitle: null, typeDisplay: "hidden", readCurrentType: null, listeners: new Set(), timer: null,
             cancelRequest: null
@@ -41,14 +41,14 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             session.notify();
         };
         session.refreshReady = function () {
-            if (session.disposed || session.status === "error") return;
+            if (session.disposed || session.transitioning || session.status === "error") return;
             if (session.attributesLoaded && session.fieldsMounted && session.validateFields) {
                 session.status = "ready";
                 clearTimeout(session.timer);
             }
         };
         session.markAttributesLoaded = function (classId) {
-            if (session.disposed || session.status === "error" || classId !== session.classId) return;
+            if (session.disposed || session.transitioning || session.status === "error" || classId !== session.classId) return;
             session.attributesLoaded = true;
             session.refreshReady();
             session.notify();
@@ -60,12 +60,37 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             }
         };
         session.changeContext = function (value) {
-            if (session.disposed || value === session.context) return;
-            if (typeof value !== "string" || !value.trim()) {
-                session.fail(new Error("선택한 권한 문맥을 확인할 수 없습니다."));
-                return;
+            if (session.disposed || (!session.transitioning && value === session.context)) return;
+            // onChangeAttribute의 원래 자격증명/프로젝트 초기화가 끝나기 전에는
+            // dispose, UI 교체, 검증 이벤트 발행을 실행하지 않습니다.
+            session.pendingContext = value;
+            session.transitioning = true;
+            session.status = "loading";
+            session.fieldsValid = false;
+            if (session.validationFacet) session.validationFacet.facetValidation = false;
+            if (session.contextChangeTimer) return;
+            var started = Date.now();
+            function restartWhenReady() {
+                session.contextChangeTimer = null;
+                if (session.disposed) return;
+                if (!session.dialog) {
+                    if (Date.now() - started > 30000) {
+                        session.fail(new Error("권한 문맥 변경을 위한 생성창 준비 시간이 초과되었습니다."));
+                        return;
+                    }
+                    session.contextChangeTimer = setTimeout(restartWhenReady, 25);
+                    return;
+                }
+                // 초기 구성 중의 중간 이벤트 값 대신, 준비 완료 후 최종 선택 모델을 읽습니다.
+                try {
+                    var context = session.readCurrentContext ? session.readCurrentContext() : session.pendingContext;
+                    if (typeof context !== "string" || !context.trim()) {
+                        throw new Error("선택한 권한 문맥을 확인할 수 없습니다.");
+                    }
+                    sdxECCARestartAutoSession(session, context);
+                } catch (error) { session.fail(error); }
             }
-            sdxECCARestartAutoSession(session, value);
+            session.contextChangeTimer = setTimeout(restartWhenReady, 0);
         };
         session.checkType = function (value) {
             if (value !== session.type) {
@@ -78,6 +103,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             clearTimeout(session.timer);
             clearTimeout(session.dialogBindTimer);
             clearTimeout(session.objectSearchTimer);
+            clearTimeout(session.contextChangeTimer);
             session.bindingDialog = null;
             if (session.cleanupObjectSearch) session.cleanupObjectSearch();
             if (session.unsubscribeAttributeVisibility) session.unsubscribeAttributeVisibility();
@@ -314,7 +340,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             return original.call(this, function (result) {
                 // OOTB 검증 실패는 그대로 전달합니다. 실패를 성공 데이터로 바꾸지 않습니다.
                 if (!result) { callback(result); return; }
-                if (session.disposed || session.status === "error") { callback(false); return; }
+                if (session.disposed || session.transitioning || session.status === "error") { callback(false); return; }
                 try {
                     var currentContext = session.readCurrentContext();
                     if (currentContext !== session.context) {
@@ -387,7 +413,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         };
         facet.sdxECCAAutoUnsubscribe = session.subscribe(function (state) {
             if (state.disposed) { sdxECCADestroyAutoFields(facet); return; }
-            if (state.controller && state.status !== "error") {
+            if (state.controller && !state.transitioning && state.status !== "error") {
                 try { sdxECCAMountAutoFields(facet, state); }
                 catch (error) { state.fail(error); return; }
                 // 분류 폼 자체의 UIController가 사용하는 실제 모델과 기본 검증을 연결합니다.
@@ -422,15 +448,15 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         }
         session.unsubscribeAttributeVisibility = session.subscribe(function (state) {
             var service = state.controller && state.controller.PLMNewCommonWebService;
-            if (started || state.disposed || state.status === "error" || !service) return;
+            if (started || state.disposed || state.transitioning || state.status === "error" || !service) return;
             started = true;
             try {
                 require(["DS/sdxECCAAutoClass/sdxECCAAttributeVisibility"], function (Visibility) {
-                    if (state.disposed || state.status === "error") return;
+                    if (state.disposed || state.transitioning || state.status === "error") return;
                     Promise.resolve().then(function () {
                         return Visibility.install(facet, state, {url: url, service: service});
                     }).then(function (cleanup) {
-                        if (state.disposed) cleanup();
+                        if (state.disposed || state.transitioning) cleanup();
                         else state.cleanupAttributeVisibility = cleanup;
                     }).catch(report);
                 }, report);
@@ -452,10 +478,10 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             if (!session.disposed) console.error("[sdxECCAObjectSearch] 검색 연결 실패. 생성창은 계속 사용 가능합니다.", error);
         }
         session.objectSearchTimer = setTimeout(function () {
-            if (session.disposed) return;
+            if (session.disposed || session.transitioning) return;
             try {
                 require(["DS/sdxECCAAutoClass/sdxECCAObjectSearch"], function (ObjectSearch) {
-                    if (session.disposed) return;
+                    if (session.disposed || session.transitioning) return;
                     try { session.cleanupObjectSearch = ObjectSearch.install(facet, session, config); }
                     catch (error) { report(error); }
                 }, report);
@@ -483,7 +509,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         session.fieldsMounted = true;
         clearTimeout(facet.sdxECCAAutoResize);
         facet.sdxECCAAutoResize = setTimeout(function () {
-            if (!facet.sdxECCAAutoDisposed && !session.disposed && ctrl.classifPropertiesView.onInnerResize) {
+            if (!facet.sdxECCAAutoDisposed && !session.disposed && !session.transitioning && ctrl.classifPropertiesView.onInnerResize) {
                 ctrl.classifPropertiesView.onInnerResize();
                 sdxECCARenderMandatoryIcons(form);
             }
@@ -521,6 +547,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var session = facet.sdxECCAAutoSession;
         var attrs = options.data && options.data.defaultAttributes;
         if (!session || !attrs) return;
+        if (session.transitioning) return false;
         // 이전 문맥의 typeInfo 재조회가 늦게 와도 새 세션/속성 모델을 덮어쓰지 않습니다.
         if (attrs.SecurityContext && attrs.SecurityContext.value !== session.context) return false;
         sdxECCAPrepareFixedType(options.data, session);
@@ -723,7 +750,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         session.checkContext(facet.sdxECCAAutoContext);
         var started = Date.now();
         facet.sdxECCAAutoTimer = setInterval(function () {
-            if (session.disposed || session.status === "error") { clearInterval(facet.sdxECCAAutoTimer); return; }
+            if (session.disposed || session.transitioning || session.status === "error") { clearInterval(facet.sdxECCAAutoTimer); return; }
             if (session.refreshValidation) session.refreshValidation();
             var occurrence = typeof facet.getOccurrence === "function" ? facet.getOccurrence() : null;
             var ui = facet.initUI && facet.initUI.getController();
@@ -749,29 +776,29 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                     if (ctrl.container) ctrl.container.style.display = "none";
                     session.controller = ctrl;
                     session.notify();
-                    if (session.status === "error" || session.disposed) return;
+                    if (session.status === "error" || session.disposed || session.transitioning) return;
                     if (session.ruleMode === "code") {
                         ClassAttributeService.findActiveClassByCode(ctrl.PLMNewCommonWebService, {
                             classCode: session.classCode, securityContext: session.context, tenant: session.tenant,
                             libraryTitle: session.libraryTitle,
-                            isCancelled: function () { return session.disposed || session.status === "error"; }
+                            isCancelled: function () { return session.disposed || session.transitioning || session.status === "error"; }
                         }).then(function (rule) {
-                            if (session.disposed || session.status === "error") return;
+                            if (session.disposed || session.transitioning || session.status === "error") return;
                             session.rule = rule;
                             sdxECCAApplyOrganizationClass(ctrl, session);
                         }).catch(function (error) {
-                            if (!session.disposed && session.status !== "error") session.fail(error);
+                            if (!session.disposed && !session.transitioning && session.status !== "error") session.fail(error);
                         });
                     } else if (session.ruleMode === "department") {
                         // 부서 조회는 현재 대화상자 문맥으로 매번 수행하며 전역 사용자/클래스 캐시를 두지 않습니다.
                         ClassRuleService.resolveDepartment({
                             securityContext: session.context, tenant: options.tenant
                         }, OrganizationProvider).then(function (rule) {
-                            if (session.disposed || session.status === "error") return;
+                            if (session.disposed || session.transitioning || session.status === "error") return;
                             session.rule = rule;
                             sdxECCAApplyOrganizationClass(ctrl, session);
                         }).catch(function (error) {
-                            if (!session.disposed && session.status !== "error") session.fail(error);
+                            if (!session.disposed && !session.transitioning && session.status !== "error") session.fail(error);
                         });
                     } else {
                         sdxECCAApplyOrganizationClass(ctrl, session);
@@ -789,7 +816,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
      * classId는 General Class의 physicalid입니다. General Library ID를 넣으면 거부합니다.
      */
     function sdxECCAApplyOrganizationClass(ctrl, session) {
-        if (session.started || session.disposed || session.status === "error") return;
+        if (session.started || session.disposed || session.transitioning || session.status === "error") return;
         session.started = true;
         var service = ctrl.PLMNewCommonWebService;
         session.classId = session.rule.classId;
@@ -797,7 +824,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             id: [session.classId],
             plmNewContextProvider: session.context,
             onComplete: function (response) {
-                if (session.disposed || session.status === "error") return;
+                if (session.disposed || session.transitioning || session.status === "error") return;
                 try {
                     var chains = service.constructPath(response, "idPathChainMap");
                     var chain = chains.get(session.classId);
@@ -812,7 +839,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                     ClassAttributeService.load(service, {
                         classId: session.classId, securityContext: session.context, tenant: session.tenant
                     }).then(function (mandatory) {
-                        if (session.disposed || session.status === "error") return;
+                        if (session.disposed || session.transitioning || session.status === "error") return;
                         session.mandatory = mandatory;
                         var path = service.extractPath(chain);
                         session.classTitle = leaf.label;
@@ -839,11 +866,13 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                         // select 완료는 속성 로딩 완료가 아닙니다. 별도 ClassificationProp 완료 표식을 기다립니다.
                         session.notify();
                     }).catch(function (error) {
-                        if (!session.disposed && session.status !== "error") session.fail(error);
+                        if (!session.disposed && !session.transitioning && session.status !== "error") session.fail(error);
                     });
                 } catch (error) { session.fail(error); }
             },
-            onFailure: function () { session.fail(new Error("지정 클래스 경로 조회에 실패했습니다.")); }
+            onFailure: function () {
+                if (!session.disposed && !session.transitioning) session.fail(new Error("지정 클래스 경로 조회에 실패했습니다."));
+            }
         });
     }
 
@@ -855,7 +884,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     /** 현재 자동 대상 모델에만 세션을 붙입니다. 전역 이벤트만으로 완료를 판정하지 않습니다. */
     function sdxECCATagAutoClassModel(controller, model, classId) {
         var session = controller.sdxECCAAutoSession;
-        if (session && !session.disposed && session.status !== "error" && session.classId === classId) {
+        if (session && !session.disposed && !session.transitioning && session.status !== "error" && session.classId === classId) {
             model.sdxECCAAutoSession = session;
             model.sdxECCAAutoClassId = classId;
         }
@@ -867,7 +896,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     function sdxECCAPrepareClassAttributes(model, response) {
         var session = model && model.sdxECCAAutoSession;
         if (!session) return true;
-        if (session.disposed || session.status === "error") return false;
+        if (session.disposed || session.transitioning || session.status === "error") return false;
         try {
             if (model.sdxECCAAutoClassId !== session.classId || typeof session.mandatory !== "boolean" ||
                 !response || !Array.isArray(response.attribute)) {
@@ -923,7 +952,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
      */
     function sdxECCANotifyAutoClassAttributes(model, response) {
         var session = model && model.sdxECCAAutoSession;
-        if (!session || session.disposed || session.status === "error") return;
+        if (!session || session.disposed || session.transitioning || session.status === "error") return;
         if (!response || !Array.isArray(response.attribute)) {
             session.fail(new Error("클래스 속성 응답의 attribute 배열을 확인해 주세요."));
             return;
