@@ -89,3 +89,7 @@
 기본 입력은 유지하고 분류 영역의 입력/선택은 초기화합니다.
 **AutoClass 전체 파일과 ENONewWidget B3·B4, ClassificationsFacet F2를 함께 갱신**하십시오.
 [검증 결과 및 현장 확인 절차](SECURITY-CONTEXT-VALIDATION.md)를 참고하십시오.
+
+초기 팝업의 자격증명 이벤트에서 발생할 수 있는 동기 재진입을 보완했습니다.
+`sdxECCAAutoClass.js`, `sdxECCAObjectSearch.js`, `sdxECCAAttributeVisibility.js`를 함께 갱신하고,
+기존 B4의 `changeContext` 호출은 유지하십시오. 재초기화는 대화상자 준비 후 실행합니다.
