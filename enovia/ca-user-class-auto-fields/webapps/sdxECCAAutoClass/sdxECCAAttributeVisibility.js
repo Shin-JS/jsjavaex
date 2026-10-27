@@ -43,7 +43,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeVisibility", ["require"], function (
         }
         var disposed = false;
         function isClosed() {
-            return disposed || session.disposed || session.status === "error" ||
+            return disposed || session.disposed || session.transitioning || session.status === "error" ||
                 (session.readCurrentType && session.readCurrentType() !== session.type);
         }
         function requestJson(WAFData, url, method, headers, body) {
