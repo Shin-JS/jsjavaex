@@ -51,6 +51,8 @@ selected([]);assert.equal(changed,1);
 selected([{id:'missing-name'}]);assert.equal(changed,1);assert.match(target.children[1].textContent,/name/);
 selected([{name:'A'},{name:'B'}]);assert.equal(changed,1);
 observer();assert.equal(target.children.length,2); // 같은 폼 재관찰 시 중복 버튼 없음
+session.transitioning=true;selected([{name:'pending-context'}]);assert.equal(changed,1);
+const opened=searches.length;target.children[0].click();assert.equal(searches.length,opened);session.transitioning=false;
 session.status='error';selected([{name:'stale-context'}]);assert.equal(changed,1);
 cleanup();assert.equal(target.children.length,0);assert.equal(destroyed,1);
 selected([{name:'late-result'}]);assert.equal(changed,1);
