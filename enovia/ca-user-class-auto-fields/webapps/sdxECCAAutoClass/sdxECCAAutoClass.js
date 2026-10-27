@@ -59,6 +59,14 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 session.fail(new Error("권한 문맥이 변경되었습니다. 생성 화면을 닫고 다시 열어 주세요."));
             }
         };
+        session.changeContext = function (value) {
+            if (session.disposed || value === session.context) return;
+            if (typeof value !== "string" || !value.trim()) {
+                session.fail(new Error("선택한 권한 문맥을 확인할 수 없습니다."));
+                return;
+            }
+            sdxECCARestartAutoSession(session, value);
+        };
         session.checkType = function (value) {
             if (value !== session.type) {
                 session.fail(new Error("생성 타입이 변경되었습니다. 생성 화면을 다시 열어 주세요."));
@@ -79,12 +87,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             session.listeners.forEach(function (fn) { fn(session); });
             session.listeners.clear();
             if (session.controller && session.controller.sdxECCAAutoSession === session) {
-                (session.controller.classifPropModels || []).forEach(function (model) {
-                    if (model.sdxECCAAutoSession === session) {
-                        delete model.sdxECCAAutoSession;
-                        delete model.sdxECCAAutoClassId;
-                    }
-                });
+                // 모델의 종료 세션 표식은 유지합니다. 늦은 속성 응답도 prepareAttributes에서 거부합니다.
                 delete session.controller.sdxECCAAutoSession;
             }
             session.controller = null;
@@ -130,6 +133,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             }
         } catch (error) { configError = error; }
         var session = sdxECCACreateAutoSession(context, type, rule);
+        session.facetEntries = facetList;
         session.createPolicy = createPolicy === undefined ? widget.getValue("sdxECCACreatePolicy") : createPolicy;
         session.typeDisplay = typeDisplay;
         session.ruleMode = ruleMode;
@@ -144,6 +148,49 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         classification.alwaysCalled = true;
         // 속성/분류/북마크 탭 선택 영역은 OOTB 표시 상태를 유지합니다.
         if (configError) session.fail(configError);
+    }
+
+    /** 새 세션/새 컨트롤러로 교체해 이전 문맥의 모든 콜백과 폼을 격리합니다. */
+    function sdxECCARestartAutoSession(previous, context) {
+        var properties = previous.propertiesFacet, classification = previous.classificationFacet;
+        if (!properties || !classification || typeof classification.sdxECCARebuildUI !== "function") {
+            previous.fail(new Error("권한 문맥 재초기화 연결을 확인해 주세요. ENONewWidget B4와 ClassificationsFacet F2를 함께 적용해야 합니다."));
+            return;
+        }
+        var dialog = previous.dialog || previous.bindingDialog;
+        var entries = previous.facetEntries || [];
+        var next = sdxECCACreateAutoSession(context, previous.type, previous.ruleMode === "fixed" ? previous.rule : null);
+        ["createPolicy", "typeDisplay", "ruleMode", "classCode", "libraryTitle", "tenant", "textAttributePairs"].forEach(function (key) {
+            next[key] = previous[key];
+        });
+        next.facetEntries = entries;
+        // dispose는 이전 제출 콜백/검색/표시 조회/분류 속성 응답을 모두 차단합니다.
+        previous.dispose();
+        clearInterval(classification.sdxECCAAutoTimer);
+        entries.forEach(function (entry) {
+            if (entry.options && entry.options.sdxECCAAutoSession === previous) {
+                entry.options.sdxECCAAutoSession = next;
+                entry.options.securityContext = context;
+            }
+        });
+        [properties, classification].forEach(function (facet) {
+            if (facet.options) {
+                facet.options.sdxECCAAutoSession = next;
+                facet.options.securityContext = context;
+            }
+        });
+        delete properties.sdxECCAAutoBinding;
+        classification.sdxECCAValidationInstalled = false;
+        classification.facetValidation = false;
+        classification.sdxECCAAutoContext = context;
+        classification.sdxECCAAutoSession = next;
+        var options = Object.assign({}, previous.classificationOptions, {sdxECCAAutoSession: next, securityContext: context});
+        try {
+            sdxECCAInstallAutoFields(properties, {sdxECCAAutoSession: next});
+            classification.sdxECCARebuildUI(context);
+            sdxECCAConnectAutoClassification(classification, options);
+            if (dialog) sdxECCABindDialog(dialog);
+        } catch (error) { next.fail(error); }
     }
 
     /** sdxECChangeAction 전용 필드입니다. 숨긴 모델도 만들어 저장 데이터에 값을 유지합니다. */
@@ -269,6 +316,12 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 if (!result) { callback(result); return; }
                 if (session.disposed || session.status === "error") { callback(false); return; }
                 try {
+                    var currentContext = session.readCurrentContext();
+                    if (currentContext !== session.context) {
+                        session.changeContext(currentContext);
+                        callback(false);
+                        return;
+                    }
                     // 이벤트 누락 및 비동기 BL 실행 중 변경도 최종 직렬화 결과로 확인합니다.
                     session.checkContext(session.readCurrentContext());
                     var security = result.defaultAttributes && result.defaultAttributes.SecurityContext;
@@ -297,6 +350,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     function sdxECCAInstallAutoFields(facet, options) {
         var session = options.sdxECCAAutoSession;
         if (!session) return;
+        session.propertiesFacet = facet;
         facet.sdxECCAAutoSession = session;
         facet.sdxECCAAutoDisposed = false;
         try { sdxECCABindCreatePolicy(facet, session); }
@@ -467,9 +521,12 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var session = facet.sdxECCAAutoSession;
         var attrs = options.data && options.data.defaultAttributes;
         if (!session || !attrs) return;
+        // 이전 문맥의 typeInfo 재조회가 늦게 와도 새 세션/속성 모델을 덮어쓰지 않습니다.
+        if (attrs.SecurityContext && attrs.SecurityContext.value !== session.context) return false;
         sdxECCAPrepareFixedType(options.data, session);
         if (attrs.SecurityContext) session.checkContext(attrs.SecurityContext.value);
         if (attrs.Type) session.checkType(attrs.Type.value);
+        return true;
     }
 
     /** 폼을 이동 전 위치로 돌려놓습니다. 기존 폼과 모델은 파괴하지 않습니다. */
@@ -496,6 +553,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     function sdxECCAFindAutoSession(dialog) {
         var facets = dialog.View && dialog.View.facets || dialog.facets || [];
         for (var i = 0; i < facets.length; i++) {
+            if (facets[i].content && facets[i].content.sdxECCAAutoSession) return facets[i].content.sdxECCAAutoSession;
             if (facets[i].options && facets[i].options.sdxECCAAutoSession) return facets[i].options.sdxECCAAutoSession;
         }
         return null;
@@ -506,6 +564,12 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var session = sdxECCAFindAutoSession(dialog);
         if (!session) return true;
         try {
+            // 이벤트가 누락되어도 현재 선택으로 재조회하며, 이번 제출은 반드시 중단합니다.
+            var currentContext = session.readCurrentContext && session.readCurrentContext();
+            if (!session.disposed && currentContext !== session.context) {
+                session.changeContext(currentContext);
+                throw session.error || new Error("변경한 협업공간의 분류 속성을 다시 준비하고 있습니다.");
+            }
             if (session.disposed || session.status !== "ready") {
                 throw session.error || new Error("지정 클래스 속성 준비가 완료되지 않았습니다.");
             }
@@ -626,7 +690,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                     // 입력 오류는 준비 실패로 만들지 않습니다. 값을 고치면 다시 검증됩니다.
                     session.validationError = error;
                 }
-            }
+            } else { unwatch(); }
             session.fieldsValid = valid;
             if (valid) session.validationError = null;
             // 값은 집계에 반영하되 탭 아이콘을 오류 상태로 바꾸는 setFacetValidation은 호출하지 않습니다.
@@ -650,6 +714,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     function sdxECCAConnectAutoClassification(facet, options) {
         var session = options.sdxECCAAutoSession;
         if (!session) return;
+        session.classificationFacet = facet;
+        session.classificationOptions = options;
         facet.sdxECCAAutoSession = session;
         sdxECCAInstallValidationState(facet, session);
         session.tenant = options.tenant || session.tenant;
