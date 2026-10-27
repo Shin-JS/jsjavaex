@@ -252,6 +252,33 @@ for(const typeName of ['Change Action','Change Order','Change Request']) {
  const field={name:'ECPlanText',visible:true};typed.attributes={publicAttributes:[field]};
  api.prepareFixedType(typed,{type:typeName,fail(error){throw error;}});assert.equal(field.visible,true);
 }
+// 숨김 조직 속성은 지정값만 저장하고, 직렬화 누락을 복원하며 중복시키지 않습니다.
+for (const mode of ['unset', 'blank', 'existing', 'omitted', 'missing-group', 'missing-definition']) {
+ config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAFixedClassId:'C1'};
+ const typed=data();typed.defaultAttributes.Type={value:'sdxECChangeAction',range:['sdxECChangeAction'],persistData:[{name:'sdxECChangeAction'}]};
+ const template={name:'sdxECOrganization',value:'initial',visible:false};
+ typed.attributes={publicAttributes:[{name:'sdxECType'}].concat(mode==='missing-definition'?[]:[template])};
+ const entries=metadata();api.attachBridge(typed,entries,{},'sdxECR');const state=entries[0].options.sdxECCAAutoSession;
+ api.prepareFixedType(typed,state);
+ if(mode!=='unset')state.organizationValue=mode==='blank'?'   ':'USER_ORG';
+ let finish;const view={data:typed,onSubmit(callback){finish=callback;}};
+ api.installFields({listview:view,skeleton:new Element()},{sdxECCAAutoSession:state});
+ const outgoing={defaultAttributes:typed.defaultAttributes,attributes:{publicAttributes:[{name:'sdxECOrganization',value:'old',visible:false}]}};
+ if(mode==='missing-definition')outgoing.attributes.publicAttributes=[];
+ if(mode==='omitted')outgoing.attributes.publicAttributes=[];
+ if(mode==='missing-group')delete outgoing.attributes.publicAttributes;
+ let result;view.onSubmit(value=>result=value);finish(outgoing);
+ if(mode==='missing-definition'){assert.equal(result,false);assert.match(state.error.message,/sdxECOrganization/);}
+ else {
+  const rows=result.attributes.publicAttributes;
+  assert.equal(rows.length,1,mode);assert.equal(rows[0].value,['unset','blank'].includes(mode)?'old':'USER_ORG',mode);
+  assert.equal(rows[0].visible,false);assert.equal(template.value,'initial');
+  if(!['unset','blank'].includes(mode))assert.equal(rows[0].modified,true);
+ }
+ state.dispose();
+}
+console.log('PASS: hidden organization serialization supports configured value, omission, unchanged unset value and missing-definition rejection');
+
 // 선택 사항인 모델 필드: 검색어/기본값/BL 값은 저장하지 않고 실제 검색 선택만 반영합니다.
 for(const mode of ['empty','typed','autocomplete','chooser','missing-result-field','wrong-context','disabled']) {
  config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAClassRuleMode:'fixed',sdxECCAFixedClassId:'C1',sdxECCAEnableModelSearch:mode!=='disabled'};
