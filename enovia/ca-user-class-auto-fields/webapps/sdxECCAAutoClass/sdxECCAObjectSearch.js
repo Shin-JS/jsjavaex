@@ -16,7 +16,7 @@ define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", [
         }
         function message(text) { if (mounted) mounted.error.textContent = text; }
         function select(objects) {
-            if (disposed || session.disposed || session.status === "error") return;
+            if (disposed || session.disposed || session.transitioning || session.status === "error") return;
             if (!objects || !objects.length) return; // 취소 시 기존 값 유지
             if (objects.length !== 1) { message("객체를 하나만 선택해 주세요."); return; }
             var value = objects[0][valueField];
@@ -36,10 +36,10 @@ define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", [
             message("");
         }
         function launch() {
-            if (disposed || session.disposed || session.status === "error" || loading) return;
+            if (disposed || session.disposed || session.transitioning || session.status === "error" || loading) return;
             message("");
             function open() {
-                if (disposed || session.disposed) return;
+                if (disposed || session.disposed || session.transitioning) return;
                 try {
                     search.launchSearch({
                         title: "모델 선택", allowedTypes: config.allowedTypes || "",
@@ -53,11 +53,11 @@ define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", [
             // ObjectOpenSearchUtil은 이 번들 안에 정의됩니다. 번들을 먼저 로드해야
             // RequireJS가 존재하지 않는 ObjectOpenSearchUtil.js를 요청하지 않습니다.
             require(["DS/ENOXSearchUIController/ENOXSearchUIController"], function () {
-                if (disposed || session.disposed) { loading = false; return; }
+                if (disposed || session.disposed || session.transitioning) { loading = false; return; }
                 require(["DS/ENOXSearchUIController/ObjectOpenSearchUtil", "DS/EditPropWidget/models/EditPropAttributeModel"], function (SearchUtil, Model) {
                     AttributeModel = Model;
                     loading = false;
-                    if (disposed || session.disposed) return;
+                    if (disposed || session.disposed || session.transitioning) return;
                     try {
                         // AMD export를 직접 초기화하면 다른 화면의 callback/socket을 덮어쓰므로 인스턴스 분리.
                         search = Object.create(SearchUtil);
@@ -83,7 +83,7 @@ define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", [
             mounted = null;
         }
         function mount() {
-            if (disposed || session.disposed) return;
+            if (disposed || session.disposed || session.transitioning) return;
             var current = fieldModel(), target = null;
             var ui = facet.listview && facet.listview.propUI;
             var section = ui && ui.getFormSection && ui.getFormSection();
