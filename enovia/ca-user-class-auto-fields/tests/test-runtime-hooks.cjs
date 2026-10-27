@@ -97,7 +97,7 @@ listOptions.events.onChangeAttribute(event);
 assert.equal(callbackCount,1);assert.equal(received,event);
 assert.deepEqual(order,['publish:SecurityContext','publish:Type','publish:Title','original-callback']);
 order.length=0;
-facet.sdxECCAAutoSession={checkContext:value=>order.push('context:'+value),checkType:value=>order.push('type:'+value)};
+facet.sdxECCAAutoSession={changeContext:value=>order.push('context:'+value),checkType:value=>order.push('type:'+value)};
 listOptions.events.onChangeAttribute(event);
 assert.equal(callbackCount,2);
 assert.deepEqual(order,['context:ctx','publish:SecurityContext','type:sdxECChangeAction','publish:Type','publish:Title','original-callback']);
