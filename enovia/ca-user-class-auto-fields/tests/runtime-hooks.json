@@ -25,11 +25,11 @@
       },
       {
         "from": "updateFacet:function(e){",
-        "to": "updateFacet: function (e) {\n    var sdxECCAApi = sdxECCAGetApi();\n    if (sdxECCAApi) {\n        sdxECCAApi.checkFacetContext(this, e);\n    }\n"
+        "to": "updateFacet: function (e) {\n    var sdxECCAApi = sdxECCAGetApi();\n    if (sdxECCAApi) {\n        if (sdxECCAApi.checkFacetContext(this, e) === false) return;\n    }\n"
       },
       {
         "from": "var o=t.events.onChangeAttribute;t.events.onChangeAttribute=e=>{for(var t in e){var n=e[t];i.publishAttributeInfo(n)}o(e)},t.events.publishAttribute=this.publishAttributeInfo.bind(this),",
-        "to": "var o = t.events.onChangeAttribute;\n\nt.events.onChangeAttribute = e => {\n    for (var t in e) {\n        var n = e[t];\n\n        // [추가] 우리 생성창에 세션이 있을 때만 문맥/유형을 확인합니다.\n        if (i.sdxECCAAutoSession) {\n            if (t === \"New-SecurityContext\") {\n                i.sdxECCAAutoSession.checkContext(n.valueDB);\n            } else if (t === \"New-Type\") {\n                i.sdxECCAAutoSession.checkType(n.valueDB);\n            }\n        }\n\n        // [원본 유지] 항목마다 속성 정보를 발행합니다.\n        i.publishAttributeInfo(n);\n    }\n\n    // [원본 유지] 원래 콜백은 반복문 밖에서 한 번 호출합니다.\n    o(e);\n};\n\nt.events.publishAttribute = this.publishAttributeInfo.bind(this);\n"
+        "to": "var o = t.events.onChangeAttribute;\n\nt.events.onChangeAttribute = e => {\n    for (var t in e) {\n        var n = e[t];\n\n        // [추가] 우리 생성창에 세션이 있을 때만 문맥/유형을 확인합니다.\n        if (i.sdxECCAAutoSession) {\n            if (t === \"New-SecurityContext\") {\n                i.sdxECCAAutoSession.changeContext(n.valueDB);\n            } else if (t === \"New-Type\") {\n                i.sdxECCAAutoSession.checkType(n.valueDB);\n            }\n        }\n\n        // [원본 유지] 항목마다 속성 정보를 발행합니다.\n        i.publishAttributeInfo(n);\n    }\n\n    // [원본 유지] 원래 콜백은 반복문 밖에서 한 번 호출합니다.\n    o(e);\n};\n\nt.events.publishAttribute = this.publishAttributeInfo.bind(this);\n"
       },
       {
         "from": "destroy:function(){this.listview.destroy()",
@@ -67,7 +67,7 @@
       },
       {
         "from": "this.listenToPublishedInfo((function(e,t){if(\"currentSecurityContext\"===e){let e=t.value;securityContext=e}}))}",
-        "to": "this.listenToPublishedInfo(function (e, t) {\n    if (e === \"currentSecurityContext\") {\n        let currentContext = t.value;\n\n        // [원본 유지] 기존 권한 문맥을 갱신합니다.\n        securityContext = currentContext;\n\n        // 전역 자격증명 변경만으로 생성창의 선택 문맥을 갱신하거나 실패시키지 않습니다.\n        // 실제 New-SecurityContext 필드 변경은 ENONewWidget의 checkContext가 검증합니다.\n    }\n});\n\nvar sdxECCAApi = sdxECCAGetApi();\nif (sdxECCAApi) {\n    sdxECCAApi.connectClassification(this, e);\n}\n}"
+        "to": "this.listenToPublishedInfo(function (e, t) {\n    if (e === \"currentSecurityContext\") {\n        let currentContext = t.value;\n\n        // [원본 유지] 기존 권한 문맥을 갱신합니다.\n        securityContext = currentContext;\n\n        // 전역 자격증명 변경만으로 생성창의 선택 문맥을 갱신하거나 실패시키지 않습니다.\n        // 실제 New-SecurityContext 필드 변경은 ENONewWidget의 changeContext가 재초기화합니다.\n    }\n});\n\n// r은 이 factory의 기존 InitClassificationCmpUI 생성자입니다.\n// 새 UI 인스턴스의 속성 조회 context 클로저까지 새 문맥으로 만듭니다.\nthis.sdxECCARebuildUI = function (context) {\n    var oldContainer = this.elements.container;\n    var options = Object.assign({}, e, {securityContext: context});\n    var nextUI = new r;\n    var container = nextUI.getUI(options);\n    if (oldContainer && oldContainer.parentNode) {\n        oldContainer.parentNode.replaceChild(container, oldContainer);\n    }\n    this.initUI = nextUI;\n    this.elements.container = container;\n};\n\nvar sdxECCAApi = sdxECCAGetApi();\nif (sdxECCAApi) {\n    sdxECCAApi.connectClassification(this, e);\n}\n}"
       },
       {
         "from": "return securityContext}",
