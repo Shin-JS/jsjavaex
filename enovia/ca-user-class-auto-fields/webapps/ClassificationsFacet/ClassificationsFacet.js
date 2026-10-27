@@ -65,11 +65,8 @@ this.listenToPublishedInfo(function (e, t) {
         // [원본 유지] 기존 권한 문맥을 갱신합니다.
         securityContext = currentContext;
 
-        // [추가] 우리 생성창의 세션이 있을 때만 함께 확인합니다.
-        if (sdxECCAFacet.sdxECCAAutoSession) {
-            sdxECCAFacet.sdxECCAAutoContext = currentContext;
-            sdxECCAFacet.sdxECCAAutoSession.checkContext(currentContext);
-        }
+        // 전역 자격증명 변경만으로 생성창의 선택 문맥을 갱신하거나 실패시키지 않습니다.
+        // 실제 New-SecurityContext 필드 변경은 ENONewWidget의 checkContext가 검증합니다.
     }
 });
 
