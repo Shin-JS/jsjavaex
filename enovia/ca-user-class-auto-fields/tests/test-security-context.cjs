@@ -48,6 +48,7 @@ const properties={sdxECCAAutoSession:{changeContext:value=>changes.push(value),c
 vm.runInNewContext('(function(){'+listSpec.changes[3].to+'}).call(i)',{t:options,i:properties});
 options.events.onChangeAttribute({'New-SecurityContext':{valueDB:'B'}});
 assert.deepEqual(changes,['B']);assert.deepEqual(order,['publish','original']);
+assert.equal(properties.sdxECCAAutoSession.currentContext,'B');
 console.log('PASS: every distributed hook matches fixture; global credentials preserve active CA context; New-SecurityContext still checks; CO/CR retain OOTB publishing');
 
 // Optional public runtime source: prove the final value reaches the create HTTP header.
