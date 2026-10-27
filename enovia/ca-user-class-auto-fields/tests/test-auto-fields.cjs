@@ -281,6 +281,80 @@ for (const scenario of ['same', 'model-before-submit', 'model-during-BL', 'paylo
 }
 console.log('PASS: current model and serialized context guards reject missed events, BL races, absent/empty payload context and change-back; matching context is retained');
 
+// 실제 세션 교체: 새 controller/UI/context, 오래된 응답과 제출 콜백 격리.
+{
+ function openContextDialog(mode='fixed') {
+  config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAClassRuleMode:mode,sdxECCAFixedClassId:'C1'};
+  const typed=data();typed.defaultAttributes.Type={value:'sdxECChangeAction',range:['sdxECChangeAction'],persistData:[{name:'sdxECChangeAction'}]};typed.attributes={publicAttributes:[{name:'sdxECType'},{name:'ECPlan',value:'keep'}]};
+  const entries=metadata();api.attachBridge(typed,entries,{},'sdxECR');
+  let state=entries[0].options.sdxECCAAutoSession,current=state.context,finish;
+  const view={data:typed,propModel:{get(key){return key==='New-SecurityContext'?{valueDB:current}:undefined;}},onSubmit(callback){finish=callback;}};
+  const props={listview:view,skeleton:new Element()};api.prepareFixedType(typed,state);api.installFields(props,{sdxECCAAutoSession:state});
+  let ui=makeController(state);const all=[ui];const facet=classificationFacet(ui);
+  facet.initUI={getController:()=>({plmNewLibraryActive:ui.ctrl})};
+  facet.sdxECCARebuildUI=function(value){assert.equal(value,this.sdxECCAAutoSession.context);ui=makeController(this.sdxECCAAutoSession);all.push(ui);};
+  api.connectClassification(facet,{sdxECCAAutoSession:state,securityContext:current});
+  const dialog={facets:entries,evaluateValidationStatus(){}};api.bindDialog(dialog);timers.get(state.dialogBindTimer)();
+  function pump(){timers.get(facet.sdxECCAAutoTimer)();}
+  function change(value){current=value;props.sdxECCAAutoSession.changeContext(value);state=props.sdxECCAAutoSession;}
+  async function complete(){ui.request().onComplete({chains:new Map([['C1',[{physicalid:'C1',type:'General Class',label:'Class'}]]])});await flush();const model=ui.ctrl.classifPropModels[0];api.prepareAttributes(model,{attribute:[]});api.notifyAttributesLoaded(model,{attribute:[]});return model;}
+  return {entries,props,facet,dialog,view,all,pump,change,complete,setCurrent(value){current=value;},state:()=>props.sdxECCAAutoSession,ui:()=>ui,finish:()=>finish};
+ }
+ const d=openContextDialog();d.pump();const a=d.state(),oldRequest=d.ui().request();
+ const oldModel=await d.complete();assert.equal(api.canSubmitDialog(d.dialog),true);
+ let oldSubmit;d.view.onSubmit(result=>oldSubmit=result);const pendingSubmit=d.finish();
+ d.change('ctx::Leader.Engineering.B');const b=d.state();
+ assert.notEqual(a,b);assert.equal(a.disposed,true);assert.equal(b.status,'loading');assert.equal(d.facet.facetValidation,false);
+ assert.equal(d.entries[0].options.sdxECCAAutoSession,b);assert.equal(d.entries[1].options.sdxECCAAutoSession,b);
+ assert.equal(d.props.listview.data.attributes.publicAttributes[1].value,'keep');
+ assert.equal(api.canSubmitDialog(d.dialog),false);
+ assert.equal(api.prepareAttributes(oldModel,{attribute:[]}),false); // disposed tombstone still blocks old render
+ oldRequest.onComplete({chains:new Map()});pendingSubmit({defaultAttributes:{SecurityContext:{value:a.context}}});assert.equal(oldSubmit,false);
+ d.pump();assert.equal(d.ui().request().plmNewContextProvider,b.context);await d.complete();assert.equal(api.canSubmitDialog(d.dialog),true);
+ // Shared old A data must never overwrite the B propModel during a late OOTB reload.
+ assert.equal(api.checkFacetContext(d.props,{data:data()}),false);assert.equal(b.status,'ready');
+ let outgoing;d.view.onSubmit(value=>outgoing=value);d.finish()({defaultAttributes:{Type:{value:b.type},SecurityContext:{value:b.context}},attributes:{publicAttributes:[]}});
+ assert.equal(outgoing.defaultAttributes.SecurityContext.value,b.context);
+ d.change('ctx::Leader.Engineering.C');d.pump();const stale=d.ui().request(),c=d.state();
+ d.change(a.context);d.pump();assert.equal(c.disposed,true);assert.notEqual(d.state(),a);
+ stale.onComplete({chains:new Map()});assert.equal(d.ui().selectedCount(),0);await d.complete();assert.equal(api.canSubmitDialog(d.dialog),true);
+ assert.equal(d.all.length,4);d.state().dispose();
+ // Code lookup is executed again with B; A's pending result cannot select or change its rule.
+ const service=modules['DS/sdxECCAAutoClass/sdxECCAClassAttributeService'],original=service.findActiveClassByCode,pending=[];
+ service.findActiveClassByCode=(web,scope)=>new Promise(resolve=>pending.push({scope,resolve}));
+ const code=openContextDialog('code');code.pump();code.change('ctx::Leader.Engineering.B');code.pump();
+ assert.equal(pending.length,2);assert.equal(pending[1].scope.securityContext,code.state().context);
+ assert.equal(pending[0].scope.isCancelled(),true);
+ pending[0].resolve({classId:'OLD'});await flush();assert.equal(code.ui().request(),undefined);
+ pending[1].resolve({classId:'C1'});await flush();await code.complete();assert.equal(api.canSubmitDialog(code.dialog),true);
+ code.state().dispose();service.findActiveClassByCode=original;
+ // Mandatory metadata requested under A arrives after B is already validated.
+ const originalLoad=service.load,attributes=[];
+ service.load=(web,scope)=>new Promise((resolve,reject)=>attributes.push({scope,resolve,reject}));
+ const late=openContextDialog();late.pump();const firstController=late.ui();
+ const path=()=>({chains:new Map([['C1',[{physicalid:'C1',type:'General Class',label:'Class'}]]])});
+ late.ui().request().onComplete(path());late.change('ctx::Leader.Engineering.B');late.pump();late.ui().request().onComplete(path());
+ assert.equal(attributes.length,2);assert.equal(attributes[1].scope.securityContext,late.state().context);
+ attributes[1].resolve(false);await flush();const model=late.ui().ctrl.classifPropModels[0];
+ api.prepareAttributes(model,{attribute:[]});api.notifyAttributesLoaded(model,{attribute:[]});
+ assert.equal(late.state().mandatory,false);assert.equal(api.canSubmitDialog(late.dialog),true);
+ attributes[0].resolve(true);await flush();assert.equal(firstController.selectedCount(),0);assert.equal(late.state().mandatory,false);
+ late.change('ctx::Leader.Engineering.C');late.pump();late.ui().request().onComplete(path());
+ attributes[2].reject(new Error('permission denied in C'));await flush();assert.equal(late.state().status,'error');assert.equal(api.canSubmitDialog(late.dialog),false);
+ late.change('ctx::Leader.Engineering.D');late.pump();late.ui().request().onComplete(path());const closed=late.state();closed.dispose();
+ attributes[3].resolve(true);await flush();assert.equal(late.ui().selectedCount(),0);assert.equal(closed.disposed,true);
+ service.load=originalLoad;
+ // Missing model event at click, or during BL: restart and reject that submit, then allow a fresh validated submit.
+ const missed=openContextDialog();missed.pump();await missed.complete();const first=missed.state();
+ missed.setCurrent('ctx::Leader.Engineering.B');assert.equal(api.canSubmitDialog(missed.dialog),false);assert.equal(first.disposed,true);
+ missed.pump();await missed.complete();assert.equal(api.canSubmitDialog(missed.dialog),true);
+ let rejected;missed.view.onSubmit(result=>rejected=result);const beforeBL=missed.state();
+ missed.setCurrent('ctx::Leader.Engineering.C');missed.finish()({defaultAttributes:{SecurityContext:{value:beforeBL.context}}});
+ assert.equal(rejected,false);assert.equal(beforeBL.disposed,true);missed.pump();await missed.complete();assert.equal(api.canSubmitDialog(missed.dialog),true);
+ missed.state().dispose();
+ console.log('PASS: context restart creates new session/controller, blocks submit while loading, re-queries code/paths/attributes with B, preserves base input, ignores A/B/C late data and submit, and allows validated B or fresh A submit');
+}
+
 // 모델 직렬화 후 정책이 Change Action으로 돌아가도 최종 콜백에서 복구합니다.
 {
  const cases=[];
