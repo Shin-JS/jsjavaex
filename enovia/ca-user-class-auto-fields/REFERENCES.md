@@ -90,3 +90,8 @@ ClassifPropModel의 onChangeAttributes 이벤트를 사용하고 화면 종료 �
 
 참조 저장소 기본 브랜치 main에는 소스가 없으므로 원본은 명시적으로 master에서 조회했습니다.
 이는 공개 런타임 소스 대조이며 설치 서버의 검색 서비스/응답 실행 검증은 아닙니다.
+
+## 2026-10-27 검색 선택 전용 자동완성
+
+사용자가 지정한 private-rag의 2025/2024 Route Management와 2025 WUX/속성/6W 검색 모듈을
+읽고 대조했습니다. 정확한 경로·blob SHA·실행 검사 및 적용 범위는 [MODEL-SEARCH.md](MODEL-SEARCH.md)에 정리했습니다.
