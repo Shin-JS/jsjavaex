@@ -352,6 +352,23 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         });
     }
 
+    /** 조직값 출처 확정 후 session.organizationValue에 넣습니다. 미지정이면 기존 값을 유지합니다. */
+    function sdxECCAPrepareOrganization(result, session, view) {
+        var value = session.organizationValue;
+        if (typeof value !== "string" || !value.trim()) return;
+        var original = view.data && view.data.attributes && view.data.attributes.publicAttributes;
+        var field = Array.isArray(original) && original.find(function (item) {
+            return item && item.name === "sdxECOrganization";
+        });
+        if (!result.attributes) result.attributes = {};
+        var rows = result.attributes.publicAttributes;
+        if (!Array.isArray(rows)) rows = result.attributes.publicAttributes = [];
+        var index = rows.findIndex(function (item) { return item && item.name === "sdxECOrganization"; });
+        if (!field && index < 0) throw new Error("sdxECOrganization 속성 정의를 찾지 못했습니다.");
+        var updated = Object.assign({}, field, index >= 0 ? rows[index] : null, {value: value, modified: true});
+        if (index >= 0) rows[index] = updated; else rows.push(updated);
+    }
+
     /** OOTB BL/모델 직렬화가 끝난 콜백에서 문맥·정책·모델 선택값을 확정합니다. */
     function sdxECCABindCreatePolicy(facet, session) {
         if (session.type !== "sdxECChangeAction" || facet.sdxECCAPolicySubmitBinding) return;
@@ -397,6 +414,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                     sdxECCAPreparePolicy(result, session);
                     // BL이나 기본 tweaker가 전달한 임의 입력은 최종 요청에서도 저장하지 않습니다.
                     sdxECCAPrepareModelSelection(result, session, view);
+                    sdxECCAPrepareOrganization(result, session, view);
                     sdxECCACopyTextAttributes(result, session);
                 } catch (error) {
                     session.fail(error);
