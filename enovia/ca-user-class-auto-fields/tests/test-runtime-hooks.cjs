@@ -102,7 +102,7 @@ listOptions.events.onChangeAttribute(event);
 assert.equal(callbackCount,2);
 assert.deepEqual(order,['context:ctx','publish:SecurityContext','type:sdxECChangeAction','publish:Type','publish:Title','original-callback']);
 listOptions.events.publishAttribute({name:'Bound'});assert.equal(order.at(-1),'publish:Bound');
-// Classifications F2/F3: the expanded subscription preserves normal context and updates target sessions.
+// Classifications F2/F3: global credentials update only the ordinary facet context.
 const facetId='DS/ClassificationsFacet/PLMNewClassificationFacet';
 const facetArgs=patched.get(facetId).deps.map(()=>({}));
 facetArgs[0]={extend:(...args)=>args.at(-1)};
@@ -117,7 +117,8 @@ contextCallback('currentSecurityContext',{value:'normal-ctx'});
 assert.equal(classification.plmNewContextProvider(),'normal-ctx');
 const contextChecks=[];
 classification.sdxECCAAutoSession={checkContext:value=>contextChecks.push(value)};
+classification.sdxECCAAutoContext='initial-ctx';
 contextCallback('currentSecurityContext',{value:'target-ctx'});
 assert.deepEqual(contextChecks,[], 'global credential updates must not invalidate the open CA dialog');
-assert.equal(classification.plmNewContextProvider(),'target-ctx');
+assert.equal(classification.plmNewContextProvider(),'initial-ctx');
 console.log('PASS: four actual 2025 bundles parse; original AMD dependencies retained; normal creation works without custom files; late runtime loading; scoped sessions; 2025 submit recovery; custom failure contained.');
