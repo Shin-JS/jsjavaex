@@ -19,6 +19,7 @@ const provider=facetSpec.changes[2].to;
 // F2 has the closing brace of init; F3 has that of plmNewContextProvider.
 const setup=vm.runInNewContext('(function(){let securityContext="A";return {init:function(e){'+
  'var sdxECCAFacet=this;'+subscription+',provider:function(){'+provider+'};})()',{
+ r:class {getUI(options){this.context=options.securityContext;return {context:options.securityContext};}},
  sdxECCAGetApi:()=>({connectClassification(facet,options){
   if(options.sdxECCAAutoSession){facet.sdxECCAAutoSession=options.sdxECCAAutoSession;facet.sdxECCAAutoContext=options.sdxECCAAutoSession.context;}
  }})
@@ -29,6 +30,12 @@ const facet=Object.assign({},setup,{listenToPublishedInfo(fn){published=fn;}});
 facet.init({sdxECCAAutoSession:{context:'A',checkContext:value=>checks.push(value)}});
 for(const value of ['B','C','A']){published('currentSecurityContext',{value});assert.equal(facet.provider(),'A');}
 assert.deepEqual(checks,[]);
+let replacement;
+const oldContainer={parentNode:{replaceChild(next,old){assert.equal(old,oldContainer);replacement=next;}}};
+facet.elements={container:oldContainer};
+facet.sdxECCARebuildUI('B');const firstUI=facet.initUI;
+assert.equal(firstUI.context,'B');assert.equal(replacement,facet.elements.container);
+facet.sdxECCARebuildUI('C');assert.notEqual(facet.initUI,firstUI);assert.equal(facet.initUI.context,'C');assert.equal(firstUI.context,'B');
 // Non-target CO/CR facets retain OOTB global credential behavior.
 for(const type of ['Change Order','Change Request']) {
  const ordinary=Object.assign({},setup,{listenToPublishedInfo(fn){published=fn;}});
@@ -37,7 +44,7 @@ for(const type of ['Change Order','Change Request']) {
 const listSpec=specs['DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet'];
 const changes=[],order=[];
 const options={events:{onChangeAttribute(){order.push('original');}}};
-const properties={sdxECCAAutoSession:{checkContext:value=>changes.push(value),checkType(){}},publishAttributeInfo(){order.push('publish');}};
+const properties={sdxECCAAutoSession:{changeContext:value=>changes.push(value),checkType(){}},publishAttributeInfo(){order.push('publish');}};
 vm.runInNewContext('(function(){'+listSpec.changes[3].to+'}).call(i)',{t:options,i:properties});
 options.events.onChangeAttribute({'New-SecurityContext':{valueDB:'B'}});
 assert.deepEqual(changes,['B']);assert.deepEqual(order,['publish','original']);
