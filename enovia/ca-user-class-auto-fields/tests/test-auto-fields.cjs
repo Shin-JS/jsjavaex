@@ -252,6 +252,30 @@ for(const typeName of ['Change Action','Change Order','Change Request']) {
  const field={name:'ECPlanText',visible:true};typed.attributes={publicAttributes:[field]};
  api.prepareFixedType(typed,{type:typeName,fail(error){throw error;}});assert.equal(field.visible,true);
 }
+// 선택 사항인 모델 필드: 검색어/기본값/BL 값은 저장하지 않고 실제 검색 선택만 반영합니다.
+for(const mode of ['empty','typed','autocomplete','chooser','missing-result-field','wrong-context','disabled']) {
+ config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAClassRuleMode:'fixed',sdxECCAFixedClassId:'C1',sdxECCAEnableModelSearch:mode!=='disabled'};
+ const typed=data();typed.defaultAttributes.Type={value:'sdxECChangeAction',range:['sdxECChangeAction'],persistData:[{name:'sdxECChangeAction'}]};
+ typed.attributes={publicAttributes:[{name:'sdxECType'},{name:'sdxECModel',value:'unselected-default',mandatory:false},{name:'sdxECModelText',value:'old-text'}]};
+ const entries=metadata();api.attachBridge(typed,entries,{},'sdxECR');const state=entries[0].options.sdxECCAAutoSession;
+ api.prepareFixedType(typed,state);let finish;const view={data:typed,onSubmit(callback){finish=callback;}};
+ api.installFields({listview:view,skeleton:new Element()},{sdxECCAAutoSession:state});
+ if(['autocomplete','chooser','wrong-context'].includes(mode))state.modelSearchSelection={id:'PID',type:'sdxMTopAssy',context:mode==='wrong-context'?'OTHER':state.context,value:'SELECTED'};
+ let result;view.onSubmit(value=>result=value);
+ const outgoing={defaultAttributes:typed.defaultAttributes,attributes:{publicAttributes:[{name:'sdxECModel',value:mode==='empty'?'':'raw-keyboard-or-BL',mandatory:false}]}};
+ if(mode==='missing-result-field')outgoing.attributes.publicAttributes=[];
+ finish(outgoing);
+ if(mode==='wrong-context'){assert.equal(result,false);assert.equal(state.status,'error');}
+ else {
+  const field=result.attributes.publicAttributes.find(item=>item.name==='sdxECModel');
+  const value=['autocomplete','chooser'].includes(mode)?'SELECTED':mode==='disabled'?'raw-keyboard-or-BL':'';
+  assert.equal(field.value,value,mode);assert.equal(field.mandatory,false);
+  assert.equal(result.attributes.publicAttributes.find(item=>item.name==='sdxECModelText').value,value,mode+' paired Text');
+ }
+ state.dispose();
+}
+console.log('PASS: optional model search serializer clears unselected/default/typed/BL values, stores valid selections, rejects stale scope, restores omitted field, synchronizes paired Text and respects disabled mode');
+
 // 전역 이벤트와 무관하게 현재 모델/최종 직렬화 문맥을 각각 검증합니다.
 for (const scenario of ['same', 'model-before-submit', 'model-during-BL', 'payload', 'missing', 'missing-value', 'null-value', 'missing-defaults', 'empty', 'event']) {
  config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAClassRuleMode:'fixed',sdxECCAFixedClassId:'C1'};
