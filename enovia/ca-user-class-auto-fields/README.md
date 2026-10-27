@@ -17,7 +17,7 @@
 
 기존에 추가했던 브리지·함수·AMD 의존성·호출이 남아 있지 않은 상태를 기준으로 합니다. 이미 원복하셨다면 아래 순서대로 처음부터 적용하면 됩니다. 서버의 타입·속성·policy, 발번 JPO·트리거는 원복하지 않습니다.
 
-## 1. 커스텀 JS 여섯 개를 전체 배포
+## 1. 커스텀 JS 일곱 개를 전체 배포
 
 아래 파일은 새로 작성한 커스텀 코드이므로 GitHub의 **파일 전체 내용**을 사용합니다. `webapps` 이하의 폴더 구조 그대로 서버의 `3dspace/webapps` 아래에 배치합니다.
 
@@ -28,7 +28,8 @@
 | [sdxECCAAutoClass/sdxECCAClassRuleService.js](webapps/sdxECCAAutoClass/sdxECCAClassRuleService.js) | 클래스 결정 규칙 |
 | [sdxECCAAutoClass/sdxECCAOrganizationProvider.js](webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js) | 부서 조회 연결용. 현재 code 모드에서는 부서 조회하지 않음 |
 | [sdxECCAAutoClass/sdxECCAClassAttributeService.js](webapps/sdxECCAAutoClass/sdxECCAClassAttributeService.js) | 클래스 코드·필수 설정 조회 |
-| [sdxECCAAutoClass/sdxECCAObjectSearch.js](webapps/sdxECCAAutoClass/sdxECCAObjectSearch.js) | sdxECModel 검색 |
+| [sdxECCAAutoClass/sdxECCAObjectSearch.js](webapps/sdxECCAAutoClass/sdxECCAObjectSearch.js) | sdxECModel 자동완성·돋보기 선택 |
+| [sdxECCAAutoClass/sdxECCAModelSearchService.js](webapps/sdxECCAAutoClass/sdxECCAModelSearchService.js) | sdxMTopAssy 후보 조회 및 결과 정규화 |
 
 이미 같은 최신 커스텀 파일이 배포되어 있다면 유지할 수 있습니다. `sdxECCA.js`에 OOTB 내용을 이어 붙이지 않습니다.
 
@@ -93,3 +94,10 @@
 초기 팝업의 자격증명 이벤트에서 발생할 수 있는 동기 재진입을 보완했습니다.
 `sdxECCAAutoClass.js`, `sdxECCAObjectSearch.js`, `sdxECCAAttributeVisibility.js`를 함께 갱신하고,
 기존 B4의 `changeContext` 호출은 유지하십시오. 재초기화는 대화상자 준비 후 실행합니다.
+
+## sdxECModel 검색 선택 전용 — 2026-10-27
+
+필드는 선택 사항으로 유지합니다. 자동완성 후보 또는 돋보기에서 선택한 `sdxMTopAssy` 값만 저장하며,
+직접 입력한 검색어는 저장하지 않습니다. 선택 후 다시 입력하면 기존 선택을 해제합니다.
+AutoClass·ObjectSearch 갱신과 새 ModelSearchService 배포가 필요합니다.
+[배포·참조 소스·검사 결과](MODEL-SEARCH.md)를 참고하십시오. Searchable 서비스 배포는 필요하지 않습니다.
