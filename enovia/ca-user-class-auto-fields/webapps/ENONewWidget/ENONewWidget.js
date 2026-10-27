@@ -124,7 +124,7 @@ updateFacet:function(e){
 updateFacet: function (e) {
     var sdxECCAApi = sdxECCAGetApi();
     if (sdxECCAApi) {
-        sdxECCAApi.checkFacetContext(this, e);
+        if (sdxECCAApi.checkFacetContext(this, e) === false) return;
     }
 
 */
@@ -151,7 +151,7 @@ t.events.onChangeAttribute = e => {
         // [추가] 우리 생성창에 세션이 있을 때만 문맥/유형을 확인합니다.
         if (i.sdxECCAAutoSession) {
             if (t === "New-SecurityContext") {
-                i.sdxECCAAutoSession.checkContext(n.valueDB);
+                i.sdxECCAAutoSession.changeContext(n.valueDB);
             } else if (t === "New-Type") {
                 i.sdxECCAAutoSession.checkType(n.valueDB);
             }
