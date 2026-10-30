@@ -5,7 +5,7 @@ define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", ["require"], function (require
     function install(facet, session, config) {
         if (session.type !== "sdxECChangeAction" || config.enabled === false || config.enabled === "false") return function () {};
         var disposed = false, search = null, loading = false, observer = null, mounted = null, toolkit = null;
-        var inputRevision = 0, requestNumber = 0, chooserNumber = 0, candidates = new Map(), synchronizing = false;
+        var inputRevision = 0, requestNumber = 0, chooserNumber = 0, detailNumber = 0, candidates = new Map(), synchronizing = false;
         var valueField = config.valueField || "name";
         function closed() { return disposed || session.disposed || session.transitioning || session.status === "error"; }
         function read(field, key) {
@@ -27,7 +27,10 @@ define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", ["require"], function (require
             updated.set("isModified", true); updated.set("isUIModified", true);
             facet.listview.propModel.set(current.getIdentifier(), updated);
         }
-        function forget() { session.modelSearchSelection = null; write(""); }
+        function forget() {
+            detailNumber++; session.modelSearchLoading = false;
+            session.modelSearchSelection = null; write("");
+        }
         function syncNode(record) {
             if (!mounted || !mounted.auto) return;
             synchronizing = true;
@@ -48,9 +51,33 @@ define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", ["require"], function (require
             if (!record || record.type !== MODEL_TYPE || typeof value !== "string" || !value) {
                 message("검색 결과에 저장할 " + valueField + " 값이 없습니다."); return;
             }
-            session.modelSearchSelection = {id: record.id, type: MODEL_TYPE, value: value, context: session.context, record: record};
             requestNumber++; chooserNumber++;
-            write(value); syncNode(record); message("");
+            forget();
+            var number = detailNumber, revision = inputRevision, context = session.context;
+            function stale() { return closed() || number !== detailNumber || revision !== inputRevision || context !== session.context; }
+            session.modelSearchLoading = true;
+            syncNode(record); message("모델 속성을 조회하고 있습니다.");
+            Promise.resolve().then(function () {
+                if (stale()) return null;
+                return toolkit.Service.readAttributes({id: record.id, tenant: session.tenant,
+                    securityContext: context, isCancelled: stale});
+            }).then(function (details) {
+                if (stale() || !details) return;
+                current = fieldModel();
+                if (!current || read(current, "readOnly") || read(current, "visible") === false) {
+                    forget(); return;
+                }
+                record = Object.assign({}, record, {name: details.name, attributes: details.attributes});
+                value = record[valueField];
+                if (typeof value !== "string" || !value) throw new Error("모델의 저장값을 확인해 주세요.");
+                // 필드별 자동 채움은 여기서 record.attributes["속성명"]을 사용합니다.
+                session.modelSearchSelection = {id: record.id, type: MODEL_TYPE, value: value, context: context, record: record};
+                session.modelSearchLoading = false;
+                write(value); syncNode(record); message("");
+            }).catch(function (error) {
+                if (stale()) return;
+                forget(); syncNode(null); message(error.message || "모델 속성을 조회하지 못했습니다.");
+            });
         }
         function onSelection() {
             if (closed() || synchronizing || !mounted || !mounted.auto) return;
@@ -123,7 +150,7 @@ define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", ["require"], function (require
         }
         function unmount() {
             if (!mounted) return;
-            inputRevision++; requestNumber++; chooserNumber++; candidates.clear();
+            inputRevision++; requestNumber++; chooserNumber++; detailNumber++; session.modelSearchLoading = false; candidates.clear();
             mounted.button.removeEventListener("click", launch);
             if (mounted.auto) {
                 var content = mounted.auto.getContent();
@@ -222,7 +249,7 @@ define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", ["require"], function (require
             if (observer) observer.disconnect();
             unmount();
             if (search && search.socket) search.destroy();
-            search = null; session.modelSearchSelection = null;
+            search = null; session.modelSearchSelection = null; session.modelSearchLoading = false;
         };
     }
     return {install: install};

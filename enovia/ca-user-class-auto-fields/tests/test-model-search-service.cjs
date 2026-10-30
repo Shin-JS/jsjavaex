@@ -3,7 +3,7 @@ const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('nod
 let api,lookup,request,body,mode='ok',response;
 const data=()=>({results:[{attributes:[{name:'resourceid',value:'PID'},{name:'ds6w:identifier',value:'MODEL'},{name:'ds6w:label',value:'Model title'},{name:'ds6w:type',value:'sdxMTopAssy'}]}]});
 vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAModelSearchService.js'),'utf8'),{Map,Set,Promise,
- define(id,deps,factory){api=factory({authenticatedRequest(url,options){request={url,options};body=JSON.parse(options.data);if(mode==='failure')options.onFailure();else if(mode==='timeout')options.onTimeout();else options.onComplete(response);}},
+ define(id,deps,factory){api=factory({authenticatedRequest(url,options){request={url,options};body=options.data?JSON.parse(options.data):null;if(mode==='failure')options.onFailure();else if(mode==='timeout')options.onTimeout();else options.onComplete(response);}},
  {getServiceUrl(options){lookup=options;if(mode==='service-failure')options.onFailure();else if(mode==='service-array')options.onComplete([{platformId:'OTHER',url:'https://wrong'},{platformId:'OnPremise',url:'https://search/'}]);else options.onComplete('https://search/');}});}
 });
 const scope={query:'MODEL',tenant:'OnPremise',securityContext:'ctx::Leader.Org.Space'};
@@ -22,5 +22,21 @@ const scope={query:'MODEL',tenant:'OnPremise',securityContext:'ctx::Leader.Org.S
  await assert.rejects(api.search({...scope,securityContext:''}));await assert.rejects(api.search({...scope,tenant:''}));
  await api.search({...scope,query:'A") OR type:*'});assert.match(body.query,/A\\"\\\) OR type\\:\\\*/);
  assert.equal(api.normalize({id:'p',name:'N',type:'Wrong'}),null);assert.equal(api.normalize({id:'p'}),null);
+
+ const detailScope={id:'PID',tenant:scope.tenant,securityContext:scope.securityContext};
+ const detailResponse={success:true,id:'1.2.3.4',physicalid:'PID',name:'MODEL',type:'sdxMTopAssy',attributes:{Description:'한글',Empty:'',Codes:['A','B']}};
+ response=detailResponse;let details=await api.readAttributes(detailScope);
+ assert.equal(lookup.serviceName,'3DSpace');assert.equal(request.options.method,'GET');assert.equal(request.options.headers.SecurityContext,encodeURIComponent(scope.securityContext));
+ assert.match(request.url,/models\/PID\/attributes$/);assert.equal(details.attributes.Description,'한글');assert.deepEqual(details.attributes.Codes,['A','B']);
+ response=JSON.stringify(detailResponse);assert.equal((await api.readAttributes({...detailScope,id:'1.2.3.4'})).name,'MODEL');
+ for(const changes of [{physicalid:'OTHER'},{type:'Other'},{success:false},{attributes:[]},{name:''}]){
+   response={...detailResponse,...changes};await assert.rejects(api.readAttributes(detailScope));
+ }
+ request=null;assert.equal(await api.readAttributes({...detailScope,isCancelled:()=>true}),null);assert.equal(request,null);
+ for(const changes of [{id:'bad/id'},{id:''},{tenant:''},{securityContext:''}])await assert.rejects(api.readAttributes({...detailScope,...changes}));
+ response=detailResponse;
+ for(mode of ['failure','timeout','service-failure'])await assert.rejects(api.readAttributes(detailScope));
+ mode='ok';
+ assert.equal(api.normalize({id:'PID',name:'MODEL','ds6w:type':'표시명','ds6w:type_value':'sdxMTopAssy'}).type,'sdxMTopAssy');
  console.log('PASS: scoped 3DSearch discovery, fixed model type, safe query terms, response normalization/deduplication, empty/error/timeout/cancellation handling');
 })().catch(error=>{console.error(error);process.exitCode=1;});

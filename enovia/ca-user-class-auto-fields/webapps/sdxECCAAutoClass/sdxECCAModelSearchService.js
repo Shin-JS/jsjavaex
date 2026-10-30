@@ -87,5 +87,51 @@ define("DS/sdxECCAAutoClass/sdxECCAModelSearchService", [
             });
         });
     }
-    return {search: search, normalize: normalize, modelType: MODEL_TYPE};
+    /** 3DSearch의 색인값 대신 선택 객체의 최신 전체 속성값을 3DSpace에서 읽습니다. */
+    function readAttributes(request) {
+        if (!request || !/^[A-Za-z0-9.-]{1,128}$/.test(text(request.id)) ||
+                !text(request.securityContext).trim() || !text(request.tenant).trim()) {
+            return Promise.reject(new Error("모델 속성 조회의 ID와 권한 문맥을 확인해 주세요."));
+        }
+        var id = request.id, context = request.securityContext, tenant = request.tenant;
+        function cancelled() { return request.isCancelled && request.isCancelled(); }
+        return new Promise(function (resolve, reject) {
+            Compass.getServiceUrl({serviceName: "3DSpace", platformId: tenant,
+                onComplete: function (response) {
+                    var url = typeof response === "string" ? response : "";
+                    if (Array.isArray(response)) {
+                        var match = response.find(function (item) { return item.platformId === tenant; });
+                        url = match && match.url;
+                    }
+                    if (!url) { reject(new Error("모델 속성 조회 서비스를 찾지 못했습니다.")); return; }
+                    resolve(url.replace(/\/$/, ""));
+                },
+                onFailure: function () { reject(new Error("모델 속성 조회 서비스를 찾지 못했습니다.")); }
+            });
+        }).then(function (base) {
+            if (cancelled()) return null;
+            return new Promise(function (resolve, reject) {
+                WAFData.authenticatedRequest(base + "/resources/v1/modeler/sdxECCA/models/" + encodeURIComponent(id) + "/attributes", {
+                    method: "GET", type: "json", timeout: 10000,
+                    auth: {passport_target: "enovia"}, proxy: "passport", authentication: "passport",
+                    headers: {Accept: "application/json", SecurityContext: encodeURIComponent(context)},
+                    onComplete: function (response) {
+                        try {
+                            if (cancelled()) { resolve(null); return; }
+                            if (typeof response === "string") response = JSON.parse(response);
+                            if (!response || response.success !== true || response.type !== MODEL_TYPE ||
+                                    (response.id !== id && response.physicalid !== id) || !text(response.name) ||
+                                    !response.attributes || typeof response.attributes !== "object" || Array.isArray(response.attributes)) {
+                                throw new Error("모델 속성 조회 응답을 확인해 주세요.");
+                            }
+                            resolve(response);
+                        } catch (error) { reject(error); }
+                    },
+                    onFailure: function () { reject(new Error("모델 속성을 조회하지 못했습니다. 객체 접근 권한과 서비스 배포를 확인해 주세요.")); },
+                    onTimeout: function () { reject(new Error("모델 속성 조회 시간이 초과되었습니다.")); }
+                });
+            });
+        });
+    }
+    return {search: search, normalize: normalize, readAttributes: readAttributes, modelType: MODEL_TYPE};
 });

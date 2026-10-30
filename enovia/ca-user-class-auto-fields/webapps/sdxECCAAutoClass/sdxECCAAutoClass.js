@@ -333,6 +333,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     /** 선택 사항인 모델 필드는 실제 검색 선택 또는 빈 값만 최종 저장에 반영합니다. */
     function sdxECCAPrepareModelSelection(result, session, view) {
         if (!session.modelSearchEnabled) return;
+        if (session.modelSearchLoading) throw new Error("모델 속성 조회가 끝난 뒤 저장해 주세요.");
         var selected = session.modelSearchSelection;
         if (selected && (selected.context !== session.context || selected.type !== "sdxMTopAssy" ||
             typeof selected.id !== "string" || !selected.id || typeof selected.value !== "string" || !selected.value)) {
@@ -1086,5 +1087,6 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         configureCreateType: sdxECCAConfigureFixedCreateType
     };
 });
+
 
 

@@ -8,6 +8,6 @@ import jakarta.ws.rs.ApplicationPath;
 public class SdxEccaModeler extends ModelerBase {
     @Override
     public Class<?>[] getServices() {
-        return new Class<?>[] { SdxEccaAttributeService.class };
+        return new Class<?>[] { SdxEccaAttributeService.class, SdxEccaModelService.class };
     }
 }

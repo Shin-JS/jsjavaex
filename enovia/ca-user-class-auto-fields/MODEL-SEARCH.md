@@ -32,7 +32,7 @@
 3. 새 파일 `webapps/sdxECCAAutoClass/sdxECCAModelSearchService.js` 배포.
 4. 우리 위젯 HTML 설정의 `sdxECCAModelSearchTypes`를 `sdxMTopAssy`로 갱신.
 
-Java/JSP/데이터 모델 변경은 추가하지 않았습니다. 조회 계층은 새 ModelSearchService,
+검색 후보 조회 계층은 ModelSearchService,
 UI와 선택 상태는 ObjectSearch, 최종 저장값 검증은 AutoClass로 분리했습니다.
 공통 ENORouteMgmt 서비스/Bootstrap 인스턴스를 재사용하거나 전역 자격증명을 변경하지 않습니다.
 
@@ -66,3 +66,54 @@ SecurityContext를 요청의 login 범위에 전달합니다. 돋보기는 기�
 아무 입력 없이 저장, 최종 Create 요청 및 실제 객체의 sdxECModel/짝 Text 값을 확인해야 합니다.
 특히 캡처 단계에서 선택을 해제한 뒤 OOTB LineEditor가 검색어를 읽는 동작, 모달 내 후보 목록 위치,
 설치 서버의 sdxMTopAssy 색인과 응답 필드, 돋보기의 실제 결과 구조를 확인하십시오.
+
+## 선택 객체의 전체 속성 조회
+
+자동완성/돋보기에서 하나를 선택하면 해당 ID로 다음 Java 서비스를 호출합니다.
+
+`GET /resources/v1/modeler/sdxECCA/models/{objectId}/attributes`
+
+현재 인증 사용자와 생성창의 SecurityContext로 `sdxMTopAssy` 객체를 읽습니다.
+관리자 권한으로 전환하지 않습니다. `DomainObject.getAttributeMap(context)`으로
+이 객체의 상속/부착 interface 속성값을 조회합니다. 관계 속성 및 연결 객체 속성은 포함하지 않습니다.
+기본 정보는 `id`, `physicalid`, `type`, `name`이며 실제 속성값은 `attributes` 객체에 담습니다.
+
+```json
+{
+  "success": true,
+  "id": "1.2.3.4",
+  "physicalid": "선택한 physical ID",
+  "type": "sdxMTopAssy",
+  "name": "MODEL-001",
+  "attributes": {"sdxModelCode": "CODE-001", "Title": "모델명"}
+}
+```
+
+### 필드별 값 반영 위치
+
+`sdxECCAObjectSearch.js`의 `accept(record)` 내부 `then(function (details) {...})`에서
+`record.attributes`를 설정한 다음 주석 위치에 필드별 반영 코드를 작성합니다.
+
+```javascript
+var modelCode = record.attributes["sdxModelCode"];
+// 위 값을 대상 propModel의 value/valueDB에 설정합니다.
+```
+
+조회 완료 이후 `session.modelSearchSelection.record.attributes`로도 접근할 수 있습니다.
+자동 매핑할 대상 필드/속성명은 아직 지정하지 않았으므로 매핑 코드는 추가하지 않았습니다.
+조회 중에는 저장을 막고, 조회 실패 시 선택을 비웁니다. 다른 선택/입력 변경/문맥 전환/
+창 종료/재렌더링 후 도착한 이전 응답은 적용하지 않습니다.
+
+### 추가 배포 파일
+
+- `server/src/com/sdx/ecca/rest/SdxEccaModelService.java` (신규)
+- `server/src/com/sdx/ecca/rest/SdxEccaModeler.java` (서비스 등록 추가)
+- `webapps/sdxECCAAutoClass/sdxECCAModelSearchService.js`
+- `webapps/sdxECCAAutoClass/sdxECCAObjectSearch.js`
+- `webapps/sdxECCAAutoClass/sdxECCAAutoClass.js` (조회 중 저장 방지)
+
+Java 파일은 기존 커스텀 REST 서비스와 같은 방식으로 컴파일/배포해야 합니다.
+이 개발 환경에는 Java 컴파일러와 ENOVIA 라이브러리가 없어 Java 실제 컴파일/호출 검증은
+수행하지 못했습니다. 현장에서 객체 읽기 권한, physical ID와 bus ID 조회, 한글/빈 속성,
+상속/interface 속성 포함 여부를 확인하십시오. JavaScript 대역 검사에서는 두 선택 경로,
+전체 속성 전달, 역순 응답, 선택 해제, 조회 실패, 권한 문맥 변경을 확인했습니다.
