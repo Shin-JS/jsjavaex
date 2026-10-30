@@ -16,7 +16,7 @@ define("DS/sdxECCAAutoClass/sdxECCAModelSearchService", [
         (Array.isArray(object.attributes) ? object.attributes : []).forEach(function (attribute) {
             if (attribute && typeof attribute.name === "string") data[attribute.name] = attribute.value;
         });
-        var type = text(data.type) || text(data.objectType) || text(data["ds6w:type"]);
+        var type = text(data["ds6w:type_value"]) || text(data.type) || text(data.objectType) || text(data["ds6w:type"]);
         if (type && type !== MODEL_TYPE) return null;
         var id = text(data.id) || text(data.physicalid) || text(data.physicalID) || text(data.resourceid);
         var name = text(data.name) || text(data["ds6w:identifier"]);
