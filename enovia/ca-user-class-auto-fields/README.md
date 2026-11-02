@@ -92,7 +92,7 @@
 [검증 결과 및 현장 확인 절차](SECURITY-CONTEXT-VALIDATION.md)를 참고하십시오.
 
 초기 팝업의 자격증명 이벤트에서 발생할 수 있는 동기 재진입을 보완했습니다.
-`sdxECCAAutoClass.js`, `sdxECCAObjectSearch.js`, `sdxECCAAttributeVisibility.js`를 함께 갱신하고,
+`sdxECCAAutoClass.js`, `sdxECCAObjectSearch.js`를 함께 갱신하고,
 기존 B4의 `changeContext` 호출은 유지하십시오. 재초기화는 대화상자 준비 후 실행합니다.
 
 ## sdxECModel 검색 선택 전용 — 2026-10-27
@@ -105,3 +105,12 @@ AutoClass·ObjectSearch 갱신과 새 ModelSearchService 배포가 필요합니�
 ### 저장 직전 조직값 설정
 
 `sdxECCAAutoClass.js`의 `sdxECCAPrepareOrganization()`은 `publicAttributes`에 포함된 숨김 속성 `sdxECOrganization`을 최종 생성 요청에 반영합니다. 조직값 출처는 아직 미정이며, 추후 해당 생성 세션의 `session.organizationValue`에 문자열을 설정하면 적용됩니다. 미지정·빈 문자열은 기존 값을 유지합니다. SecurityContext에서 조직을 임의로 추출하지 않습니다. OOTB 검증 이후 처리하므로 숨김 필드의 필수 검증을 대신하지 않습니다.
+
+## 제어 객체 기반 등록창 — 2026-11-02
+
+기존 Searchable=false 필터를 제거하고 **sdxECAtrributeControl의 MX/CREATE 목록**으로 등록창을 구성합니다.
+목록 밖/Read=N은 숨김, Edit=N은 읽기 전용, Order는 인터페이스 간 순서,
+Mandatory는 아이콘, MandatoryCheck는 실제 필수 빈값 검증입니다.
+새 OOTB 수정 없이 기존 prepareFixedType/installFields 연결을 사용합니다.
+Java 서비스 교체, 커스텀 AutoClass 갱신, 새 AttributeControl/AttributeControlService 배포가 필요합니다.
+[배포할 파일·기존 Searchable 제거·응답 예시·검증](ATTRIBUTE-CONTROL.md)을 참고하십시오.

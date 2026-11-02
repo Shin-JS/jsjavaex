@@ -1,0 +1,61 @@
+package com.sdx.ecca.rest;
+
+import com.dassault_systemes.platform.restServices.RestService;
+import com.matrixone.apps.domain.DomainObject;
+import jakarta.json.*;
+import jakarta.ws.rs.core.Response;
+import java.io.StringReader;
+import java.util.*;
+import matrix.db.Context;
+
+/** 서비스/JSON은 실제 코드, 인증 Context와 DomainObject만 DB 대역입니다. */
+public class AttributeControlTest {
+    private static void check(boolean value, String message) {
+        if (!value) throw new AssertionError(message);
+    }
+    private static Map row(String name, String order) {
+        Map<String, String> row = new HashMap<>();
+        String[] names={"Name","Order","Organization","State","Read","Edit","Mandatory","MandatoryCheck"};
+        String[] values={name,order,"MX","CREATE","Y","N","Y","N"};
+        for (int i=0;i<names.length;i++) row.put("attribute[sdxECAttribute"+names[i]+"]",values[i]);
+        return row;
+    }
+    private static Response call() {
+        RestService.nextContext=new Context();RestService.deny=false;
+        Response result=new SdxEccaAttributeService().readControl(null);
+        check(RestService.nextContext.shutdowns==1,"Context cleanup");
+        return result;
+    }
+    private static JsonObject json(Response result) {
+        return Json.createReader(new StringReader((String)result.getEntity())).readObject();
+    }
+    public static void main(String[] args) {
+        java.util.logging.Logger.getLogger(SdxEccaAttributeService.class.getName()).setLevel(java.util.logging.Level.OFF);
+        DomainObject.rows=Arrays.asList(row("B","20"),row("A","1"),row("C","20"));
+        Response result=call();check(result.getStatus()==200,"Successful query");
+        check("sdxECAtrributeControl".equals(DomainObject.type),"Exact user type spelling");
+        check(DomainObject.where.equals("attribute[sdxECAttributeOrganization] == 'MX' && attribute[sdxECAttributeState] == 'CREATE'"),"DB-scoped MX/CREATE");
+        check(DomainObject.selects.size()==8,"Only eight needed selects");
+        check(DomainObject.queriedContext==RestService.nextContext,"Current authenticated user only");
+        JsonArray rows=json(result).getJsonArray("attributes");
+        check(rows.getJsonObject(0).getString("name").equals("A"),"Numeric ordering");
+        check(rows.getJsonObject(1).getString("name").equals("B"),"Deterministic order ties");
+        JsonObject a=rows.getJsonObject(0);
+        check(a.getBoolean("read")&&!a.getBoolean("edit")&&a.getBoolean("mandatory")&&!a.getBoolean("mandatoryCheck"),"Independent Y/N flags");
+        for (String key : Arrays.asList("Read","Edit","Mandatory","MandatoryCheck")) {
+            Map bad=row("A","1");bad.put("attribute[sdxECAttribute"+key+"]","X");
+            DomainObject.rows=Arrays.asList(bad);check(call().getStatus()==409,"Invalid flag rejected");
+        }
+        for (String order : Arrays.asList("","-1","1.5","1000000000")) {
+            DomainObject.rows=Arrays.asList(row("A",order));check(call().getStatus()==409,"Invalid order rejected");
+        }
+        DomainObject.rows=Arrays.asList(row("A","1"),row("A","2"));check(call().getStatus()==409,"Duplicate attribute rejected");
+        Map wrong=row("A","1");wrong.put("attribute[sdxECAttributeOrganization]","VD");
+        DomainObject.rows=Arrays.asList(wrong);check(call().getStatus()==409,"Cross-scope result rejected");
+        DomainObject.rows=Collections.emptyList();check(json(call()).getJsonArray("attributes").isEmpty(),"Empty allowlist is valid");
+        DomainObject.fail=true;check(call().getStatus()==500,"Query failure");DomainObject.fail=false;
+        RestService.deny=true;check(new SdxEccaAttributeService().readControl(null).getStatus()==401,"Authentication required");
+        check(new SdxEccaModeler().getServices()[0]==SdxEccaAttributeService.class,"Service registration retained");
+        System.out.println("PASS: Java service, scoped single query, current-user context, eight selects, deterministic ordering, Y/N, invalid/duplicate/scope/failure/authentication and cleanup");
+    }
+}

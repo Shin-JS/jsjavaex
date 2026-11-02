@@ -23,7 +23,9 @@ const context = vm.createContext({console,document,Error,Map,Set,Promise,
  widget:{getValue:key=>config[key]},
  setTimeout:fn=>{const id=++seq;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
  setInterval:fn=>{const id=++seq;timers.set(id,fn);return id;},clearInterval:id=>timers.delete(id),
- require(ids, done){if(ids[0]==='DS/WAFData/WAFData'){done({authenticatedRequest(url,opts){const id=JSON.parse(opts.data).busIDs[0];opts.onComplete({results:[{physicalID:id,data:[{name:'sdxClassAttrMandatory',value:['N']}]}]});}});return;}loadedModules.push(ids[0]);if(ids[0]==='DS/ClassificationProp/ClassifPropWidget'){done({});return;}
+ require(ids, done){if(ids[0]==='DS/sdxECCAAutoClass/sdxECCAAttributeControl'){
+  done({install(facet,session){session.attributeControlReady=true;session.refreshReady();return Promise.resolve(()=>{});}});return;}
+ if(ids[0]==='DS/WAFData/WAFData'){done({authenticatedRequest(url,opts){const id=JSON.parse(opts.data).busIDs[0];opts.onComplete({results:[{physicalID:id,data:[{name:'sdxClassAttrMandatory',value:['N']}]}]});}});return;}loadedModules.push(ids[0]);if(ids[0]==='DS/ClassificationProp/ClassifPropWidget'){done({});return;}
   assert.deepEqual(Array.from(ids),['DS/ClassificationProp/utils/AttributesUtils']);
   done({validateAttributes:()=>validateError?[{message:validateError}]:null});}
 });
@@ -203,9 +205,9 @@ for (const typeName of ['sdxECChangeAction', 'Change Action', 'Change Order', 'C
  if(typeName==='sdxECChangeAction') {
   assert.equal(field.value,'ECR');assert.equal(field.visible,false);assert.equal(field.isReadOnly,true);
   assert.equal(field.modified,true);assert.equal(field.forUI,true);assert.equal(field.storeLocalPreference,false);
-  assert.equal(field.visibility,undefined);assert.equal(typed.attributes.publicAttributes[0],field);
+  assert.equal(field.visibility,undefined);assert.notEqual(typed.attributes.publicAttributes[0],field);
   assert.equal(typed.basicAttributes.policy,'sdxECR');
-  field.value='ECN';api.prepareFixedType(typed,state);assert.equal(field.value,'ECR');
+  typed.attributes.publicAttributes[0].value='ECN';api.prepareFixedType(typed,state);assert.equal(typed.attributes.publicAttributes[0].value,'ECR');
   assert.equal(typed.attributes.publicAttributes.some(attr=>attr.name==='policy'),false);
  } else {assert.equal(field.value,'ECN');assert.equal(field.visible,true);assert.equal(field.storeLocalPreference,true);
   assert.equal(typed.attributes.publicAttributes.some(attr=>attr.name==='policy'),false);}
@@ -226,7 +228,7 @@ for (const typeName of ['sdxECChangeAction', 'Change Action', 'Change Order', 'C
  assert.equal(hidden.visible,false);assert.equal(hidden.forUI,true);assert.equal(hidden.isReadOnly,true);
  assert.equal(hidden.mandatory,false);assert.equal(shared.mandatory,true);
  assert.equal(hidden.visibility,undefined);assert.equal(hidden.storeLocalPreference,false);
- assert.equal(shared.visible,true);assert.equal(typed.attributes.publicAttributes[4].visible,true);
+ assert.equal(shared.visible,true);assert.equal(typed.attributes.publicAttributes[4].visible,false); // 제어 조회 전에는 숨김
  let finish;const view={data:typed,onSubmit(callback){finish=callback;}};
  const facet={listview:view,skeleton:new Element()};api.installFields(facet,{sdxECCAAutoSession:state});
  for(const value of ['latest','',0,false,null,['A','B']]) {

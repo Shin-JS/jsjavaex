@@ -1,134 +1,116 @@
 package com.sdx.ecca.rest;
 
-import com.dassault_systemes.basicServicesClasses.MQLServices;
 import com.dassault_systemes.platform.restServices.RestService;
+import com.matrixone.apps.domain.DomainObject;
 import jakarta.json.Json;
-import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
-import jakarta.json.JsonException;
 import jakarta.json.JsonObject;
-import jakarta.json.JsonString;
-import jakarta.json.JsonValue;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.POST;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import matrix.db.Context;
+import matrix.util.StringList;
 
-/** OOTB 수정 없이 별도로 배포하는 읽기 전용 속성 메타데이터 조회 서비스입니다. */
+/** CA 등록창의 제어 객체만 현재 사용자 권한으로 조회합니다. Searchable은 사용하지 않습니다. */
 @Path("/attributes")
 public class SdxEccaAttributeService extends RestService {
-    private static final String TARGET_TYPE = "sdxECChangeAction";
-    private static final String INDEXATION = "property[Indexation].value";
+    // 사용자 데이터 모델의 실제 철자(Atrribute)를 그대로 사용합니다.
+    private static final String CONTROL_TYPE = "sdxECAtrributeControl";
+    private static final String ORGANIZATION = "MX";
+    private static final String STATE = "CREATE";
+    private static final String[] FIELDS = {
+        "sdxECAttributeName", "sdxECAttributeOrder", "sdxECAttributeOrganization",
+        "sdxECAttributeState", "sdxECAttributeRead", "sdxECAttributeEdit",
+        "sdxECAttributeMandatory", "sdxECAttributeMandatoryCheck"
+    };
     private static final Logger LOG = Logger.getLogger(SdxEccaAttributeService.class.getName());
 
-    @POST
-    @Path("/visibility")
-    @Consumes("application/json")
+    @GET
+    @Path("/control")
     @Produces("application/json")
-    public Response readVisibility(
-            @jakarta.ws.rs.core.Context HttpServletRequest request,
-            List<String> attributeNames) {
-        Context userContext = null;
+    public Response readControl(@jakarta.ws.rs.core.Context HttpServletRequest request) {
+        Context context = null;
         try {
-            // 2025 ENONewServices와 같은 인증 Context 취득 방식입니다.
-            // 시스템 사용자로 전환하거나 권한을 올리지 않습니다.
-            userContext = getAuthenticatedContext(request, true);
-            if (userContext == null) return error(401, "LOGIN_REQUIRED");
-
-            // JSON 배열은 서버의 JSON Provider가 List<String>으로 변환합니다.
-            if (attributeNames == null || attributeNames.isEmpty() || attributeNames.size() > 300) {
-                return error(400, "INVALID_REQUEST");
-            }
-            Set<String> names = new LinkedHashSet<String>();
-            for (String name : attributeNames) {
-                // 패턴 조회를 막고 정확한 속성명만 전달합니다.
-                if (name == null || name.trim().isEmpty() || name.length() > 256 ||
-                        !name.matches("[\\p{L}\\p{N}_ .:-]+")) {
-                    return error(400, "INVALID_REQUEST");
-                }
-                names.add(name);
-            }
-            // ENOAttributesCore.getAttributeDescription에서 사용하는 일괄 조회 API입니다.
-            // 전체 Dictionary나 객체의 속성값을 조회하지 않습니다.
-            Map<String, JsonObject> rows = MQLServices.getPropertiesOfAdminType(
-                userContext,
-                MQLServices.MQLAdminTypes.TYPE_ATTRIBUTE,
-                names,
-                Arrays.asList("name", INDEXATION)
-            );
-            if (rows == null) throw new IllegalStateException("Metadata query failed");
-            return Response.ok(makeResponse(names, rows).toString(), "application/json")
-                .header("Cache-Control", "no-store")
-                .build();
-        } catch (WebApplicationException error) {
-            return error(error.getResponse().getStatus(), "AUTHENTICATION_FAILED");
-        } catch (IllegalArgumentException | JsonException error) {
-            return error(400, "INVALID_REQUEST");
-        } catch (Exception error) {
-            LOG.log(Level.WARNING, "[sdxECCA] Indexation metadata query failed", error);
-            return error(500, "METADATA_QUERY_FAILED");
+            context = getAuthenticatedContext(request, true);
+            if (context == null) return error(401, "LOGIN_REQUIRED");
+            StringList selects = new StringList();
+            for (String field : FIELDS) selects.add("attribute[" + field + "]");
+            // DB 조회 단계부터 조건을 제한합니다. 다른 사업부/상태의 규칙은 읽지 않습니다.
+            String where = "attribute[sdxECAttributeOrganization] == 'MX' && " +
+                "attribute[sdxECAttributeState] == 'CREATE'";
+            List rows = DomainObject.findObjects(context, CONTROL_TYPE, "*", "*", "*", "*",
+                where, false, selects);
+            if (rows == null) throw new IllegalStateException("Control query returned null");
+            return Response.ok(makeResponse(rows).toString(), "application/json")
+                .header("Cache-Control", "no-store").build();
+        } catch (WebApplicationException exception) {
+            return error(exception.getResponse().getStatus(), "AUTHENTICATION_FAILED");
+        } catch (IllegalArgumentException exception) {
+            LOG.log(Level.WARNING, "[sdxECCA] Invalid attribute control configuration", exception);
+            return error(409, "INVALID_ATTRIBUTE_CONTROL");
+        } catch (Exception exception) {
+            LOG.log(Level.WARNING, "[sdxECCA] Attribute control query failed", exception);
+            return error(500, "ATTRIBUTE_CONTROL_QUERY_FAILED");
         } finally {
-            if (userContext != null) {
-                try {
-                    userContext.shutdown();
-                } catch (Exception error) {
-                    LOG.log(Level.WARNING, "[sdxECCA] Context shutdown failed", error);
-                }
+            if (context != null) {
+                try { context.shutdown(); }
+                catch (Exception exception) { LOG.log(Level.WARNING, "[sdxECCA] Context shutdown failed", exception); }
             }
         }
     }
 
-    static JsonObject makeResponse(Set<String> names, Map<String, JsonObject> rows) {
-        JsonArrayBuilder results = Json.createArrayBuilder();
-        Set<String> returnedNames = new LinkedHashSet<String>();
-        for (JsonObject row : rows.values()) {
-            if (row == null) continue;
-            String name = singleValue(row.get("name"));
-            if (name == null || !names.contains(name) || !returnedNames.add(name)) continue;
-            String indexation = singleValue(row.get(INDEXATION));
-            if (indexation == null) continue;
-            indexation = indexation.trim();
-            if (!indexation.isEmpty() && !"TRUE".equals(indexation) && !"FALSE".equals(indexation)) continue;
-            results.add(Json.createObjectBuilder()
-                .add("name", name)
-                .add("searchable", "TRUE".equals(indexation)));
+    static JsonObject makeResponse(List rows) {
+        if (rows.size() > 1000) throw new IllegalArgumentException("Too many attribute controls");
+        List<JsonObject> rules = new ArrayList<JsonObject>();
+        Set<String> names = new HashSet<String>();
+        for (Object item : rows) {
+            if (!(item instanceof Map)) throw new IllegalArgumentException("Invalid control row");
+            Map row = (Map) item;
+            if (!ORGANIZATION.equals(value(row, FIELDS[2])) || !STATE.equals(value(row, FIELDS[3]))) {
+                throw new IllegalArgumentException("Unexpected control scope");
+            }
+            String name = value(row, FIELDS[0]);
+            if (name.isEmpty() || !names.add(name)) throw new IllegalArgumentException("Empty or duplicate attribute name");
+            String order = value(row, FIELDS[1]);
+            if (!order.matches("[0-9]{1,9}")) throw new IllegalArgumentException("Invalid attribute order: " + name);
+            rules.add(Json.createObjectBuilder().add("name", name).add("order", Integer.parseInt(order))
+                .add("read", flag(row, FIELDS[4])).add("edit", flag(row, FIELDS[5]))
+                .add("mandatory", flag(row, FIELDS[6])).add("mandatoryCheck", flag(row, FIELDS[7])).build());
         }
-        // 실제 속성명까지 확인된 행의 빈 property만 false입니다.
-        // 조회되지 않은 속성은 생략하여 JS가 기존 표시를 유지하게 합니다.
-        return Json.createObjectBuilder()
-            .add("success", true)
-            .add("type", TARGET_TYPE)
-            .add("attributes", results)
-            .build();
+        rules.sort(Comparator.comparingInt((JsonObject rule) -> rule.getInt("order"))
+            .thenComparing(rule -> rule.getString("name")));
+        JsonArrayBuilder attributes = Json.createArrayBuilder();
+        for (JsonObject rule : rules) attributes.add(rule);
+        return Json.createObjectBuilder().add("success", true).add("type", "sdxECChangeAction")
+            .add("organization", ORGANIZATION).add("state", STATE).add("attributes", attributes).build();
     }
 
-    private static String singleValue(JsonValue value) {
-        if (value == null || value == JsonValue.NULL) return "";
-        if (value instanceof JsonString) return ((JsonString) value).getString();
-        if (value instanceof JsonArray) {
-            JsonArray values = (JsonArray) value;
-            if (values.isEmpty()) return "";
-            if (values.size() == 1) return singleValue(values.get(0));
-        }
-        return null;
+    private static String value(Map row, String name) {
+        Object value = row.get("attribute[" + name + "]");
+        if (!(value instanceof String)) throw new IllegalArgumentException("Missing or non-scalar control: " + name);
+        return ((String) value).trim();
+    }
+
+    private static boolean flag(Map row, String name) {
+        String value = value(row, name);
+        if (!"Y".equals(value) && !"N".equals(value)) throw new IllegalArgumentException("Expected Y/N: " + name);
+        return "Y".equals(value);
     }
 
     private static Response error(int status, String message) {
-        return Response.status(status)
-            .entity(Json.createObjectBuilder().add("success", false).add("error", message).build().toString())
-            .type("application/json")
-            .header("Cache-Control", "no-store")
-            .build();
+        return Response.status(status).entity(Json.createObjectBuilder().add("success", false)
+            .add("error", message).build().toString()).type("application/json")
+            .header("Cache-Control", "no-store").build();
     }
 }

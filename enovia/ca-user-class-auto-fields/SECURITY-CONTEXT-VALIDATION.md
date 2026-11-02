@@ -27,7 +27,7 @@ readCurrentContext는 모델 getter/직접 valueDB를 확인하고, 모델 또�
 대기 중 이전 분류/속성/검색/표시 응답과 제출 콜백은 적용하지 않습니다.
 대기 중 창을 닫으면 재초기화 타이머도 취소됩니다.
 
-이번 보완은 `sdxECCAAutoClass.js`, `sdxECCAObjectSearch.js`, `sdxECCAAttributeVisibility.js`를
+이번 보완은 `sdxECCAAutoClass.js`, `sdxECCAObjectSearch.js`를
 함께 갱신해야 합니다. 이전 단계의 OOTB B3/B4/F2 블록은 유지하며, **B4는 `changeContext`를 사용**합니다.
 `checkContext`로 되돌리는 것은 재초기화를 생략하므로 협업공간 변경 후 저장 문제의 최종 해결이 아닙니다.
 
@@ -78,14 +78,14 @@ OOTB 파일 두 개는 전체 덮어쓰기용이 아닌 수정 메모입니다. 
 
 ```sh
 node tests/test-amd-headers.cjs
-node tests/test-attribute-visibility.cjs
+node tests/test-attribute-control-service.cjs
 node tests/test-auto-fields.cjs
 node tests/test-class-code.cjs
 node tests/test-class-mandatory.cjs
 node tests/test-object-search.cjs
 node tests/test-search-initialization.cjs
 node tests/test-security-context.cjs
-node tests/test-visibility-binding.cjs
+NODE_PATH=/임시/node_modules node tests/test-attribute-control.cjs
 ```
 
 추가/유지한 검사:
@@ -127,3 +127,5 @@ JavaScript 문법 및 `git diff --check`도 확인했습니다.
 이전 OOTB 컨트롤러는 격리된 컨테이너에서 이미 진행 중인 초기화를 마칠 수 있습니다.
 실제 설치본의 반복 전환 시 자원 해제/전역 이벤트 구독과 다른 facet 동작은 현장 확인이 필요합니다.
 서버 정책/트리거/권한 처리와 기존 ClassificationAttributeUtil.java:95 저장 오류는 이번 변경으로 해결하지 않습니다.
+
+2026-11-02: Searchable 필터는 [제어 객체 기반 설정](ATTRIBUTE-CONTROL.md)으로 대체했습니다. 문맥 변경 시 제어 조회도 새 세션에서 다시 실행합니다.

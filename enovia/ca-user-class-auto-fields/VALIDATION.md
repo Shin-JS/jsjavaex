@@ -120,3 +120,10 @@ value/valueDB 및 변경 플래그 반영, 취소/저장 필드 누락/복수 �
 기존 auto-fields/class-mandatory/class-code/amd-headers 검사도 통과했습니다.
 실제 대시보드에서 돋보기 위치·6W 검색창, 선택 응답 최상위 name 필드,
 최종 생성 Payload의 sdxECModel 값과 생성 객체 속성 저장을 확인해야 합니다.
+
+## 제어 객체 기반 속성 구성 — 2026-11-02
+
+Searchable 검사 대신 test-attribute-control-service.cjs, test-attribute-control.cjs,
+Java AttributeControlTest로 새 규칙을 검사했습니다. 상세 범위와 배포 환경의 미검증 항목은
+[ATTRIBUTE-CONTROL.md](ATTRIBUTE-CONTROL.md)에 기록했습니다.
+기존 runtime-hooks.json과 OOTB JS 적용 메모는 수정하지 않았고 실제 2025 원본 연결 검사를 통과했습니다.

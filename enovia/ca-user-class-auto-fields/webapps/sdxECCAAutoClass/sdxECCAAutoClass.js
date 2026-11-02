@@ -23,7 +23,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             status: "loading", error: null, disposed: false, started: false, transitioning: false, contextChangeTimer: null,
             mandatory: null, mandatoryPrepared: false, mandatoryNames: [], attributesLoaded: false, fieldsMounted: false, validateFields: null,
             classId: null, classTitle: null, typeDisplay: "hidden", readCurrentType: null, listeners: new Set(), timer: null,
-            cancelRequest: null
+            cancelRequest: null, attributeControlReady: type !== "sdxECChangeAction"
         };
         session.subscribe = function (listener) {
             session.listeners.add(listener);
@@ -42,7 +42,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         };
         session.refreshReady = function () {
             if (session.disposed || session.transitioning || session.status === "error") return;
-            if (session.attributesLoaded && session.fieldsMounted && session.validateFields) {
+            if (session.attributesLoaded && session.fieldsMounted && session.validateFields && session.attributeControlReady) {
                 session.status = "ready";
                 clearTimeout(session.timer);
             }
@@ -106,8 +106,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             clearTimeout(session.contextChangeTimer);
             session.bindingDialog = null;
             if (session.cleanupObjectSearch) session.cleanupObjectSearch();
-            if (session.unsubscribeAttributeVisibility) session.unsubscribeAttributeVisibility();
-            if (session.cleanupAttributeVisibility) session.cleanupAttributeVisibility();
+            if (session.cleanupAttributeControl) session.cleanupAttributeControl();
             if (session.cancelRequest) session.cancelRequest();
             if (session.cleanupValidation) session.cleanupValidation();
             session.listeners.forEach(function (fn) { fn(session); });
@@ -317,6 +316,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             sdxECCAPrepareECType(data, session);
             sdxECCAPrepareTextAttributes(data, session);
             sdxECCAPreparePolicy(data, session);
+            sdxECCAPrepareControlledAttributes(data, session);
             var index = Array.isArray(type.range) ? type.range.indexOf(session.type) : -1;
             if (index < 0 || !Array.isArray(type.persistData) || !type.persistData.some(function (item) {
                 return item.name === session.type;
@@ -330,9 +330,28 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         } catch (error) { session.fail(error); }
     }
 
+    /** 제어 조회 전에 입력창이 노출되지 않도록 모델은 보존하고 표시/필수만 대기시킵니다. */
+    function sdxECCAPrepareControlledAttributes(data, session) {
+        if (session.type !== "sdxECChangeAction") return;
+        ["publicAttributes", "extensionAttributes"].forEach(function (group) {
+            var rows = data.attributes && data.attributes[group];
+            if (!Array.isArray(rows)) return;
+            data.attributes[group] = rows.map(function (attribute) {
+                if (!attribute) return attribute;
+                var controlled = Object.assign({}, attribute, {visible: false, forUI: true, mandatory: false});
+                delete controlled.visibility;
+                return controlled;
+            });
+        });
+    }
+
     /** 선택 사항인 모델 필드는 실제 검색 선택 또는 빈 값만 최종 저장에 반영합니다. */
     function sdxECCAPrepareModelSelection(result, session, view) {
         if (!session.modelSearchEnabled) return;
+        var fields = view.propModel && view.propModel.getAttributeFromField &&
+            view.propModel.getAttributeFromField("name", "sdxECModel");
+        var field = fields && fields[0];
+        if (field && (field.visible === false || field.readOnly === true)) return;
         if (session.modelSearchLoading) throw new Error("모델 속성 조회가 끝난 뒤 저장해 주세요.");
         var selected = session.modelSearchSelection;
         if (selected && (selected.context !== session.context || selected.type !== "sdxMTopAssy" ||
@@ -491,40 +510,35 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             }
             state.refreshReady();
             status.textContent = state.error ? state.error.message :
-                state.status === "ready" ? "" : "지정 클래스 속성을 준비하고 있습니다…";
+                state.status === "ready" ? "" : !state.attributeControlReady ?
+                    "속성 제어 설정을 조회하고 있습니다…" : "지정 클래스 속성을 준비하고 있습니다…";
             host.style.display = state.attributesLoaded ? "" : "none";
         });
-        sdxECCAScheduleAttributeVisibility(facet, session);
+        sdxECCAScheduleAttributeControl(facet, session);
         sdxECCAScheduleObjectSearch(facet, session);
     }
 
-    /** 서버 배포 후 우리 위젯에 조회 URL을 설정했을 때만 실행합니다. */
-    function sdxECCAScheduleAttributeVisibility(facet, session) {
-        if (session.type !== "sdxECChangeAction") return;
-        var url = widget.getValue("sdxECCAAttributeVisibilityUrl");
-        if (!url) return;
-        var started = false;
+    /** 기존 installFields 연결을 사용합니다. OOTB에는 새 수정 지점을 추가하지 않습니다. */
+    function sdxECCAScheduleAttributeControl(facet, session) {
+        if (session.type !== "sdxECChangeAction" || session.attributeControlStarted) return;
+        session.attributeControlStarted = true;
+        session.attributeControlReady = false;
         function report(error) {
-            if (!session.disposed) {
-                console.warn("[sdxECCA] 속성 표시 설정을 적용하지 못해 기존 표시를 유지합니다.", error);
-            }
+            if (!session.disposed && !session.transitioning) session.fail(error);
         }
-        session.unsubscribeAttributeVisibility = session.subscribe(function (state) {
-            var service = state.controller && state.controller.PLMNewCommonWebService;
-            if (started || state.disposed || state.transitioning || state.status === "error" || !service) return;
-            started = true;
-            try {
-                require(["DS/sdxECCAAutoClass/sdxECCAAttributeVisibility"], function (Visibility) {
-                    if (state.disposed || state.transitioning || state.status === "error") return;
-                    Promise.resolve().then(function () {
-                        return Visibility.install(facet, state, {url: url, service: service});
-                    }).then(function (cleanup) {
-                        if (state.disposed || state.transitioning) cleanup();
-                        else state.cleanupAttributeVisibility = cleanup;
-                    }).catch(report);
-                }, report);
-            } catch (error) { report(error); }
-        });
+        try {
+            require(["DS/sdxECCAAutoClass/sdxECCAAttributeControl"], function (Control) {
+                if (session.disposed || session.transitioning || session.status === "error") return;
+                Promise.resolve().then(function () {
+                    return Control.install(facet, session, {
+                        url: widget.getValue("sdxECCAAttributeControlUrl")
+                    });
+                }).then(function (cleanup) {
+                    if (session.disposed || session.transitioning) cleanup();
+                    else session.cleanupAttributeControl = cleanup;
+                }).catch(report);
+            }, report);
+        } catch (error) { report(error); }
     }
 
     /** 검색 모듈은 기존 생성 폼 초기화가 끝난 다음 선택적으로 연결합니다. */
@@ -676,6 +690,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             // blur는 입력값의 모델 반영을 유도합니다. 서버 저장을 뜻하지 않습니다.
             var active = document.activeElement;
             if (active && ctrl.accordeonCon.contains(active) && typeof active.blur === "function") active.blur();
+            if (session.validateAttributeControl) session.validateAttributeControl();
             session.validateFields();
             return true;
         } catch (error) {
