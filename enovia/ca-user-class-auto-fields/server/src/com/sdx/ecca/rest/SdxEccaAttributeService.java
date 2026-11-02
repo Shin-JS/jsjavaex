@@ -26,8 +26,8 @@ import matrix.util.StringList;
 /** CA 등록창의 제어 객체만 현재 사용자 권한으로 조회합니다. Searchable은 사용하지 않습니다. */
 @Path("/attributes")
 public class SdxEccaAttributeService extends RestService {
-    // 사용자 데이터 모델의 실제 철자(Atrribute)를 그대로 사용합니다.
-    private static final String CONTROL_TYPE = "sdxECAtrributeControl";
+    // 등록창 속성 제어 기준정보 타입입니다.
+    private static final String CONTROL_TYPE = "sdxECAttributeControl";
     private static final String ORGANIZATION = "MX";
     private static final String[] FIELDS = {
         "sdxECAttributeName", "sdxECAttributeOrder", "sdxECAttributeOrganization",

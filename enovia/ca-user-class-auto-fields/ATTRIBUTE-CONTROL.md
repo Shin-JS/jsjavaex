@@ -6,7 +6,7 @@
 
 ## 조회 기준과 동작
 
-- 제어 객체 타입: **sdxECAtrributeControl**. 사용자가 지정한 실제 철자(Atrribute)를 사용합니다.
+- 제어 객체 타입: **sdxECAttributeControl**.
 - DB where 조건: sdxECAttributeOrganization=MX AND sdxECAttributeState=<JS에서 전달한 상태>.
 - 현재 사용자 인증 Context에서 조회하며 관리자 권한으로 전환하지 않습니다.
 - JS의 sdxECCAAttributeControlState 값을 state 쿼리 파라미터로 전달합니다. 서버는 상태를 하드코딩하지 않습니다.

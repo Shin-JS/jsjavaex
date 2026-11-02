@@ -108,7 +108,7 @@ AutoClass·ObjectSearch 갱신과 새 ModelSearchService 배포가 필요합니�
 
 ## 제어 객체 기반 등록창 — 2026-11-02
 
-기존 Searchable=false 필터를 제거하고 **sdxECAtrributeControl의 MX/JS에서 전달한 상태 목록**으로 등록창을 구성합니다.
+기존 Searchable=false 필터를 제거하고 **sdxECAttributeControl의 MX/JS에서 전달한 상태 목록**으로 등록창을 구성합니다.
 목록 밖/Read=N은 숨김, Edit=N은 읽기 전용, Order는 인터페이스 간 순서,
 Mandatory는 아이콘, MandatoryCheck는 실제 필수 빈값 검증입니다.
 새 OOTB 수정 없이 기존 prepareFixedType/installFields 연결을 사용합니다.

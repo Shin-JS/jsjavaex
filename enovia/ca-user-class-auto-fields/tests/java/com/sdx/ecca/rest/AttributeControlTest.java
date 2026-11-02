@@ -33,7 +33,7 @@ public class AttributeControlTest {
         java.util.logging.Logger.getLogger(SdxEccaAttributeService.class.getName()).setLevel(java.util.logging.Level.OFF);
         DomainObject.rows=Arrays.asList(row("B","20"),row("A","1"),row("C","20"));
         Response result=call();check(result.getStatus()==200,"Successful query");
-        check("sdxECAtrributeControl".equals(DomainObject.type),"Exact user type spelling");
+        check("sdxECAttributeControl".equals(DomainObject.type),"Exact user type spelling");
         check(DomainObject.where.equals("attribute[sdxECAttributeOrganization] == 'MX' && attribute[sdxECAttributeState] == 'CREATE'"),"DB-scoped MX/CREATE");
         check(DomainObject.selects.size()==8,"Only eight needed selects");
         check(DomainObject.queriedContext==RestService.nextContext,"Current authenticated user only");
