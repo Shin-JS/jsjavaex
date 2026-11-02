@@ -22,7 +22,7 @@ public class AttributeControlTest {
     }
     private static Response call() {
         RestService.nextContext=new Context();RestService.deny=false;
-        Response result=new SdxEccaAttributeService().readControl(null);
+        Response result=new SdxEccaAttributeService().readControl(null,"CREATE");
         check(RestService.nextContext.shutdowns==1,"Context cleanup");
         return result;
     }
@@ -53,8 +53,21 @@ public class AttributeControlTest {
         Map wrong=row("A","1");wrong.put("attribute[sdxECAttributeOrganization]","VD");
         DomainObject.rows=Arrays.asList(wrong);check(call().getStatus()==409,"Cross-scope result rejected");
         DomainObject.rows=Collections.emptyList();check(json(call()).getJsonArray("attributes").isEmpty(),"Empty allowlist is valid");
+        Map work=row("A","1");work.put("attribute[sdxECAttributeState]","In Work");
+        DomainObject.rows=Arrays.asList(work);
+        RestService.nextContext=new Context();RestService.deny=false;
+        result=new SdxEccaAttributeService().readControl(null,"In Work");
+        check(result.getStatus()==200 && json(result).getString("state").equals("In Work"),"Dynamic state response");
+        check(DomainObject.where.endsWith("== 'In Work'"),"Dynamic state DB filter");
+        int calls=DomainObject.calls;
+        for (String invalid : Arrays.asList(null,""," ","CREATE' || true","*","A\\B")) {
+            RestService.nextContext=new Context();
+            check(new SdxEccaAttributeService().readControl(null,invalid).getStatus()==400,"Invalid state rejected");
+            check(RestService.nextContext.shutdowns==1,"Invalid-state Context cleanup");
+        }
+        check(DomainObject.calls==calls,"Invalid state never reaches DB");
         DomainObject.fail=true;check(call().getStatus()==500,"Query failure");DomainObject.fail=false;
-        RestService.deny=true;check(new SdxEccaAttributeService().readControl(null).getStatus()==401,"Authentication required");
+        RestService.deny=true;check(new SdxEccaAttributeService().readControl(null,"CREATE").getStatus()==401,"Authentication required");
         check(new SdxEccaModeler().getServices()[0]==SdxEccaAttributeService.class,"Service registration retained");
         System.out.println("PASS: Java service, scoped single query, current-user context, eight selects, deterministic ordering, Y/N, invalid/duplicate/scope/failure/authentication and cleanup");
     }

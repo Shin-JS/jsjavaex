@@ -15,7 +15,7 @@ vm.runInNewContext(source,{widget:{getValue:()=>undefined},setTimeout:()=>1,clea
  define(id,deps,factory){api=factory(req,{},{},{});}});
 const tick=()=>new Promise(r=>setImmediate(r));
 (async()=>{
- const make=()=>{const s=api.testSession('ctx','sdxECChangeAction',{});s.attributesLoaded=true;s.fieldsMounted=true;s.validateFields=()=>{};return s;};
+ const make=()=>{const s=api.testSession('ctx','sdxECChangeAction',{});s.attributesLoaded=true;s.fieldsMounted=true;s.classificationControlReady=true;s.validateFields=()=>{};return s;};
  let s=make();s.refreshReady();assert.equal(s.status,'loading'); // class ready alone is insufficient
  api.testSchedule({},s);api.testSchedule({},s);await tick();assert.equal(loads,1);assert.equal(installs,1);
  assert.equal(s.status,'loading');finishInstall();await tick();assert.equal(s.status,'ready');

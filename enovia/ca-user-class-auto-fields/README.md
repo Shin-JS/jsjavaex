@@ -108,9 +108,16 @@ AutoClass·ObjectSearch 갱신과 새 ModelSearchService 배포가 필요합니�
 
 ## 제어 객체 기반 등록창 — 2026-11-02
 
-기존 Searchable=false 필터를 제거하고 **sdxECAtrributeControl의 MX/CREATE 목록**으로 등록창을 구성합니다.
+기존 Searchable=false 필터를 제거하고 **sdxECAtrributeControl의 MX/JS에서 전달한 상태 목록**으로 등록창을 구성합니다.
 목록 밖/Read=N은 숨김, Edit=N은 읽기 전용, Order는 인터페이스 간 순서,
 Mandatory는 아이콘, MandatoryCheck는 실제 필수 빈값 검증입니다.
 새 OOTB 수정 없이 기존 prepareFixedType/installFields 연결을 사용합니다.
 Java 서비스 교체, 커스텀 AutoClass 갱신, 새 AttributeControl/AttributeControlService 배포가 필요합니다.
 [배포할 파일·기존 Searchable 제거·응답 예시·검증](ATTRIBUTE-CONTROL.md)을 참고하십시오.
+
+상태는 sdxECCAAttributeControlState 설정에서 전달합니다(예: ECR_CREATE).
+자동 Classification 속성에도 같은 규칙을 적용하며, 기본·분류 규칙이 모두 준비된 뒤 생성할 수 있습니다.
+기존 OOTB 연결은 그대로 사용합니다.
+
+Classification 속성의 끝 CCMAttr은 제어 bus 조회 키에서만 제외합니다.
+기본/확장 속성과 이름이 겹치면 분류 속성만 표시하고 기본 속성의 모델/값은 유지합니다.

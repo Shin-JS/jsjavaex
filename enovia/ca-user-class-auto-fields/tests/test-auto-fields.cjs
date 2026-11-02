@@ -24,7 +24,10 @@ const context = vm.createContext({console,document,Error,Map,Set,Promise,
  setTimeout:fn=>{const id=++seq;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
  setInterval:fn=>{const id=++seq;timers.set(id,fn);return id;},clearInterval:id=>timers.delete(id),
  require(ids, done){if(ids[0]==='DS/sdxECCAAutoClass/sdxECCAAttributeControl'){
-  done({install(facet,session){session.attributeControlReady=true;session.refreshReady();return Promise.resolve(()=>{});}});return;}
+  done({install(facet,session){session.attributeControlReady=true;session.classificationControlReady=true;
+  session.validateClassificationControl=()=>{};
+  session.attachClassificationControl=form=>{session.classificationControlReady=true;form.root.style.visibility='';};
+  session.refreshReady();return Promise.resolve(()=>{});}});return;}
  if(ids[0]==='DS/WAFData/WAFData'){done({authenticatedRequest(url,opts){const id=JSON.parse(opts.data).busIDs[0];opts.onComplete({results:[{physicalID:id,data:[{name:'sdxClassAttrMandatory',value:['N']}]}]});}});return;}loadedModules.push(ids[0]);if(ids[0]==='DS/ClassificationProp/ClassifPropWidget'){done({});return;}
   assert.deepEqual(Array.from(ids),['DS/ClassificationProp/utils/AttributesUtils']);
   done({validateAttributes:()=>validateError?[{message:validateError}]:null});}
@@ -379,7 +382,7 @@ for(const shape of ['missing-field','empty-field','getter-field','property-field
   function pump(){timers.get(facet.sdxECCAAutoTimer)();}
   function finishChange(){const before=props.sdxECCAAutoSession;if(!before.dialog&&before.dialogBindTimer)timers.get(before.dialogBindTimer)();if(before.contextChangeTimer)timers.get(before.contextChangeTimer)();state=props.sdxECCAAutoSession;}
   function change(value){current=value;props.sdxECCAAutoSession.changeContext(value);finishChange();}
-  async function complete(){ui.request().onComplete({chains:new Map([['C1',[{physicalid:'C1',type:'General Class',label:'Class'}]]])});await flush();const model=ui.ctrl.classifPropModels[0];api.prepareAttributes(model,{attribute:[]});api.notifyAttributesLoaded(model,{attribute:[]});return model;}
+  async function complete(){ui.request().onComplete({chains:new Map([['C1',[{physicalid:'C1',type:'General Class',label:'Class'}]]])});await flush();const model=ui.ctrl.classifPropModels[0];api.prepareAttributes(model,{attribute:[],results:[]});api.notifyAttributesLoaded(model,{attribute:[]});return model;}
   return {entries,props,facet,dialog,view,all,pump,change,finishChange,complete,setCurrent(value){current=value;},state:()=>props.sdxECCAAutoSession,ui:()=>ui,finish:()=>finish};
  }
  // Initial credential callback may publish New-SecurityContext while still reading the same project data.
@@ -439,7 +442,7 @@ for(const shape of ['missing-field','empty-field','getter-field','property-field
  late.ui().request().onComplete(path());late.change('ctx::Leader.Engineering.B');late.pump();late.ui().request().onComplete(path());
  assert.equal(attributes.length,2);assert.equal(attributes[1].scope.securityContext,late.state().context);
  attributes[1].resolve(false);await flush();const model=late.ui().ctrl.classifPropModels[0];
- api.prepareAttributes(model,{attribute:[]});api.notifyAttributesLoaded(model,{attribute:[]});
+ api.prepareAttributes(model,{attribute:[],results:[]});api.notifyAttributesLoaded(model,{attribute:[]});
  assert.equal(late.state().mandatory,false);assert.equal(api.canSubmitDialog(late.dialog),true);
  attributes[0].resolve(true);await flush();assert.equal(firstController.selectedCount(),0);assert.equal(late.state().mandatory,false);
  late.change('ctx::Leader.Engineering.C');late.pump();late.ui().request().onComplete(path());
@@ -628,7 +631,7 @@ await (async function () {
  await flush();
  const model=first.ui.ctrl.classifPropModels[0];
  api.notifyAttributesLoaded({attribute:[]},model);assert.equal(first.session.status,'loading'); // 잘못된 순서는 완료되지 않음
- api.prepareAttributes(model,{attribute:[]});
+ api.prepareAttributes(model,{attribute:[],results:[]});
  api.notifyAttributesLoaded(model,{attribute:[]});assert.equal(first.session.status,'ready');
  first.session.dispose();second.session.dispose();
  const closed=dept();await flush();closed.session.dispose();pending[2]({departmentCode:'D1'});await flush();assert.equal(closed.ui.request(),undefined);

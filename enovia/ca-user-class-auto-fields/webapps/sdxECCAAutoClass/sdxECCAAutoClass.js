@@ -23,7 +23,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             status: "loading", error: null, disposed: false, started: false, transitioning: false, contextChangeTimer: null,
             mandatory: null, mandatoryPrepared: false, mandatoryNames: [], attributesLoaded: false, fieldsMounted: false, validateFields: null,
             classId: null, classTitle: null, typeDisplay: "hidden", readCurrentType: null, listeners: new Set(), timer: null,
-            cancelRequest: null, attributeControlReady: type !== "sdxECChangeAction"
+            cancelRequest: null, attributeControlReady: type !== "sdxECChangeAction", classificationControlReady: type !== "sdxECChangeAction"
         };
         session.subscribe = function (listener) {
             session.listeners.add(listener);
@@ -42,7 +42,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         };
         session.refreshReady = function () {
             if (session.disposed || session.transitioning || session.status === "error") return;
-            if (session.attributesLoaded && session.fieldsMounted && session.validateFields && session.attributeControlReady) {
+            if (session.attributesLoaded && session.fieldsMounted && session.validateFields && session.attributeControlReady && session.classificationControlReady) {
                 session.status = "ready";
                 clearTimeout(session.timer);
             }
@@ -160,6 +160,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var session = sdxECCACreateAutoSession(context, type, rule);
         session.facetEntries = facetList;
         session.createPolicy = createPolicy === undefined ? widget.getValue("sdxECCACreatePolicy") : createPolicy;
+        session.attributeControlState = settings && settings.attributeControlState ||
+            widget.getValue("sdxECCAAttributeControlState") || "CREATE";
         session.typeDisplay = typeDisplay;
         session.ruleMode = ruleMode;
         session.classCode = widget.getValue("sdxECCAClassCode") || "EC_MX";
@@ -185,7 +187,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var dialog = previous.dialog || previous.bindingDialog;
         var entries = previous.facetEntries || [];
         var next = sdxECCACreateAutoSession(context, previous.type, previous.ruleMode === "fixed" ? previous.rule : null);
-        ["createPolicy", "typeDisplay", "ruleMode", "classCode", "libraryTitle", "tenant", "textAttributePairs"].forEach(function (key) {
+        ["createPolicy", "typeDisplay", "ruleMode", "classCode", "libraryTitle", "tenant", "textAttributePairs", "attributeControlState"].forEach(function (key) {
             next[key] = previous[key];
         });
         next.facetEntries = entries;
@@ -502,6 +504,12 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 // getAttributeFromField()를 전체 속성 열거 API로 사용하지 않습니다.
                 session.validateFields = function () {
                     var form = sdxECCAGetRenderedClassForm(session);
+                    if (session.type === "sdxECChangeAction") {
+                        if (!session.classificationControlReady || !session.validateClassificationControl) {
+                            throw new Error("분류 속성 제어 설정이 준비되지 않았습니다.");
+                        }
+                        session.validateClassificationControl();
+                    }
                     var errors = form.ui.validateModels([form.model]);
                     if (errors && errors.length) {
                         throw new Error(errors.map(function (item) { return item.message; }).join("\n"));
@@ -582,13 +590,13 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         }
         form.classList.add("sdxECCAClassFields");
         if (form.parentNode !== facet.sdxECCAAutoHost) facet.sdxECCAAutoHost.appendChild(form);
-        sdxECCARenderMandatoryIcons(form);
+        if (session.type !== "sdxECChangeAction") sdxECCARenderMandatoryIcons(form);
         session.fieldsMounted = true;
         clearTimeout(facet.sdxECCAAutoResize);
         facet.sdxECCAAutoResize = setTimeout(function () {
             if (!facet.sdxECCAAutoDisposed && !session.disposed && !session.transitioning && ctrl.classifPropertiesView.onInnerResize) {
                 ctrl.classifPropertiesView.onInnerResize();
-                sdxECCARenderMandatoryIcons(form);
+                if (session.type !== "sdxECChangeAction") sdxECCARenderMandatoryIcons(form);
             }
         }, 0);
     }
@@ -980,6 +988,24 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 !response || !Array.isArray(response.attribute)) {
                 throw new Error("클래스 필수 속성 설정이 준비되지 않았습니다.");
             }
+            if (session.type === "sdxECChangeAction") {
+                if (!Array.isArray(response.results)) throw new Error("분류 속성 폼 변환 결과가 없습니다.");
+                var controlledNames = new Set(response.attribute.map(function (attr) { return attr.name; }));
+                // 제어 bus에는 분류 속성의 CCMAttr 접미어가 없습니다. 실제 속성명은 바꾸지 않습니다.
+                session.classificationControlNames = new Set(response.attribute.map(function (attr) {
+                    return attr.name.replace(/CCMAttr$/, "");
+                }));
+                response.results = response.results.map(function (row) {
+                    if (!Array.isArray(row.data)) return row;
+                    return Object.assign({}, row, {data: row.data.map(function (attr) {
+                        if (attr.extension !== session.classId || !controlledNames.has(attr.name)) return attr;
+                        return Object.assign({}, attr, {mandatory: false, readOnly: true});
+                    })});
+                });
+                session.mandatoryPrepared = true;
+                session.classificationControlReady = false;
+                return true;
+            }
             if (session.mandatory) {
                 if (!Array.isArray(response.results)) throw new Error("분류 속성 폼 변환 결과가 없습니다.");
                 var names = new Set(response.attribute.map(function (attr) { return attr.name; }));
@@ -1021,7 +1047,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (!model || model.get("objectId") !== session.classId || typeof model.values !== "function") {
             throw new Error("분류 폼에 표시된 클래스 모델을 확인해 주세요.");
         }
-        return {model: model, ui: ui};
+        return {model: model, ui: ui, propertiesUI: facet.editPropertiesUI, root: ctrl.accordeonCon};
     }
 
     /** 자동 대상 클래스 모델에만 완료를 알립니다. 다른 위젯 모델에는 표식이 없어 즉시 반환합니다.
@@ -1040,6 +1066,15 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             return;
         }
         try {
+            if (session.type === "sdxECChangeAction") {
+                var form = sdxECCAGetRenderedClassForm(session);
+                if (!form.root || !form.root.style) throw new Error("분류 속성 폼을 확인해 주세요.");
+                form.root.style.visibility = "hidden";
+                session.classControlForm = form;
+                if (session.attachClassificationControl) session.attachClassificationControl(form);
+                session.markAttributesLoaded(model.sdxECCAAutoClassId);
+                return;
+            }
             var rendered = sdxECCAGetRenderedClassForm(session).model;
             // 필수값을 직접 판정하지 않습니다. 폼 생성 시 OOTB 모델에 전달됐는지만 확인합니다.
             if (session.mandatory) {

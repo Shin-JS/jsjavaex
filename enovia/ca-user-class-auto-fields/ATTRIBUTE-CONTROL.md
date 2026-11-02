@@ -7,25 +7,38 @@
 ## 조회 기준과 동작
 
 - 제어 객체 타입: **sdxECAtrributeControl**. 사용자가 지정한 실제 철자(Atrribute)를 사용합니다.
-- DB where 조건: sdxECAttributeOrganization=MX AND sdxECAttributeState=CREATE.
+- DB where 조건: sdxECAttributeOrganization=MX AND sdxECAttributeState=<JS에서 전달한 상태>.
 - 현재 사용자 인증 Context에서 조회하며 관리자 권한으로 전환하지 않습니다.
-- 조회 상태 CREATE는 제어 객체의 기준값입니다. Policy의 실제 초기 상태명을 조회하거나 ECR_CREATE로 치환하지 않습니다.
+- JS의 sdxECCAAttributeControlState 값을 state 쿼리 파라미터로 전달합니다. 서버는 상태를 하드코딩하지 않습니다.
+  별도 전달이 없는 기존 등록창은 JS에서 CREATE를 기본값으로 사용합니다.
+  Policy의 상태를 계산/조회한 호출부는 이 값에 실제 state 이름을 지정합니다.
+  각 생성 세션이 상태값을 보관하며 협업공간 변경 후에도 같은 상태로 다시 조회합니다.
 - Policy 필드는 제어 객체에 정의되지 않았으므로 ECR/ECO별 규칙을 임의로 구분하지 않습니다.
 - 조회 목록에 없거나 Read=N인 기본/확장 속성은 숨깁니다.
-- 현재 typeinfo에 없는 속성명은 새 입력창을 생성하지 않고 무시합니다.
+- 기본/확장/분류 어느 폼에도 정의되지 않은 속성명은 새 입력창을 생성하지 않고 무시합니다.
 - 제어 객체가 0개이면 기본/확장 속성을 전부 숨깁니다. 조회 실패와 빈 정상 응답은 구분합니다.
 - 이름 중복, 잘못된 순서, Y/N 이외 값은 설정 오류(409)입니다. 다른 규칙을 임의로 선택하지 않습니다.
 - 순서는 0~999999999의 정수입니다. 같은 순서는 속성명으로 정렬하여 결과를 고정합니다.
-- 제어 대상은 typeinfo의 publicAttributes/extensionAttributes 및 같은 생성 폼에 BL이 추가한 속성 모델입니다.
-  Type/SecurityContext 같은 defaultAttributes 제어와 별도 자동 분류 클래스 폼은 대상이 아닙니다.
+- 제어 대상은 typeinfo의 publicAttributes/extensionAttributes, 같은 폼에 BL이 추가한 모델,
+  자동 선택된 Classification의 속성 폼입니다. Type/SecurityContext 같은 defaultAttributes는 기존 처리를 유지합니다.
+- 기본·확장 속성은 하나의 순서로, Classification은 해당 분류 폼 안의 순서로 정렬합니다.
+- 분류 속성 sdxECPlanCCMAttr은 제어 객체의 sdxECAttributeName=sdxECPlan 규칙을 사용합니다.
+  정확히 끝의 CCMAttr만 제외합니다. 실제 분류 속성명·path·ID·저장 값은 변경하지 않습니다.
+- 같은 이름의 기본/확장 속성과 분류 속성이 중복되면 분류 속성이 우선합니다.
+  기본 속성은 화면에서 숨기고 필수 빈값 검증도 하지 않으며 기존 모델·값은 보존합니다.
+  분류 규칙의 Read=N이면 분류 속성도 숨깁니다. 기본 속성으로 자동 대체하지 않습니다.
+- 분류 목록이 준비될 때까지 기본 속성 노출을 대기하여 중복 필드가 먼저 나타나지 않게 합니다.
+  분류 모델 추가/재생성 시 중복 목록을 다시 계산하고 기본 폼에도 적용합니다.
+- sdxECChangeAction의 Classification에는 제어 객체의 속성별 Mandatory/MandatoryCheck를 적용합니다.
+  기존 클래스 전체 필수 플래그 sdxClassAttrMandatory보다 제어 규칙이 우선합니다. 다른 생성 타입은 기존 처리를 유지합니다.
 - 기존 sdxECType과 *Text 저장 보조 필드는 목록에 있어도 계속 숨깁니다. Text 값 복사/조직 자동 채움은 유지합니다.
 
 | 제어 속성 | 의미 |
 |---|---|
-| sdxECAttributeName | typeinfo의 실제 속성 name. NLS 라벨/객체 name이 아닙니다. |
+| sdxECAttributeName | 기본 속성은 실제 name, 분류 속성은 끝의 CCMAttr을 제외한 name. NLS 라벨/객체 name이 아닙니다. |
 | sdxECAttributeOrder | 화면 표시 순서. 인터페이스가 달라도 하나의 순서로 정렬합니다. |
 | sdxECAttributeOrganization | 현재 MX 고정 |
-| sdxECAttributeState | 현재 CREATE 고정 |
+| sdxECAttributeState | JS에서 전달한 Policy 상태명 |
 | sdxECAttributeRead | Y=표시, N=숨김 |
 | sdxECAttributeEdit | Y=편집 허용, N=읽기 전용 |
 | sdxECAttributeMandatory | Y=필수 아이콘 표시, N=아이콘 없음 |
@@ -44,11 +57,13 @@ MandatoryCheck는 필수 빈값 검증입니다. 자료형·길이·범위·서�
 
 ## API
 
-GET /3dspace/resources/v1/modeler/sdxECCA/attributes/control
+GET /3dspace/resources/v1/modeler/sdxECCA/attributes/control?state=CREATE
 
 본문과 속성명 배열은 보내지 않습니다. 기존 POST /attributes/visibility는 제거했습니다.
 CSRF가 필요한 쓰기 작업은 하지 않습니다. WAFData의 인증된 GET에 SecurityContext를 전달합니다.
 각 생성 세션/협업공간 문맥에서 다시 조회하며 전역 캐시는 두지 않습니다.
+state는 필수이며 최대 128자의 상태명만 받습니다. 누락/빈값/따옴표 등 MQL 표현식 문자는 400으로 거절합니다.
+응답의 state가 요청값과 다르면 JS가 적용하지 않습니다.
 
 응답 예:
 
@@ -98,12 +113,17 @@ DS/sdxENOChgGovernanceUX/custom/services 구조를 쓴다면 다음 세 경로�
 새 URL은 기본값이 있으므로 별도 설정 없이 실행됩니다. 다른 경로가 필요하면 우리 위젯 초기화에서만 지정합니다.
 
 ~~~javascript
+// 실제 Policy 상태를 구한 호출부에서 생성창을 열기 전에 설정합니다.
+widget.setValue("sdxECCAAttributeControlState", "ECR_CREATE");
 widget.setValue(
     "sdxECCAAttributeControlUrl",
     "/resources/v1/modeler/sdxECCA/attributes/control"
 );
 ~~~
 
+세션 설정을 직접 전달하는 호출부는 attachBridge의 settings.attributeControlState로도 지정할 수 있습니다.
+이 값이 위젯 설정보다 우선합니다. 이미 열린 생성창의 규칙은 해당 세션의 상태를 사용하며,
+변경한 위젯 설정은 다음 생성창부터 반영합니다.
 현재 예제 HTML은 실행 파일 교체본이 아니라 위 설정을 넣을 위치를 설명하는 메모입니다.
 
 ## 폼 처리와 저장
@@ -115,7 +135,12 @@ widget.setValue(
 4. 필수 아이콘은 별도 표시하고 OOTB mandatory에는 MandatoryCheck를 적용합니다.
 5. 현재 view/model 인스턴스에만 BL 갱신/폼 재생성 연결을 둡니다. 전역 prototype은 변경하지 않습니다.
 6. 필수 검증은 생성 전과 OOTB/BL/자동 채움 직렬화가 끝난 최종 결과에서도 확인합니다.
-7. 창 종료/협업공간 변경 시 연결·DOM 관찰을 정리하고 이전 조회 응답을 버립니다.
+7. 기존 prepareAttributes/notifyAttributesLoaded 연결에서 Classification 모델/값을 보존해 대기시킵니다.
+   분류 응답과 규칙 중 어느 쪽이 먼저 도착해도 준비 완료 후 같은 규칙을 적용합니다.
+   ClassificationProp의 원래 updateTableManager로 다시 그리고, visible을 지원하지 않는 분류 행은 DOM 표시도 제어합니다.
+   클래스 ID/facet/저장 모델을 유지하며 분류 재렌더링에도 규칙을 다시 적용합니다.
+8. 기본·분류 규칙과 분류 속성 목록이 모두 준비되어야 생성할 수 있습니다.
+   창 종료/협업공간 변경 시 두 폼의 연결·DOM 관찰을 정리하고 이전 조회 응답을 버립니다.
 
 설정 조회/모듈 로딩 실패 때는 기본/확장 속성을 숨긴 상태로 오류를 표시하고 생성을 막습니다.
 임의의 전체 속성 표시로 복귀하지 않습니다. 다시 열어 재조회합니다.
@@ -124,15 +149,17 @@ widget.setValue(
 ## 검증 및 배포 환경 확인
 
 자동 검사:
-- JS 서비스: MX/CREATE 응답 계약, 인증 GET, 3DSpace/tenant, 잘못된 응답/중복/실패/시간 초과/늦은 응답.
+- JS 서비스: MX/요청 상태 응답 계약, 인증 GET, 3DSpace/tenant, 잘못된 응답/중복/실패/시간 초과/늦은 응답.
 - DOM/모델: 목록 밖·Read=N 숨김, Edit=N, 인터페이스 간 순서, 필수 표시/검증 4조합,
   0/false와 null, 최종 직렬화 검증, 값 보존, BL의 미등록 속성 추가, 폼 재생성, 정리/늦은 응답.
 - Java: 실제 Jakarta API/JSON/Response로 서비스 컴파일 및 실행.
   인증 Context와 DomainObject DB 접근은 대역입니다. 현재 사용자/정확한 where/8개 selects/정렬/Y/N/오류/정리를 검사했습니다.
-- 기존 자동 분류·Text·조직·검색·SecurityContext 회귀 검사, 실제 2025 OOTB 네 묶음의 연결 검사.
+- 동적 상태(공백 포함)·누락/잘못된 상태·분류 선후 도착/재생성/행 숨김/읽기 전용/필수 표시·검증,
+  CCMAttr 접미어 조회·분류 우선 중복 숨김·실제 속성명/기본 값 보존·중복 기본 필수 검증 제외,
+  기존 자동 분류·Text·조직·검색·SecurityContext 회귀 검사, 실제 2025 OOTB 네 묶음의 연결 검사.
 
 실제 ENOVIA DB/UI/저장은 이 실행 환경에서 검증하지 못했습니다.
-배포 후 Network의 GET 200과 MX/CREATE 응답, 각 Y/N 조합, 저장,
+배포 후 Network의 GET 200과 MX/요청 상태 응답, 각 Y/N 조합, 저장,
 협업공간 변경, 기존 자동 분류/검색/CO·CR을 확인합니다.
 
 개발자용 DOM 검사에는 linkedom이 필요합니다. 서버/사용자 PC에는 Node 설치가 필요하지 않습니다.
@@ -140,6 +167,7 @@ widget.setValue(
 ~~~sh
 NODE_PATH=/임시/node_modules node tests/test-attribute-control.cjs
 node tests/test-attribute-control-service.cjs
+node tests/test-class-control-hooks.cjs
 node tests/test-runtime-hooks.cjs /2025-원본-폴더
 ~~~
 

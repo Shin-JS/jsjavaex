@@ -11,11 +11,11 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoCl
   else options.onComplete([{platformId:'Other',url:'https://wrong'},{platformId:'OnPremise',url:'https://space/3dspace/'}]);
  }});}
 });
-const scope={tenant:'OnPremise',securityContext:'ctx::Leader.Org.Space'};
+const scope={tenant:'OnPremise',securityContext:'ctx::Leader.Org.Space',state:'CREATE'};
 (async()=>{
  payload=response([row()]);const rules=await api.read(scope);
  assert.equal(lookup.serviceName,'3DSpace');assert.equal(lookup.platformId,'OnPremise');
- assert.equal(request.url,'https://space/3dspace/resources/v1/modeler/sdxECCA/attributes/control');
+ assert.equal(request.url,'https://space/3dspace/resources/v1/modeler/sdxECCA/attributes/control?state=CREATE');
  assert.equal(request.options.method,'GET');assert.equal(request.options.headers.SecurityContext,encodeURIComponent(scope.securityContext));
  assert.equal(rules.get('A').edit,false);assert.equal(request.options.data,undefined);
  for(const bad of [response([row(),row()]),response([{...row(),read:'Y'}]),response([{...row(),order:-1}]),
@@ -25,7 +25,11 @@ const scope={tenant:'OnPremise',securityContext:'ctx::Leader.Org.Space'};
  for(mode of ['failure','timeout','discovery'])await assert.rejects(api.read(scope));
  mode='ok';payload=response([]);assert.equal((await api.read(scope)).size,0);
  payload=JSON.stringify(response([row()]));assert.equal((await api.read(scope)).size,1);
- for(const changes of [{url:'https://external/control'},{securityContext:''},{tenant:''}])await assert.rejects(api.read({...scope,...changes}));
+ for(const changes of [{state:''},{state:'  '},{state:undefined},{url:'https://external/control'},{securityContext:''},{tenant:''}])await assert.rejects(api.read({...scope,...changes}));
+ payload={...response([row()]),state:'In Work'};
+ assert.equal((await api.read({...scope,state:'In Work'})).size,1);
+ assert.match(request.url,/state=In%20Work$/);
+ payload=response([row()]);await assert.rejects(api.read({...scope,state:'Approved'}));
  request=null;assert.equal(await api.read({...scope,isCancelled:()=>true}),null);assert.equal(request,null);
  mode='late';let cancelled=false;const late=api.read({...scope,isCancelled:()=>cancelled});
  await new Promise(r=>setImmediate(r));cancelled=true;held.onComplete(response([row()]));assert.equal(await late,null);

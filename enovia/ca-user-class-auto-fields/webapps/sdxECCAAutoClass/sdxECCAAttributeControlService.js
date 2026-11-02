@@ -4,10 +4,10 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControlService", [
     "DS/i3DXCompassPlatformServices/i3DXCompassPlatformServices"
 ], function (WAFData, Compass) {
     "use strict";
-    function parse(response) {
-        if (typeof response === "string") response = JSON.parse(response);
+    function parse(response, state) {
+        if (typeof response === "string") response = JSON.parse(response, state);
         if (!response || response.success !== true || response.type !== "sdxECChangeAction" ||
-                response.organization !== "MX" || response.state !== "CREATE" || !Array.isArray(response.attributes)) {
+                response.organization !== "MX" || response.state !== state || !Array.isArray(response.attributes)) {
             throw new Error("속성 제어 설정 응답을 확인해 주세요.");
         }
         var rules = new Map();
@@ -23,9 +23,11 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControlService", [
     }
     function read(request) {
         var url = request.url || "/resources/v1/modeler/sdxECCA/attributes/control";
-        if (!/^\/resources\/[A-Za-z0-9_/-]+$/.test(url) || !request.securityContext || !request.tenant) {
-            return Promise.reject(new Error("속성 제어 조회 URL·권한 문맥·tenant를 확인해 주세요."));
+        if (!/^\/resources\/[A-Za-z0-9_/-]+$/.test(url) || !request.securityContext || !request.tenant ||
+                typeof request.state !== "string" || !request.state.trim() || request.state !== request.state.trim() || request.state.length > 128) {
+            return Promise.reject(new Error("속성 제어 조회 URL·권한 문맥·tenant·상태를 확인해 주세요."));
         }
+        var state = request.state;
         function closed() { return request.isCancelled && request.isCancelled(); }
         return new Promise(function (resolve, reject) {
             Compass.getServiceUrl({serviceName: "3DSpace", platformId: request.tenant,
@@ -41,11 +43,11 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControlService", [
         }).then(function (base) {
             if (closed()) return null;
             return new Promise(function (resolve, reject) {
-                WAFData.authenticatedRequest(base + url, {method: "GET", type: "json", timeout: 10000,
+                WAFData.authenticatedRequest(base + url + "?state=" + encodeURIComponent(state), {method: "GET", type: "json", timeout: 10000,
                     proxy: "passport", authentication: "passport",
                     headers: {Accept: "application/json", SecurityContext: encodeURIComponent(request.securityContext)},
                     onComplete: function (response) {
-                        try { resolve(closed() ? null : parse(response)); } catch (error) { reject(error); }
+                        try { resolve(closed() ? null : parse(response, state)); } catch (error) { reject(error); }
                     },
                     onFailure: function () { reject(new Error("속성 제어 설정 조회에 실패했습니다.")); },
                     onTimeout: function () { reject(new Error("속성 제어 설정 조회 시간이 초과되었습니다.")); }

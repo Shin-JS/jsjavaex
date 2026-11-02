@@ -16,6 +16,8 @@ widget.setValue("sdxECCAEnableAutoClassByOrganization", true);
 // 2. 생성할 타입과 policy입니다.
 widget.setValue("sdxECCAAutoClassType", "sdxECChangeAction");
 widget.setValue("sdxECCACreatePolicy", "sdxECR");
+// 생성 시점에 적용할 실제 Policy 상태값을 JS에서 전달합니다.
+widget.setValue("sdxECCAAttributeControlState", "CREATE");
 widget.setValue("sdxECCATypeDisplay", "hidden");
 
 // 3. 자동 선택할 클래스의 조건입니다.

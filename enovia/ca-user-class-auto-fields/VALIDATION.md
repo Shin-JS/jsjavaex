@@ -127,3 +127,14 @@ Searchable 검사 대신 test-attribute-control-service.cjs, test-attribute-cont
 Java AttributeControlTest로 새 규칙을 검사했습니다. 상세 범위와 배포 환경의 미검증 항목은
 [ATTRIBUTE-CONTROL.md](ATTRIBUTE-CONTROL.md)에 기록했습니다.
 기존 runtime-hooks.json과 OOTB JS 적용 메모는 수정하지 않았고 실제 2025 원본 연결 검사를 통과했습니다.
+
+### 상태 파라미터 및 Classification 확장
+
+서버의 CREATE 상수를 제거하고 JS state를 검증하여 DB where/응답에 사용합니다.
+test-class-control-hooks와 DOM 검사에서 분류 응답 선행/규칙 선행, 목록 밖 행 숨김,
+분류 편집 제어·필수 표시/검증 분리·원래 class ID/값 보존·UI 재생성/정리를 확인했습니다.
+기존 클래스 전체 필수 로직은 비대상 타입에서 유지하며, 대상 CA는 속성별 제어 규칙을 우선합니다.
+
+분류의 CCMAttr 접미어는 규칙 조회에서만 제거하고 실제 이름/ID는 보존합니다.
+중복 기본 속성의 숨김/필수 검증 제외/원래 값 보존, 접미어가 중간에 있는 이름의 비매칭,
+분류 목록 지연 및 재생성 시 우선순위를 DOM/모델 검사에 포함했습니다.

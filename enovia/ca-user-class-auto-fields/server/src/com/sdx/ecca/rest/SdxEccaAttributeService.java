@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -28,7 +29,6 @@ public class SdxEccaAttributeService extends RestService {
     // 사용자 데이터 모델의 실제 철자(Atrribute)를 그대로 사용합니다.
     private static final String CONTROL_TYPE = "sdxECAtrributeControl";
     private static final String ORGANIZATION = "MX";
-    private static final String STATE = "CREATE";
     private static final String[] FIELDS = {
         "sdxECAttributeName", "sdxECAttributeOrder", "sdxECAttributeOrganization",
         "sdxECAttributeState", "sdxECAttributeRead", "sdxECAttributeEdit",
@@ -39,20 +39,24 @@ public class SdxEccaAttributeService extends RestService {
     @GET
     @Path("/control")
     @Produces("application/json")
-    public Response readControl(@jakarta.ws.rs.core.Context HttpServletRequest request) {
+    public Response readControl(@jakarta.ws.rs.core.Context HttpServletRequest request,
+            @QueryParam("state") String state) {
         Context context = null;
         try {
             context = getAuthenticatedContext(request, true);
             if (context == null) return error(401, "LOGIN_REQUIRED");
+            // MQL where에 보간하기 전에 따옴표/역슬래시/연산자를 허용하지 않는 상태명만 받습니다.
+            if (state == null || !state.matches("[\\p{L}\\p{N}_ .:-]{1,128}") ||
+                    !state.equals(state.trim())) return error(400, "INVALID_STATE");
             StringList selects = new StringList();
             for (String field : FIELDS) selects.add("attribute[" + field + "]");
             // DB 조회 단계부터 조건을 제한합니다. 다른 사업부/상태의 규칙은 읽지 않습니다.
             String where = "attribute[sdxECAttributeOrganization] == 'MX' && " +
-                "attribute[sdxECAttributeState] == 'CREATE'";
+                "attribute[sdxECAttributeState] == '" + state + "'";
             List rows = DomainObject.findObjects(context, CONTROL_TYPE, "*", "*", "*", "*",
                 where, false, selects);
             if (rows == null) throw new IllegalStateException("Control query returned null");
-            return Response.ok(makeResponse(rows).toString(), "application/json")
+            return Response.ok(makeResponse(rows, state).toString(), "application/json")
                 .header("Cache-Control", "no-store").build();
         } catch (WebApplicationException exception) {
             return error(exception.getResponse().getStatus(), "AUTHENTICATION_FAILED");
@@ -70,14 +74,14 @@ public class SdxEccaAttributeService extends RestService {
         }
     }
 
-    static JsonObject makeResponse(List rows) {
+    static JsonObject makeResponse(List rows, String state) {
         if (rows.size() > 1000) throw new IllegalArgumentException("Too many attribute controls");
         List<JsonObject> rules = new ArrayList<JsonObject>();
         Set<String> names = new HashSet<String>();
         for (Object item : rows) {
             if (!(item instanceof Map)) throw new IllegalArgumentException("Invalid control row");
             Map row = (Map) item;
-            if (!ORGANIZATION.equals(value(row, FIELDS[2])) || !STATE.equals(value(row, FIELDS[3]))) {
+            if (!ORGANIZATION.equals(value(row, FIELDS[2])) || !state.equals(value(row, FIELDS[3]))) {
                 throw new IllegalArgumentException("Unexpected control scope");
             }
             String name = value(row, FIELDS[0]);
@@ -93,7 +97,7 @@ public class SdxEccaAttributeService extends RestService {
         JsonArrayBuilder attributes = Json.createArrayBuilder();
         for (JsonObject rule : rules) attributes.add(rule);
         return Json.createObjectBuilder().add("success", true).add("type", "sdxECChangeAction")
-            .add("organization", ORGANIZATION).add("state", STATE).add("attributes", attributes).build();
+            .add("organization", ORGANIZATION).add("state", state).add("attributes", attributes).build();
     }
 
     private static String value(Map row, String name) {
