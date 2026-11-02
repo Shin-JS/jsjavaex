@@ -108,7 +108,10 @@ public class SdxEccaAttributeService extends RestService {
 
     private static boolean flag(Map row, String name) {
         String value = value(row, name);
-        if (!"Y".equals(value) && !"N".equals(value)) throw new IllegalArgumentException("Expected Y/N: " + name);
+        // X는 N과 동일하게 false로 내려 UI/분류의 기존 boolean 처리를 사용합니다.
+        if (!"Y".equals(value) && !"N".equals(value) && !"X".equals(value)) {
+            throw new IllegalArgumentException("Expected Y/N/X: " + name);
+        }
         return "Y".equals(value);
     }
 

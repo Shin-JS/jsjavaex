@@ -43,9 +43,24 @@ public class AttributeControlTest {
         JsonObject a=rows.getJsonObject(0);
         check(a.getBoolean("read")&&!a.getBoolean("edit")&&a.getBoolean("mandatory")&&!a.getBoolean("mandatoryCheck"),"Independent Y/N flags");
         for (String key : Arrays.asList("Read","Edit","Mandatory","MandatoryCheck")) {
-            Map bad=row("A","1");bad.put("attribute[sdxECAttribute"+key+"]","X");
+            Map bad=row("A","1");bad.put("attribute[sdxECAttribute"+key+"]","Z");
             DomainObject.rows=Arrays.asList(bad);check(call().getStatus()==409,"Invalid flag rejected");
         }
+        String[] flagNames={"Read","Edit","Mandatory","MandatoryCheck"};
+        String[] responseNames={"read","edit","mandatory","mandatoryCheck"};
+        for (int i=0;i<flagNames.length;i++) {
+            Map n=row("A","1"),x=row("A","1");
+            n.put("attribute[sdxECAttribute"+flagNames[i]+"]","N");
+            x.put("attribute[sdxECAttribute"+flagNames[i]+"]","X");
+            DomainObject.rows=Arrays.asList(n);JsonObject normal=json(call());
+            DomainObject.rows=Arrays.asList(x);Response xResult=call();
+            check(xResult.getStatus()==200,"X must be accepted: "+flagNames[i]);
+            check(json(xResult).equals(normal),"X and N responses must be identical: "+flagNames[i]);
+            check(!json(xResult).getJsonArray("attributes").getJsonObject(0).getBoolean(responseNames[i]),"X is false");
+        }
+        Map allX=row("A","1");
+        for (String flag : flagNames) allX.put("attribute[sdxECAttribute"+flag+"]","X");
+        DomainObject.rows=Arrays.asList(allX);check(call().getStatus()==200,"All four X flags accepted");
         for (String order : Arrays.asList("","-1","1.5","1000000000")) {
             DomainObject.rows=Arrays.asList(row("A",order));check(call().getStatus()==409,"Invalid order rejected");
         }
@@ -69,6 +84,6 @@ public class AttributeControlTest {
         DomainObject.fail=true;check(call().getStatus()==500,"Query failure");DomainObject.fail=false;
         RestService.deny=true;check(new SdxEccaAttributeService().readControl(null,"CREATE").getStatus()==401,"Authentication required");
         check(new SdxEccaModeler().getServices()[0]==SdxEccaAttributeService.class,"Service registration retained");
-        System.out.println("PASS: Java service, scoped single query, current-user context, eight selects, deterministic ordering, Y/N, invalid/duplicate/scope/failure/authentication and cleanup");
+        System.out.println("PASS: Java service, scoped single query, current-user context, eight selects, deterministic ordering, Y/N/X (N=X), invalid/duplicate/scope/failure/authentication and cleanup");
     }
 }

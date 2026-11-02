@@ -17,7 +17,7 @@
 - 조회 목록에 없거나 Read=N인 기본/확장 속성은 숨깁니다.
 - 기본/확장/분류 어느 폼에도 정의되지 않은 속성명은 새 입력창을 생성하지 않고 무시합니다.
 - 제어 객체가 0개이면 기본/확장 속성을 전부 숨깁니다. 조회 실패와 빈 정상 응답은 구분합니다.
-- 이름 중복, 잘못된 순서, Y/N 이외 값은 설정 오류(409)입니다. 다른 규칙을 임의로 선택하지 않습니다.
+- 이름 중복, 잘못된 순서, Y/N/X 이외 값은 설정 오류(409)입니다. 다른 규칙을 임의로 선택하지 않습니다.
 - 순서는 0~999999999의 정수입니다. 같은 순서는 속성명으로 정렬하여 결과를 고정합니다.
 - 제어 대상은 typeinfo의 publicAttributes/extensionAttributes, 같은 폼에 BL이 추가한 모델,
   자동 선택된 Classification의 속성 폼입니다. Type/SecurityContext 같은 defaultAttributes는 기존 처리를 유지합니다.
@@ -26,7 +26,7 @@
   정확히 끝의 CCMAttr만 제외합니다. 실제 분류 속성명·path·ID·저장 값은 변경하지 않습니다.
 - 같은 이름의 기본/확장 속성과 분류 속성이 중복되면 분류 속성이 우선합니다.
   기본 속성은 화면에서 숨기고 필수 빈값 검증도 하지 않으며 기존 모델·값은 보존합니다.
-  분류 규칙의 Read=N이면 분류 속성도 숨깁니다. 기본 속성으로 자동 대체하지 않습니다.
+  분류 규칙의 Read=N/X이면 분류 속성도 숨깁니다. 기본 속성으로 자동 대체하지 않습니다.
 - 분류 목록이 준비될 때까지 기본 속성 노출을 대기하여 중복 필드가 먼저 나타나지 않게 합니다.
   분류 모델 추가/재생성 시 중복 목록을 다시 계산하고 기본 폼에도 적용합니다.
 - sdxECChangeAction의 Classification에는 제어 객체의 속성별 Mandatory/MandatoryCheck를 적용합니다.
@@ -39,12 +39,12 @@
 | sdxECAttributeOrder | 화면 표시 순서. 인터페이스가 달라도 하나의 순서로 정렬합니다. |
 | sdxECAttributeOrganization | 현재 MX 고정 |
 | sdxECAttributeState | JS에서 전달한 Policy 상태명 |
-| sdxECAttributeRead | Y=표시, N=숨김 |
-| sdxECAttributeEdit | Y=편집 허용, N=읽기 전용 |
-| sdxECAttributeMandatory | Y=필수 아이콘 표시, N=아이콘 없음 |
-| sdxECAttributeMandatoryCheck | Y=필수 빈값 검증, N=빈값 필수 검증 안 함 |
+| sdxECAttributeRead | Y=표시, N/X=숨김 |
+| sdxECAttributeEdit | Y=편집 허용, N/X=읽기 전용 |
+| sdxECAttributeMandatory | Y=필수 아이콘 표시, N/X=아이콘 없음 |
+| sdxECAttributeMandatoryCheck | Y=필수 빈값 검증, N/X=빈값 필수 검증 안 함 |
 
-Read=N 및 목록 밖 필드는 프런트의 필수 빈값 검증도 해제합니다. 숨긴 값은 삭제하지 않습니다.
+Read=N/X 및 목록 밖 필드는 프런트의 필수 빈값 검증도 해제합니다. 숨긴 값은 삭제하지 않습니다.
 Edit=N과 MandatoryCheck=Y를 함께 지정하면 자동값/기존값이 없을 때 저장이 막힙니다.
 MandatoryCheck는 필수 빈값 검증입니다. 자료형·길이·범위·서버 제약과 실제 접근 권한을 해제하는 옵션이 아닙니다.
 
@@ -173,3 +173,9 @@ node tests/test-runtime-hooks.cjs /2025-원본-폴더
 
 Java 테스트는 실제 Jakarta JSON API/Parsson, WS-RS API/Response Provider, Servlet API를 클래스패스로 지정하여
 server/src, tests/java-stubs, tests/java를 컴파일하고 com.sdx.ecca.rest.AttributeControlTest를 실행합니다.
+
+## Y/N/X 제어값
+
+Read/Edit/Mandatory/MandatoryCheck는 Y, N, X를 허용합니다.
+네 항목 모두 X는 N과 동일합니다. 서버는 Y만 true, N/X는 false로 응답하여
+기본·분류 폼이 동일한 boolean 규칙을 사용합니다. 네 항목별 N/X 응답 동일성과 전체 X 조합을 검사합니다.
