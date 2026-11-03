@@ -155,3 +155,12 @@ CA occurrence가 없음/지연됨/setValidation이 없는 경우에도 준비된
 필수 표시/검증 4조합에 맞는 기본/ExtensionsFacet 구획과 section/form/group 보존을 검사합니다.
 test-ootb-control-layout.cjs는 실제 2025 AttributeModel/FormSections/Form/manageAccordion을
 실행하여 두 구획, 각 구획의 정렬, 펼치기 헤더를 확인합니다. WUX 입력의 실제 브라우저 렌더링은 별도 확인 대상입니다.
+
+2026-11-03 분류 편집 모드·별표 위치·OOTB 검증 복원:
+
+- Edit=true만으로는 전체 분류 폼의 조회 모드가 바뀌지 않아, Properties.initData의 FORCE_READWRITE를 사용합니다.
+- test-ootb-classification-edit.cjs: 실제 2025 Properties.initData/_switchEditionMode로 편집 전환, 읽기 전용 권한, 기존 모델/값 보존을 확인했습니다.
+- 같은 검사에서 실제 기본·분류 AttributesUtils로 Mandatory/MandatoryCheck 4조합 및 읽기 전용 필드의 OOTB 검증 동작을 확인했습니다.
+- 별도 빈값 검사와 AttributeControl의 onSubmit 래퍼를 제거했습니다. 기본 폼 원래 onSubmit과 분류 UIController.validateModels를 유지합니다.
+- DOM 검사로 입력창 생성과 별표의 textContainer 내부 배치를 확인했습니다. OOTB 원본 파일의 추가 수정은 없습니다.
+- 실제 설치 환경의 WUX 렌더링/별표 위치/저장 동작은 배포 후 확인해야 합니다.

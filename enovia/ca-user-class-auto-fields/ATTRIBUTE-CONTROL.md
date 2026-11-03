@@ -48,7 +48,7 @@
 | sdxECAttributeMandatoryCheck | Y=필수 빈값 검증, N/X=빈값 필수 검증 안 함 |
 
 Read=N/X 및 목록 밖 필드는 프런트의 필수 빈값 검증도 해제합니다. 숨긴 값은 삭제하지 않습니다.
-Edit=N과 MandatoryCheck=Y를 함께 지정하면 자동값/기존값이 없을 때 저장이 막힙니다.
+MandatoryCheck는 OOTB 모델의 mandatory에 연결합니다. Edit=N/X인 읽기 전용 필드의 검증 제외 등도 OOTB 동작을 따릅니다.
 MandatoryCheck는 필수 빈값 검증입니다. 자료형·길이·범위·서버 제약과 실제 접근 권한을 해제하는 옵션이 아닙니다.
 
 | Mandatory | MandatoryCheck | 표시 / 검증 |
@@ -138,10 +138,12 @@ widget.setValue(
    펼치기·접기는 원래 OOTB FormSections/manageAccordion이 처리합니다.
 4. 필수 아이콘은 별도 표시하고 OOTB mandatory에는 MandatoryCheck를 적용합니다.
 5. 현재 view/model 인스턴스에만 BL 갱신/폼 재생성 연결을 둡니다. 전역 prototype은 변경하지 않습니다.
-6. 필수 검증은 생성 전과 OOTB/BL/자동 채움 직렬화가 끝난 최종 결과에서도 확인합니다.
+6. 기본 폼의 원래 onSubmit/검증을 유지하고, 분류는 실제 UIController.validateModels를 호출합니다.
+   별도 빈값 검사와 AttributeControl의 onSubmit 래퍼는 사용하지 않습니다.
 7. 기존 prepareAttributes/notifyAttributesLoaded 연결에서 Classification 모델/값을 보존해 대기시킵니다.
    분류 응답과 규칙 중 어느 쪽이 먼저 도착해도 준비 완료 후 같은 규칙을 적용합니다.
-   ClassificationProp의 원래 updateTableManager로 다시 그리고, visible을 지원하지 않는 분류 행은 DOM 표시도 제어합니다.
+   ClassificationProp의 initData에 FORCE_READWRITE를 전달해 원래 편집 모드로 그립니다.
+   필드별 readOnly와 실제 접근 권한은 유지하고, visible을 지원하지 않는 분류 행은 DOM 표시도 제어합니다.
    클래스 ID/facet/저장 모델을 유지하며 분류 재렌더링에도 규칙을 다시 적용합니다.
 8. 기본·분류 규칙과 분류 속성 목록이 모두 준비되어야 생성할 수 있습니다.
    창 종료/협업공간 변경 시 두 폼의 연결·DOM 관찰을 정리하고 이전 조회 응답을 버립니다.
@@ -155,7 +157,8 @@ widget.setValue(
 자동 검사:
 - JS 서비스: MX/요청 상태 응답 계약, 인증 GET, 3DSpace/tenant, 잘못된 응답/중복/실패/시간 초과/늦은 응답.
 - DOM/모델: 목록 밖·Read=N 숨김, Edit=N, 인터페이스 간 순서, 필수 표시/검증 4조합,
-  0/false와 null, 최종 직렬화 검증, 값 보존, BL의 미등록 속성 추가, 폼 재생성, 정리/늦은 응답.
+  원래 onSubmit 보존, 제목 안의 별표, 값 보존, BL의 미등록 속성 추가, 폼 재생성, 정리/늦은 응답.
+- 실제 OOTB 원본: Properties.initData의 편집 전환/권한 유지와 기본·분류 AttributesUtils의 mandatory 검증.
 - Java: 실제 Jakarta API/JSON/Response로 서비스 컴파일 및 실행.
   인증 Context와 DomainObject DB 접근은 대역입니다. 현재 사용자/정확한 where/8개 selects/정렬/Y/N/오류/정리를 검사했습니다.
 - 동적 상태(공백 포함)·누락/잘못된 상태·분류 선후 도착/재생성/행 숨김/읽기 전용/필수 표시·검증,

@@ -8,6 +8,7 @@ let api,loadMode='ok',resolveRules,seenRequest;
 vm.runInNewContext(fs.readFileSync(path.join(root,'webapps/sdxECCAAutoClass/sdxECCAAttributeControl.js'),'utf8'),{
  document,MutationObserver,console,Map,Set,Promise,
  define(id,deps,factory){api=factory((ids,done,fail)=>{
+  if(typeof ids==='string'){assert.equal(ids,'DS/ClassificationProp/constants/ClassifPropConstants');return {FORCE_READWRITE:'force_readWrite'};}
   assert.equal(ids[0],'DS/sdxECCAAutoClass/sdxECCAAttributeControlService');
   if(loadMode==='missing'){fail(Error('module missing'));return;}
   done({read(request){seenRequest=request;return new Promise(resolve=>{resolveRules=resolve;});}});
@@ -33,7 +34,7 @@ function fixture(){
   refresh(){renders++;const container=document.createElement('div');const lines=[];
    Object.values(fields).sort((a,b)=>a.positionUI?.localeCompare(b.positionUI,undefined,{numeric:true})||0).forEach(field=>{
     const flex=document.createElement('div');flex.className='flexLine';
-    const label=document.createElement('div');label.className='formLabel';
+    const label=document.createElement('div');label.className='formLabel';const title=document.createElement('span');title.className='textContainer';title.textContent=field.name;label.appendChild(title);
     if(field.mandatory){const native=document.createElement('span');native.className='attrMand';label.appendChild(native);}
     flex.appendChild(label);container.appendChild(flex);lines.push({_idAttr:field.getIdentifier(),elements:{flexLine:flex}});
    });
@@ -56,15 +57,15 @@ function classificationFixture(f) {
   const field=new Field(name+'CCMAttr',{extension:'C1',facet:'C1',section:'Class',positionUI:'0',value:[],valueDB:[],mandatory:true,visible:true});
   fields[field.getIdentifier()]=field;
  });
- let lines=[],renders=0;
+ let lines=[],renders=0,editMode=false;
  const model={getAllAttributes:()=>fields,get:id=>id==='objectId'?'C1':fields[id],
   values:()=>Object.values(fields),set(id,value){fields[id]=value;}};
  const section={getOrganizers:()=>({C1:{_forms:[{fields:lines}]}})};
- const ui={elements:{formSection:section},updateTableManager(){
+ const ui={elements:{formSection:section},initData(models,options){assert.equal(models[0],model);assert.equal(options.edition,'force_readWrite');editMode=true;this.updateTableManager();},updateTableManager(){
   renders++;root.querySelector('.class-lines')?.remove();const body=document.createElement('div');body.className='class-lines';lines=[];
   Object.values(fields).sort((a,b)=>a.positionUI.localeCompare(b.positionUI,undefined,{numeric:true})).forEach(field=>{
    // OOTB ClassificationProp does not consume visible; control must hide its DOM line explicitly.
-   const flex=document.createElement('div'),label=document.createElement('div');flex.className='flexLine';label.className='formLabel';flex.appendChild(label);
+   const flex=document.createElement('div'),label=document.createElement('div');flex.className='flexLine';label.className='formLabel';const title=document.createElement('span');title.className='textContainer';title.textContent=field.name;label.appendChild(title);flex.appendChild(label);if(editMode&&!field.readOnly){const input=document.createElement('input');flex.appendChild(input);}
    if(field.mandatory){const icon=document.createElement('span');icon.className='attrMand';label.appendChild(icon);}
    body.appendChild(flex);lines.push({_idAttr:field.getIdentifier(),elements:{flexLine:flex},getContent:()=>flex});
   });root.appendChild(body);
@@ -86,10 +87,10 @@ const rules=()=>new Map([
 ].map(r=>[r.name,r]));
 const tick=()=>new Promise(r=>setImmediate(r));
 (async()=>{
- let f=fixture(),originalSet=f.model.set,originalRefresh=f.view.refresh;
+ let f=fixture(),originalSet=f.model.set,originalRefresh=f.view.refresh,originalSubmit=f.view.onSubmit;
  const pending=api.install(f.facet,f.session,{});await tick();
  assert.equal(seenRequest.securityContext,f.session.context);assert.equal(f.session.attributeControlReady,undefined);
- let out;f.view.onSubmit(r=>{out=r;});assert.equal(out,false);assert.equal(f.submits(),0);
+ assert.equal(f.view.onSubmit,originalSubmit); // Native submit/validation is not wrapped by control
  resolveRules(rules());const cleanup=await pending;await tick();
  assert.equal(f.session.attributeControlReady,true);
  assert.equal(f.field('Unlisted').visible,false);assert.equal(f.field('Denied').visible,false);
@@ -100,16 +101,10 @@ const tick=()=>new Promise(r=>setImmediate(r));
  assert.deepEqual(shown,['First','CheckOnly','DisplayOnly','Both','Neither']);
  for(const [name,mandatory,check] of [['DisplayOnly',true,false],['CheckOnly',false,true],['Both',true,true],['Neither',false,false]]){
   assert.equal(f.field(name).mandatory,check);assert.equal(f.field(name).facet,mandatory||check?'':'ExtensionsFacet');
-  assert.equal(!!f.label(name).querySelector('.sdxECCAControlMandatory'),mandatory);
+  assert.equal(!!f.label(name).querySelector('.sdxECCAControlMandatory'),mandatory);if(mandatory)assert.equal(f.label(name).querySelector('.sdxECCAControlMandatory').parentNode,f.label(name).querySelector('.textContainer'));
  }
- assert.throws(()=>f.session.validateAttributeControl(),/CheckOnly.*Both/);
- f.field('CheckOnly').valueDB=0;f.field('Both').valueDB=false;
- assert.doesNotThrow(()=>f.session.validateAttributeControl()); // 0/false are valid
- f.view.onSubmit(r=>{out=r;});assert.equal(out.saved,true);
- f.field('CheckOnly').valueDB=null;f.field('CheckOnly').value='stale';
- assert.throws(()=>f.session.validateAttributeControl(),/CheckOnly/);f.field('CheckOnly').valueDB=0;
- f.view.nextResult={attributes:{publicAttributes:[{name:'CheckOnly',value:''},{name:'Both',value:false}]}};
- f.view.onSubmit(r=>{out=r;});assert.equal(out,false);delete f.view.nextResult;
+ assert.equal(f.session.validateAttributeControl,undefined);
+ assert.equal(f.view.onSubmit,originalSubmit);
  // BL replaces a model with conflicting flags; policy applies before original model.set.
  const unlisted=new Field('Unlisted',{visible:true,mandatory:true,valueDB:'keep-hidden'});
  f.model.set(unlisted.getIdentifier(),unlisted);assert.equal(unlisted.visible,false);assert.equal(unlisted.mandatory,false);assert.equal(unlisted.valueDB,'keep-hidden');
@@ -122,7 +117,7 @@ const tick=()=>new Promise(r=>setImmediate(r));
  // New OOTB model on refresh retains policy and no new network request.
  f.view.buildModel(f.view.data);f.view.loadView();await tick();assert.equal(f.field('First').readOnly,true);
  cleanup();assert.equal(f.model.set,originalSet);assert.equal(f.view.refresh,originalRefresh);
- assert.equal(f.session.validateAttributeControl,null);assert.equal(f.facet.skeleton.querySelector('style'),null);
+ assert.equal(f.session.validateAttributeControl,undefined);assert.equal(f.facet.skeleton.querySelector('style'),null);
  // Closing/context change before a response cannot expose fields; cleanup is available while pending.
  for(const change of ['disposed','transitioning']){
   f=fixture();const p=api.install(f.facet,f.session,{});await tick();
@@ -148,15 +143,15 @@ const tick=()=>new Promise(r=>setImmediate(r));
  const base=api.install(f.facet,f.session,{});await tick();assert.equal(f.field('Both').visible,false);assert.equal(seenRequest.state,'In Work');
  assert.equal(cf.root.style.visibility,'hidden');const classRules=rules();classRules.set('Neither',{...classRules.get('Neither'),edit:false});classRules.set('BothExtra',rule('BothExtra',50));resolveRules(classRules);const remove=await base;await tick();
  assert.equal(f.session.classificationControlReady,true);assert.equal(f.field('DisplayOnly').visible,false);assert.equal(f.field('CheckOnly').mandatory,false);assert.equal(f.field('Neither').readOnly,true);assert.equal(cf.root.style.visibility,'');
- assert.deepEqual(cf.names(),['CheckOnly','DisplayOnly','Both','Neither']);assert.equal(cf.field('Both').name,'BothCCMAttr');assert.equal(f.field('DisplayOnly').valueDB,'base-original');assert.equal(f.field('Both').valueDB,'base-value');assert.doesNotThrow(()=>f.session.validateAttributeControl());assert.equal(cf.field('Neither').readOnly,true);
+ assert.deepEqual(cf.names(),['CheckOnly','DisplayOnly','Both','Neither']);assert.equal(cf.field('Both').name,'BothCCMAttr');assert.equal(f.field('DisplayOnly').valueDB,'base-original');assert.equal(f.field('Both').valueDB,'base-value');assert.equal(f.session.validateAttributeControl,undefined);assert.equal(cf.field('Neither').readOnly,true);
  assert.equal(cf.line('Denied').style.display,'none');assert.equal(cf.line('Unlisted').style.display,'none');
  for(const [name,show,check] of [['DisplayOnly',true,false],['CheckOnly',false,true],['Both',true,true],['Neither',false,false]]){
   assert.equal(cf.field(name).mandatory,check);assert.equal(cf.field(name).facet,'C1');
-  assert.equal(!!cf.line(name).querySelector('.sdxECCAControlMandatory'),show);
+  assert.equal(!!cf.line(name).querySelector('.sdxECCAControlMandatory'),show);if(show)assert.equal(cf.line(name).querySelector('.sdxECCAControlMandatory').parentNode,cf.line(name).querySelector('.textContainer'));
  }
- assert.throws(()=>f.session.validateClassificationControl(),/CheckOnly.*Both/);
- cf.field('CheckOnly').valueDB=['typed'];cf.field('Both').valueDB=[false];
- assert.doesNotThrow(()=>f.session.validateClassificationControl());
+ assert.equal(f.session.validateClassificationControl,undefined);
+ assert.ok(cf.line('Both').querySelector('input'));assert.ok(cf.line('DisplayOnly').querySelector('input'));
+ assert.equal(cf.line('Neither').querySelector('input'),null);
  const denied=new Field('DeniedCCMAttr',{extension:'C1',facet:'C1',visible:true,mandatory:true,valueDB:['keep']});
  cf.model.set(denied.getIdentifier(),denied);assert.equal(denied.mandatory,false);assert.equal(denied.readOnly,true);
  cf.ui.updateTableManager();await tick();assert.equal(cf.line('Denied').style.display,'none');assert.deepEqual(denied.valueDB,['keep']);assert.equal(denied.name,'DeniedCCMAttr');
@@ -165,6 +160,6 @@ const tick=()=>new Promise(r=>setImmediate(r));
  // A regenerated class form after rules have arrived is also controlled, while IDs/values stay intact.
  const replacement=classificationFixture(f);f.session.attachClassificationControl(replacement.form);await tick();
  assert.equal(cf.ui.updateTableManager,cf.original);assert.equal(replacement.line('Unlisted').style.display,'none');
- remove();assert.equal(replacement.ui.updateTableManager,replacement.original);assert.equal(f.session.validateClassificationControl,null);
- console.log('PASS: dynamic state, CCMAttr suffix mapping, classification-first duplicates/value preservation, shared base/classification rules, native class-row hiding, ready-order races, rebuild/cleanup,  pending-submit guard, allowlist, Read/Edit, global order across interfaces, four indicator/check combinations, 0/false, BL/model rebuild, values, cleanup, empty/failure/late responses');
+ remove();assert.equal(replacement.ui.updateTableManager,replacement.original);assert.equal(f.session.validateClassificationControl,undefined);
+ console.log('PASS: dynamic state, CCMAttr suffix mapping, classification-first duplicates/value preservation, shared base/classification rules, native class-row hiding, ready-order races, rebuild/cleanup,  native submit/validation preserved, allowlist, Read/Edit, global order across interfaces, four indicator/check combinations, inline indicators, native editing initData, BL/model rebuild, values, cleanup, empty/failure/late responses');
 })().catch(error=>{console.error(error);process.exitCode=1;});

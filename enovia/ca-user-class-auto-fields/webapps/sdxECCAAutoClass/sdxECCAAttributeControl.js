@@ -103,7 +103,9 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
                             icon = document.createElement("span");
                             icon.className = "mandIcon wux-ui3ds wux-ui-3ds-new-create sdxECCAControlMandatory";
                             icon.setAttribute("aria-hidden", "true");
-                            label.appendChild(icon);
+                            // OOTB 제목 텍스트와 같은 인라인 컨테이너에 둡니다.
+                            var title = label.querySelector(".textContainer") || label.querySelector(".attrLabel") || label;
+                            title.appendChild(icon);
                         } else if (!show && icon) icon.parentNode.removeChild(icon);
                     });
                 });
@@ -134,55 +136,25 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
             model.set = wrapped;
             restoreModel = function () { if (model.set === wrapped) model.set = original; };
         }
-        function validate(result) {
-            if (closed() || !rules) throw new Error("속성 제어 설정이 준비되지 않았습니다.");
-            var fields = all(), missing = [];
-            Object.keys(fields).forEach(function (key) {
-                var field = fields[key], name = get(field, "name"), rule = rules.get(ruleName(name));
-                if (!controlled(field) || !visible(name) || !rule.mandatoryCheck) return;
-                var value = get(field, "valueDB");
-                if (value === undefined) value = get(field, "value");
-                if (result && result.attributes) {
-                    var saved;
-                    ["publicAttributes", "extensionAttributes"].some(function (group) {
-                        var rows = result.attributes[group];
-                        saved = Array.isArray(rows) && rows.find(function (row) { return row && row.name === name; });
-                        return !!saved;
-                    });
-                    value = saved ? saved.value : undefined;
-                }
-                if (value === undefined || value === null || (Array.isArray(value) ?
-                        !value.length || value.every(function (item) { return item == null || String(item).trim() === ""; }) :
-                        String(value).trim() === "")) {
-                    missing.push(get(field, "label") || name);
-                }
-            });
-            if (missing.length) throw new Error("필수 항목을 입력해 주세요: " + missing.join(", "));
-        }
         function cleanup() {
             disposed = true;
             if (observer) observer.disconnect();
             if (restoreModel) restoreModel();
             restores.reverse().forEach(function (restore) { restore(); });
             if (style.parentNode) style.parentNode.removeChild(style);
-            if (classification) {
-                if (session.validateClassificationControl === validate) session.validateClassificationControl = null;
-            } else {
+            if (!classification) {
                 if (session.cleanupClassificationControl) session.cleanupClassificationControl();
                 session.attachClassificationControl = null;
                 if (session.refreshBaseAttributeControl === refreshBase) session.refreshBaseAttributeControl = null;
-                if (session.validateAttributeControl === validate) session.validateAttributeControl = null;
             }
         }
         var style = document.createElement("style");
         style.textContent = ".sdxECCAControlledLabel .mandIcon,.sdxECCAControlledLabel .attrMand{display:none!important}" +
-            ".sdxECCAControlledLabel .sdxECCAControlMandatory{display:inline!important;font-size:7px;font-family:DSFontIcon;color:rgb(234,79,55)!important}";
+            ".sdxECCAControlledLabel .sdxECCAControlMandatory{display:inline!important;margin-left:3px;vertical-align:middle;font-size:7px;font-family:DSFontIcon;color:rgb(234,79,55)!important}";
         facet.skeleton.appendChild(style);
         if (classification) {
-            session.validateClassificationControl = validate;
             session.cleanupClassificationControl = cleanup;
         } else {
-            session.validateAttributeControl = validate;
             session.cleanupAttributeControl = cleanup;
             session.refreshBaseAttributeControl = refreshBase;
         }
@@ -212,17 +184,6 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
                     // BL이 재표시를 요청해도 제어 설정의 숨김을 유지합니다.
                     if (controlled(field)) show = visible(name);
                     return original.call(this, id, show);
-                }; });
-                wrap(view, "onSubmit", function (original) { return function (callback) {
-                    try { enforce(); validate(); }
-                    catch (error) { if (session.showMessage) session.showMessage(error.message); callback(false); return; }
-                    return original.call(this, function (result) {
-                        if (result) {
-                            try { enforce(); validate(result); }
-                            catch (error) { if (session.showMessage) session.showMessage(error.message); callback(false); return; }
-                        }
-                        callback(result);
-                    });
                 }; });
             }
             if (typeof MutationObserver !== "undefined") {
@@ -269,12 +230,17 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
     /** 분류 폼도 같은 규칙·검증·라벨 처리를 사용하고 원래 모델/저장 경로는 유지합니다. */
     function installClassification(form, session, rules) {
         var ui = form.propertiesUI;
-        if (!ui || !ui.elements || !ui.elements.formSection || typeof ui.updateTableManager !== "function") {
-            return Promise.reject(new Error("분류 속성 UI의 updateTableManager 연결을 확인해 주세요."));
+        if (!ui || !ui.elements || !ui.elements.formSection || typeof ui.updateTableManager !== "function" || typeof ui.initData !== "function") {
+            return Promise.reject(new Error("분류 속성 UI의 initData/updateTableManager 연결을 확인해 주세요."));
         }
+        // Properties 생성에 이미 사용된 OOTB 상수입니다. 기본 폼 로딩에는 추가 의존성을 만들지 않습니다.
+        var ClassifConstants;
+        try { ClassifConstants = require("DS/ClassificationProp/constants/ClassifPropConstants"); }
+        catch (error) { return Promise.reject(error); }
         var view = {propModel: form.model, data: {},
             propUI: {getFormSection: function () { return ui.elements.formSection; }},
-            refresh: function () { return ui.updateTableManager(); }};
+            // updateTableManager만 호출하면 기존 조회 모드가 유지되어 입력창이 생기지 않습니다.
+            refresh: function () { return ui.initData([form.model], {edition: ClassifConstants.FORCE_READWRITE}); }};
         return install({listview: view, skeleton: form.root}, session,
             {classification: true, rules: rules, propertiesUI: ui});
     }

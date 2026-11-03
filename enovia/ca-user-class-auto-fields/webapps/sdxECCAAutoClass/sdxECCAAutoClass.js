@@ -505,10 +505,9 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 session.validateFields = function () {
                     var form = sdxECCAGetRenderedClassForm(session);
                     if (session.type === "sdxECChangeAction") {
-                        if (!session.classificationControlReady || !session.validateClassificationControl) {
+                        if (!session.classificationControlReady) {
                             throw new Error("분류 속성 제어 설정이 준비되지 않았습니다.");
                         }
-                        session.validateClassificationControl();
                     }
                     var errors = form.ui.validateModels([form.model]);
                     if (errors && errors.length) {
@@ -698,7 +697,6 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
             // blur는 입력값의 모델 반영을 유도합니다. 서버 저장을 뜻하지 않습니다.
             var active = document.activeElement;
             if (active && ctrl.accordeonCon.contains(active) && typeof active.blur === "function") active.blur();
-            if (session.validateAttributeControl) session.validateAttributeControl();
             session.validateFields();
             return true;
         } catch (error) {
