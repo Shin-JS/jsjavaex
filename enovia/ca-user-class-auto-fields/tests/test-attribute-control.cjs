@@ -14,13 +14,13 @@ vm.runInNewContext(fs.readFileSync(path.join(root,'webapps/sdxECCAAutoClass/sdxE
  });}
 });
 class Field {
- constructor(name,extra={}){Object.assign(this,{name,label:name,value:'',valueDB:'',visible:false,mandatory:false,readOnly:false,extension:'ItfA'},extra);}
+ constructor(name,extra={}){Object.assign(this,{name,label:name,value:'',valueDB:'',visible:false,mandatory:false,readOnly:false,extension:'ItfA',facet:'ExtensionsFacet',section:'',form:'DSDefault',group:'Default',positionUI:'0'},extra);}
  get(key){return this[key];}set(key,value){this[key]=value;}getIdentifier(){return this.extension+'-'+this.name;}
 }
 function fixture(){
  const names=['First','DisplayOnly','CheckOnly','Both','Neither','Denied','Unlisted','sdxECType','PlanText'];
  const fields={};names.forEach((name,i)=>{const f=new Field(name,{extension:i%2?'ItfB':'ItfA'});fields[f.getIdentifier()]=f;});
- const special=new Field('Type',{defaultAttribute:true,visible:true});fields[special.getIdentifier()]=special;
+ const special=new Field('Type',{defaultAttribute:true,visible:true,facet:'',positionUI:'6-1-1'});fields[special.getIdentifier()]=special;
  const classField=new Field('ClassificationOnly',{visible:true,mandatory:true});
  let renders=0,submits=0,events=0,organizers={};
  const model={getAllAttributes:()=>fields,get:id=>fields[id],set(id,value){fields[id]=value;events++;}};
@@ -95,11 +95,11 @@ const tick=()=>new Promise(r=>setImmediate(r));
  assert.equal(f.field('Unlisted').visible,false);assert.equal(f.field('Denied').visible,false);
  assert.equal(f.field('sdxECType').visible,false);assert.equal(f.field('PlanText').visible,false);
  assert.equal(f.field('Type').visible,true);assert.equal(f.classField.mandatory,true);
- assert.equal(f.field('First').readOnly,true);
+ assert.equal(f.field('First').readOnly,true);assert.equal(f.field('Neither').readOnly,false);
  const shown=Object.values(f.fields).filter(v=>v.visible&&!v.defaultAttribute).sort((a,b)=>a.positionUI.localeCompare(b.positionUI,undefined,{numeric:true})).map(v=>v.name);
  assert.deepEqual(shown,['First','CheckOnly','DisplayOnly','Both','Neither']);
  for(const [name,mandatory,check] of [['DisplayOnly',true,false],['CheckOnly',false,true],['Both',true,true],['Neither',false,false]]){
-  assert.equal(f.field(name).mandatory,check);
+  assert.equal(f.field(name).mandatory,check);assert.equal(f.field(name).facet,mandatory||check?'':'ExtensionsFacet');
   assert.equal(!!f.label(name).querySelector('.sdxECCAControlMandatory'),mandatory);
  }
  assert.throws(()=>f.session.validateAttributeControl(),/CheckOnly.*Both/);
@@ -115,8 +115,8 @@ const tick=()=>new Promise(r=>setImmediate(r));
  f.model.set(unlisted.getIdentifier(),unlisted);assert.equal(unlisted.visible,false);assert.equal(unlisted.mandatory,false);assert.equal(unlisted.valueDB,'keep-hidden');
  const injected=new Field('InjectedByBL',{visible:true,mandatory:true,valueDB:'keep'});
  f.model.set(injected.getIdentifier(),injected);assert.equal(injected.visible,false);assert.equal(injected.mandatory,false);
- const first=new Field('First',{visible:true,readOnly:false,valueDB:'unchanged'});
- f.model.set(first.getIdentifier(),first);assert.equal(first.readOnly,true);assert.equal(first.valueDB,'unchanged');
+ const first=new Field('First',{visible:true,readOnly:false,valueDB:'unchanged',section:'OriginalSection',form:'OriginalForm',group:'OriginalGroup'});
+ f.model.set(first.getIdentifier(),first);assert.equal(first.readOnly,true);assert.equal(first.valueDB,'unchanged');assert.equal(first.section,'OriginalSection');assert.equal(first.form,'OriginalForm');assert.equal(first.group,'OriginalGroup');
  f.view.addAttributeOnUI(unlisted.getIdentifier(),true);assert.equal(unlisted.visible,false);
  f.view.refresh();await tick();assert.equal(f.label('Both').querySelectorAll('.sdxECCAControlMandatory').length,1);
  // New OOTB model on refresh retains policy and no new network request.
@@ -138,7 +138,7 @@ const tick=()=>new Promise(r=>setImmediate(r));
  f=fixture();delete f.session.classificationControlNames;f.field('DisplayOnly').valueDB='early-value';
  const baseOnly=new Field('BaseOnly',{visible:false});f.model.set(baseOnly.getIdentifier(),baseOnly);
  const early=api.install(f.facet,f.session,{});await tick();const earlyRules=rules();earlyRules.set('BaseOnly',rule('BaseOnly',50));resolveRules(earlyRules);const earlyCleanup=await early;
- assert.equal(f.field('DisplayOnly').visible,true);assert.equal(f.field('DisplayOnly').readOnly,true);assert.equal(f.field('Unlisted').visible,false);assert.equal(baseOnly.visible,true);assert.equal(baseOnly.readOnly,true);
+ assert.equal(f.field('DisplayOnly').visible,true);assert.equal(f.field('DisplayOnly').readOnly,false);assert.equal(f.field('Unlisted').visible,false);assert.equal(baseOnly.visible,true);assert.equal(baseOnly.readOnly,false);
  const lateClass=classificationFixture(f);f.session.attachClassificationControl(lateClass.form);await tick();
  assert.equal(f.field('DisplayOnly').visible,false);assert.equal(f.field('DisplayOnly').valueDB,'early-value');
  assert.equal(lateClass.field('DisplayOnly').visible,true);assert.equal(f.session.classificationControlReady,true);assert.equal(baseOnly.visible,true);assert.equal(baseOnly.readOnly,false);

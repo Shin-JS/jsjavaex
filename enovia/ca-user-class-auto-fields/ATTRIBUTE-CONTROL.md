@@ -21,14 +21,16 @@
 - 순서는 0~999999999의 정수입니다. 같은 순서는 속성명으로 정렬하여 결과를 고정합니다.
 - 제어 대상은 typeinfo의 publicAttributes/extensionAttributes, 같은 폼에 BL이 추가한 모델,
   자동 선택된 Classification의 속성 폼입니다. Type/SecurityContext 같은 defaultAttributes는 기존 처리를 유지합니다.
-- 기본·확장 속성은 하나의 순서로, Classification은 해당 분류 폼 안의 순서로 정렬합니다.
+- 기본 폼은 OOTB의 기본 영역/추가 정보(ExtensionsFacet, 펼치기) 구획을 사용합니다.
+  필수 표시 또는 필수 검증 대상은 기본 영역, 일반 속성은 추가 정보에 두고 각 구획 안에서 순서를 적용합니다.
+  Classification은 기존 분류 구획과 class ID를 유지하고 해당 폼 안에서 정렬합니다.
 - 분류 속성 sdxECPlanCCMAttr은 제어 객체의 sdxECAttributeName=sdxECPlan 규칙을 사용합니다.
   정확히 끝의 CCMAttr만 제외합니다. 실제 분류 속성명·path·ID·저장 값은 변경하지 않습니다.
 - 같은 이름의 기본/확장 속성과 분류 속성이 중복되면 분류 속성이 우선합니다.
   기본 속성은 화면에서 숨기고 필수 빈값 검증도 하지 않으며 기존 모델·값은 보존합니다.
   분류 규칙의 Read=N/X이면 분류 속성도 숨깁니다. 기본 속성으로 자동 대체하지 않습니다.
-- 제어 응답을 받으면 기본 속성을 먼저 표시합니다. 분류 목록이 준비될 때까지 입력은 읽기 전용으로 둡니다.
-  분류 목록 도착 후 중복 기본 속성을 숨기고 나머지는 Edit 규칙에 맞춰 편집 상태를 적용합니다.
+- 제어 응답을 받으면 기본 속성을 표시하며 Edit=Y이면 바로 편집할 수 있습니다.
+  분류 목록 도착 후 중복 기본 속성을 숨깁니다. 편집 가능 여부는 Edit 규칙을 사용합니다.
   분류 모델 추가/재생성 시 중복 목록을 다시 계산하며 기본 모델과 입력값은 보존합니다.
 - sdxECChangeAction의 Classification에는 제어 객체의 속성별 Mandatory/MandatoryCheck를 적용합니다.
   기존 클래스 전체 필수 플래그 sdxClassAttrMandatory보다 제어 규칙이 우선합니다. 다른 생성 타입은 기존 처리를 유지합니다.
@@ -37,7 +39,7 @@
 | 제어 속성 | 의미 |
 |---|---|
 | sdxECAttributeName | 기본 속성은 실제 name, 분류 속성은 끝의 CCMAttr을 제외한 name. NLS 라벨/객체 name이 아닙니다. |
-| sdxECAttributeOrder | 화면 표시 순서. 인터페이스가 달라도 하나의 순서로 정렬합니다. |
+| sdxECAttributeOrder | OOTB 기본/추가 정보 구획 각각의 표시 순서. 분류는 분류 폼 안의 순서. |
 | sdxECAttributeOrganization | 현재 MX 고정 |
 | sdxECAttributeState | JS에서 전달한 Policy 상태명 |
 | sdxECAttributeRead | Y=표시, N/X=숨김 |
@@ -132,7 +134,8 @@ widget.setValue(
 1. 기존 prepareFixedType 연결에서 대상 속성을 복제해 일단 숨기고 forUI=true로 모델/값을 보존합니다.
 2. 기존 installFields 연결에서 조회 모듈을 로딩합니다. 조회 중에는 생성 준비 완료로 처리하지 않습니다.
 3. 응답을 받은 뒤 현재 AttributeModel의 visible/readOnly/mandatory/positionUI만 적용하고 OOTB refresh로 그립니다.
-   필수 여부와 인터페이스 때문에 순서가 나뉘지 않도록 제어 속성은 기존 Attributes 구역으로 모읍니다.
+   기본 폼의 facet은 기본/ExtensionsFacet 구획 규칙에 맞추고 기존 section/form/group은 보존합니다.
+   펼치기·접기는 원래 OOTB FormSections/manageAccordion이 처리합니다.
 4. 필수 아이콘은 별도 표시하고 OOTB mandatory에는 MandatoryCheck를 적용합니다.
 5. 현재 view/model 인스턴스에만 BL 갱신/폼 재생성 연결을 둡니다. 전역 prototype은 변경하지 않습니다.
 6. 필수 검증은 생성 전과 OOTB/BL/자동 채움 직렬화가 끝난 최종 결과에서도 확인합니다.
@@ -188,3 +191,15 @@ CA의 자동 분류 시작은 실제 라이브러리 컨트롤러(autoComplete/c
 기존 facetValidation/Dialog 집계와 기본·분류 준비 완료 후 저장 조건은 유지합니다.
 컨트롤러 연결은 세션당 한 번만 시작하며, 실제 준비 실패 시 누락된 구성요소를 콘솔에 한 번 기록합니다.
 제어 응답 선행/분류 응답 선행 모두 검사하며, 기본 폼의 표시를 분류 초기화와 분리했습니다.
+
+## 기본 입력과 OOTB 펼치기 구획 복구 — 2026-11-03
+
+분류 준비 여부를 이유로 기본 속성 전체를 읽기 전용으로 두던 조건을 제거했습니다.
+Read=Y, Edit=Y인 일반 필드는 규칙을 받으면 입력할 수 있고, Edit=N/X는 읽기 전용입니다.
+모든 필드의 facet/section/form/group을 하나로 덮어쓰던 코드를 제거하여 OOTB 추가 정보 구획을 복구했습니다.
+Mandatory 또는 MandatoryCheck가 Y인 항목은 기본 영역에, 둘 다 N/X인 항목은 ExtensionsFacet에 두며,
+분류 모델의 facet(class ID)과 원래 section/form/group은 변경하지 않습니다.
+
+실제 2025 EditPropAttributeModel/FormSections/Form 및 ENONewWidget.manageAccordion을 실행하는
+검사(test-ootb-control-layout.cjs)에서 구획 분리·구획 내 순서·펼치기 헤더·편집 메타데이터를 확인했습니다.
+실제 WUX 입력 컴포넌트와 설치 서버의 최종 화면은 배포 후 확인해야 합니다.

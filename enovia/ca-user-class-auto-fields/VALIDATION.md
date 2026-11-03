@@ -148,3 +148,10 @@ CA occurrence가 없음/지연됨/setValidation이 없는 경우에도 준비된
 자동 선택을 한 번만 시작하는 회귀 검사를 추가했습니다.
 분류 목록보다 제어 응답이 먼저 와도 기본 폼을 표시하고, 목록 도착 후 중복 숨김/편집 허용을
 재적용하며 원래 값을 보존하는 DOM 검사를 추가했습니다. 저장은 분류 준비 완료까지 차단합니다.
+
+### 기본 입력/추가 정보 구획 복구
+
+분류 목록 대기 중에도 Edit=Y 필드의 readOnly=false를 확인하고,
+필수 표시/검증 4조합에 맞는 기본/ExtensionsFacet 구획과 section/form/group 보존을 검사합니다.
+test-ootb-control-layout.cjs는 실제 2025 AttributeModel/FormSections/Form/manageAccordion을
+실행하여 두 구획, 각 구획의 정렬, 펼치기 헤더를 확인합니다. WUX 입력의 실제 브라우저 렌더링은 별도 확인 대상입니다.

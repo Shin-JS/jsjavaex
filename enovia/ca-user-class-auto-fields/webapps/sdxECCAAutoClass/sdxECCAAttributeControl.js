@@ -40,13 +40,12 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
             var name = get(field, "name");
             if (!controlled(field) || typeof field.set !== "function") return;
             var rule = rules && rules.get(ruleName(name)), show = visible(name);
-            var flags = {visible: show, readOnly: !show || !rule.edit || (!classification && !session.classificationControlNames),
+            var flags = {visible: show, readOnly: !show || !rule.edit,
                 mandatory: show && rule.mandatoryCheck, positionUI: "2-1-" + (ranks.get(ruleName(name)) || 1000000),
-                // 필수 여부/인터페이스에 따른 OOTB 구획 분리를 없애 설정 순서를 그대로 사용합니다.
-                facet: classification ? get(field, "facet") : "",
-                section: classification ? get(field, "section") : "",
-                form: classification ? get(field, "form") : "DSDefault",
-                group: classification ? get(field, "group") : "Default"};
+                // 분류의 class ID와 기존 section/form/group은 유지합니다.
+                // 기본 폼은 OOTB 기본 영역/ExtensionsFacet(펼치기) 구획을 사용합니다.
+                facet: classification ? get(field, "facet") :
+                    show && (rule.mandatory || rule.mandatoryCheck) ? "" : "ExtensionsFacet"};
             Object.keys(flags).forEach(function (key) {
                 if (get(field, key) !== flags[key]) field.set(key, flags[key]);
             });
