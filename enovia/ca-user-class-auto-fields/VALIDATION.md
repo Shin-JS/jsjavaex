@@ -181,3 +181,11 @@ test-ootb-control-layout.cjs는 실제 2025 AttributeModel/FormSections/Form/man
 - 실제 isFormValid, isUIModified, 기존 서버 오류, 원래 onSubmit은 변경하지 않습니다. 다른 dispatchEvent의 인수도 그대로 전달합니다.
 - 실제 OOTB ENOListView/AttributesUtils/DialogController 기반 검사: 초기 필수값 미입력 시 버튼 비활성화 및 실제 오류 상태 없음, 입력 시 활성화, 수정 후 비우기/저장 시 원래 오류 표시, 기존 오류 유지.
 - 실제 WUX 화면 렌더링은 설치 환경에서 확인해야 합니다. 배포 변경은 sdxECCAAttributeControl.js 하나입니다.
+
+2026-11-03 버튼 비활성화 지속 오류 수정:
+
+- 직전 임시 검사에서 Object.create(field)를 모든 model.values() 항목에 실행했습니다. 실제 EditPropModel에는 기본 메타데이터 문자열/boolean/undefined도 있어 TypeError가 발생하고 onValidActivation 전달이 중단됐습니다.
+- 실제 OOTB EditPropModel.defaults를 포함한 검사에서 수정 전 TypeError를 재현했습니다. 객체만 임시 대상으로 감싸고 나머지는 그대로 OOTB 검증기에 전달하도록 수정했습니다.
+- 실제 ENOListView/AttributesUtils/DialogController와 메타데이터가 포함된 모델로 미입력 비활성화, 입력 활성화, 삭제 후 비활성화, 초기 오류 문구 없음, 입력/저장 오류 표시 유지를 확인했습니다.
+- 실제 AttributeControl 이벤트 래퍼에서도 메타데이터 포함 상태의 false → true → false 전달과 원래 무효 상태/기타 이벤트 인수 보존을 확인했습니다.
+- 실제 배포 화면은 미검증입니다. 배포 변경 파일은 sdxECCAAttributeControl.js 하나입니다.

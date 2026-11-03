@@ -10,6 +10,9 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
         var snapshot = Object.create(model);
         snapshot.values = function () {
             return model.values().map(function (field) {
+                // EditPropModel.values에는 문자열/boolean 등 모델 메타데이터도 포함됩니다.
+                // OOTB 검증기는 이름 없는 값을 건너뛰므로 원래 값 그대로 전달합니다.
+                if (field === null || typeof field !== "object") return field;
                 var copy = Object.create(field);
                 copy.resetError = function () {};
                 copy.setError = function () {};

@@ -84,7 +84,13 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoCl
  define(id,deps,factory){control=factory(()=>{});}
 });
 const attr=Object.assign(new Attribute(),field(true));
-const model={values:()=>[attr],getAllAttributes:()=>({A:attr}),isMergedModel:()=>false};
+// Real EditPropModel.values includes metadata alongside AttributeModel entries.
+const modelDef=defs.get('DS/EditPropWidget/models/EditPropModel');
+const modelProto=modelDef.factory(...modelDef.deps.map(dep=>dep==='DS/WidgetServices/WidgetServices'?{getTenantID:()=> 'OnPremise'}:stub));
+const metadata=Object.values(modelProto.defaults);
+assert(metadata.some(value=>typeof value==='string'));
+assert(metadata.some(value=>typeof value==='boolean'));
+const model={values:()=>[...metadata,null,undefined,attr],getAllAttributes:()=>({...modelProto.defaults,A:attr}),isMergedModel:()=>false};
 const view=Object.assign({},list,{propModel:model,isFormValid:true,propUI:{
  validateModel(models){const errors=basicUtils.validateModels(models);return !errors||!errors.length;},
  updateFormSection(){}},checkForUXBLValidation:()=>true,
