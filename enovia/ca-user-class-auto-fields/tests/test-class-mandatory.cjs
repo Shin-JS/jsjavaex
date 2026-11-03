@@ -1,3 +1,4 @@
+const readSource = require('./read-source.cjs');
 // 실제 플랫폼 통합 검증을 대신하지 않는 클래스 필수 규칙/서비스 대역 검사입니다.
 const fs=require('fs'), path=require('path'), vm=require('vm'), assert=require('assert/strict');
 const root=path.resolve(__dirname,'..'), modules={};
@@ -5,8 +6,8 @@ let request, nextResponse, nextError, disposed=false, fail=null;
 const context=vm.createContext({console,Promise,Map,Set,Error,setTimeout,clearTimeout,
  define(id,deps,factory){modules[id]=factory(...Array.from(deps,d=>d==='require'?requireAMD:modules[d]));}});
 function requireAMD(ids,done){assert.equal(ids[0],'DS/WAFData/WAFData');done({authenticatedRequest(url,opts){request={url,opts};if(nextError)opts.onFailure();else opts.onComplete(nextResponse);}});}
-for(const name of ['sdxECCAClassRuleService','sdxECCAOrganizationProvider','sdxECCAClassAttributeService','sdxECCAObjectSearch','sdxECCAAutoClass'])
- vm.runInContext(fs.readFileSync(path.join(root,'webapps/sdxECCAAutoClass',name+'.js'),'utf8'),context);
+for(const name of ['sdxECCAClassRuleService','sdxECCAOrganizationProvider','sdxECCAClassAttributeService','sdxECCAObjectSearch','sdxECCAService','sdxECCAAutoClass'])
+ vm.runInContext(readSource(path.join(root,'webapps/sdxECCAAutoClass',name+'.js'),'utf8'),context);
 const service=modules['DS/sdxECCAAutoClass/sdxECCAClassAttributeService'], api=modules['DS/sdxECCAAutoClass/sdxECCAAutoClass'];
 const response=value=>({results:[{physicalID:'C1',data:[{name:'sdxClassAttrMandatory',value}]}]});
 for(const [value,expected] of [['Y',true],[['Y'],true],[' Y ',true],['N',false],['',false],[[],false],['y',false]])

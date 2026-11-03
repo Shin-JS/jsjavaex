@@ -1,4 +1,5 @@
 'use strict';
+const readSource = require('./read-source.cjs');
 // NODE_PATH=<linkedom/node_modules> is not required here.
 // node tests/test-ootb-classification-edit.cjs <2025-original-directory>
 const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('node:assert/strict');
@@ -50,8 +51,8 @@ console.log('PASS: actual Classification Properties.initData FORCE_READWRITE ena
 
 // Exercise the real post-load access decision, including the pre-render custom hook.
 let custom;
-vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAutoClass.js'),'utf8'),{
- define(id,deps,factory){custom=factory(()=>{},{},{},{});}
+vm.runInNewContext(readSource(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAutoClass.js'),'utf8'),{
+ define(id,deps,factory){custom=factory(()=>{},{classRule:{},organization:{},classAttribute:{}});}
 });
 const controllerDef=defs.get('DS/ClassificationProp/facets/Properties/ClassifPropController');
 const controller=controllerDef.factory(...controllerDef.deps.map(dep=>dep.endsWith('/ClassifPropConstants')?constants:stub));
@@ -80,7 +81,7 @@ const dialog=Object.assign({},dialogMethods,{viewType:'tabView',isPropertiesForm
  View:{evaluateFacetValidation:()=>true},footerButtons:{Ok:{value:'Ok'},Save:{value:'Save'},createBtnCombo:{},Discard:{value:'Discard'}},
  myDialog:{elements:{_checkbox:{}}},removeLoadingOverlay(){}});
 let control;
-vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAttributeControl.js'),'utf8'),{
+vm.runInNewContext(readSource(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAttributeControl.js'),'utf8'),{
  define(id,deps,factory){control=factory(()=>{});}
 });
 const attr=Object.assign(new Attribute(),field(true));

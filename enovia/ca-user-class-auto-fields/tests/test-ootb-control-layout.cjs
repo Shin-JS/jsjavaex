@@ -1,4 +1,5 @@
 'use strict';
+const readSource = require('./read-source.cjs');
 // Run against the vendor originals without copying them into the repository.
 // NODE_PATH=<linkedom/node_modules> node tests/test-ootb-control-layout.cjs <2025-original-directory>
 const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('node:assert/strict');
@@ -26,7 +27,7 @@ const rules=new Map([
  ['Optional',{name:'Optional',order:30,read:true,edit:true,mandatory:false,mandatoryCheck:false}],
  ['Readonly',{name:'Readonly',order:40,read:true,edit:false,mandatory:false,mandatoryCheck:false}]
 ]);
-vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAttributeControl.js'),'utf8'),{
+vm.runInNewContext(readSource(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAttributeControl.js'),'utf8'),{
  document,MutationObserver,define(id,deps,factory){Control=factory((ids,done)=>done({read:()=>Promise.resolve(rules)}));}
 });
 const fields={};

@@ -1,5 +1,34 @@
 # 검사 결과와 현장 확인 범위 — 2026-10-19
 
+## 현재 파일 통합 검증 — 2026-11-03
+
+현재 배포 기준은 [README](README.md)입니다. 아래 과거 기록의 개별 파일 배포 안내는 통합 전 기준입니다.
+커스텀 JS 9개를 생성창 처리·서버 조회·생성 진입 3개로 통합했습니다.
+
+- 독립 회귀 검사 **13/13 통과**: 속성 제어 서비스·DOM, 자동 분류, 클래스 코드·필수,
+  기본/분류 연결, 모델 검색·선택·상세 조회, 지연 초기화, SecurityContext, OOTB AMD 헤더.
+- 실제 RequireJS로 배포 JS 세 파일을 처음부터 로드해 생성 진입을 실행했습니다.
+  내부 모듈은 예전 개별 URL을 요청하지 않으며 WAFData/검색 의존성은 기존처럼 지연 로딩됩니다.
+- 이동한 일곱 모듈 구현은 직전 버전 원문과 일치합니다.
+  AutoClass의 기존 공개 API/OOTB 연결은 유지하고 서비스 의존성·설정 읽기 위치를 정리했습니다.
+- JS 세 파일 구문 검사와 git diff --check 통과.
+- Java·DB·OOTB 수정 메모는 이번에 변경하지 않았습니다.
+
+개발자 실행:
+
+```sh
+# 별도 개발자 의존성 디렉터리의 linkedom/requirejs를 사용합니다.
+NODE_PATH=/개발자/의존성/node_modules node tests/run-tests.cjs
+```
+
+실제 ENOVIA 서버 UI·DB 저장은 이번 실행에서 확인하지 못했습니다.
+외부 OOTB 원본 입력이 필요한 여섯 검사는 이번에 재실행하지 않았습니다.
+원본을 확보한 환경에서는 test-runtime-hooks, test-model-search-reference,
+test-ootb-validation, test-ootb-control-layout, test-ootb-classification-edit,
+test-ootb-button-state를 기존 인자로 추가 실행할 수 있습니다.
+이들 검사도 통합 파일에서 대상 named AMD 정의를 읽도록 갱신했습니다.
+
+
 ## 현장에서 확인한 내용
 
 사용자가 실제 설치 환경에서 고정 클래스의 속성 필드 표시를 확인했습니다. 문맥 검사에 문자열을 전달하고, 세션 속성명을 맞추고, 속성 완료 알림의 인자를 실제 코드에 맞춘 뒤 표시됐습니다. 현재 설치 소스가 modelList:[i], onAttributesLoad:function(r)이면 notifyAttributesLoaded(i,r)입니다. 호출 위치는 ClassificationProp.js이며, 모델 세션을 붙이는 tagClassModel은 ClassificationsFacet.js입니다.

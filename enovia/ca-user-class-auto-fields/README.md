@@ -1,123 +1,102 @@
-# sdxECChangeAction 생성창 — 원복된 2025 OOTB에서 적용
+# sdxECChangeAction 생성창
 
-**이전 수정이 없는 2025 OOTB 원본에서 시작합니다.** 2024는 참고용입니다. OOTB에는 필요한 연결 코드만 추가하고 기능은 커스텀 모듈에서 처리합니다. Node 실행, 소스 복제·조립, 별도 폴더 구성은 필요 없습니다.
+2026-11-03: 커스텀 JS 9개를 **3개 파일**로 통합했습니다.
+생성창 처리, 서버 조회, 생성 진입을 각각 한 파일에서 관리합니다.
+이번 정리는 파일 배치와 의존성 연결만 변경합니다. 속성 표시·편집·필수 검증·검색·저장 규칙은 유지합니다.
 
-이미 기존 작업을 적용해 사용 중이라면 OOTB를 다시 원복하지 마세요. 새 Searchable 표시 기능은 [Java 웹서비스 및 변경 위치 안내](ATTRIBUTE-VISIBILITY.md)의 V1~V3와 위젯 설정만 추가합니다. JSP는 만들지 않습니다. 속성·분류·북마크 탭은 표시를 유지합니다.
+## 배포 파일
 
-## 준비 상태
-
-아래 네 OOTB 파일이 현재 서버와 동일한 2025 릴리스/핫픽스의 변경 전 원본이어야 합니다.
-
-```text
-3dspace/webapps/ENONewWidget/ENONewWidget.js
-3dspace/webapps/ClassificationsFacet/ClassificationsFacet.js
-3dspace/webapps/ClassificationProp/ClassificationProp.js
-3dspace/webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js
-```
-
-기존에 추가했던 브리지·함수·AMD 의존성·호출이 남아 있지 않은 상태를 기준으로 합니다. 이미 원복하셨다면 아래 순서대로 처음부터 적용하면 됩니다. 서버의 타입·속성·policy, 발번 JPO·트리거는 원복하지 않습니다.
-
-## 1. 커스텀 JS 일곱 개를 전체 배포
-
-아래 파일은 새로 작성한 커스텀 코드이므로 GitHub의 **파일 전체 내용**을 사용합니다. `webapps` 이하의 폴더 구조 그대로 서버의 `3dspace/webapps` 아래에 배치합니다.
+`webapps` 이하 구조 그대로 서버 `3dspace/webapps` 아래에 배치합니다. 아래 세 파일은 전체 배포본입니다.
 
 | 파일 | 역할 |
 |---|---|
-| [sdxECCA/sdxECCA.js](webapps/sdxECCA/sdxECCA.js) | 대상 위젯의 CA 생성 진입 |
-| [sdxECCAAutoClass/sdxECCAAutoClass.js](webapps/sdxECCAAutoClass/sdxECCAAutoClass.js) | 자동 분류, 필수 검증, Text 복사, policy, 검색 연결 |
-| [sdxECCAAutoClass/sdxECCAClassRuleService.js](webapps/sdxECCAAutoClass/sdxECCAClassRuleService.js) | 클래스 결정 규칙 |
-| [sdxECCAAutoClass/sdxECCAOrganizationProvider.js](webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js) | 부서 조회 연결용. 현재 code 모드에서는 부서 조회하지 않음 |
-| [sdxECCAAutoClass/sdxECCAClassAttributeService.js](webapps/sdxECCAAutoClass/sdxECCAClassAttributeService.js) | 클래스 코드·필수 설정 조회 |
-| [sdxECCAAutoClass/sdxECCAObjectSearch.js](webapps/sdxECCAAutoClass/sdxECCAObjectSearch.js) | sdxECModel 자동완성·돋보기 선택 |
-| [sdxECCAAutoClass/sdxECCAModelSearchService.js](webapps/sdxECCAAutoClass/sdxECCAModelSearchService.js) | sdxMTopAssy 후보 조회 및 결과 정규화 |
+| [sdxECCAAutoClass.js](webapps/sdxECCAAutoClass/sdxECCAAutoClass.js) | 생성창 세션, 자동 분류, 속성 제어, 검색 UI, 검증, 저장 전 처리 |
+| [sdxECCAService.js](webapps/sdxECCAAutoClass/sdxECCAService.js) | 클래스 규칙·속성, 제어 객체, 모델 검색·상세 속성 조회 |
+| [sdxECCA.js](webapps/sdxECCA/sdxECCA.js) | 우리 위젯에서 커스텀 모듈을 준비하고 기존 생성 호출 실행 |
 
-이미 같은 최신 커스텀 파일이 배포되어 있다면 유지할 수 있습니다. `sdxECCA.js`에 OOTB 내용을 이어 붙이지 않습니다.
+환경별 값은 기존 [ENOChgGovernance.html의 H1 설정](webapps/ENOChgGovernanceUX/ENOChgGovernance.html) 한곳에서 변경합니다.
+이 HTML은 설정 적용 메모이며 서버 HTML 전체 교체본이 아닙니다. 공용 HTML이 아닌 우리 위젯의 기존 초기화 위치에 적용합니다.
+타입·policy·제어 상태·라이브러리·클래스 코드·검색 설정을 중복 선언하지 않습니다.
 
-## 2. 원본 OOTB 네 파일에 변경 조각 적용
+## 수정할 위치
 
-아래 파일은 **수정 메모**입니다. 파일 전체를 서버 OOTB에 덮어쓰면 안 됩니다.
+소스에서 아래 C/S 표시 또는 함수명을 검색합니다.
 
-| 수정할 OOTB | 적용 메모 |
+| 할 일 | 파일·위치 |
 |---|---|
-| `ENOChgGovernanceUX.js` | [CA 생성 진입부](webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js) |
-| `ENONewWidget.js` | [기본 폼·생성 검증 연결](webapps/ENONewWidget/ENONewWidget.js) |
-| `ClassificationsFacet.js` | [분류 facet·모델 연결](webapps/ClassificationsFacet/ClassificationsFacet.js) |
-| `ClassificationProp.js` | [분류 속성 로딩 전·후 연결](webapps/ClassificationProp/ClassificationProp.js) |
+| 환경 설정 읽기 | AutoClass C0 `sdxECCAReadSettings` |
+| 초기화·협업공간 변경·종료 | AutoClass C1 세션 함수 |
+| Text 복사·조직값·EC Type·policy | AutoClass C2 `sdxECCABindCreatePolicy`와 그 앞의 준비 함수 |
+| 기본 폼·분류 영역 연결 | AutoClass C3 `sdxECCAInstallAutoFields` |
+| OOTB 검증과 버튼 상태 연결 | AutoClass C4 |
+| 클래스 자동 선택·속성 로딩 | AutoClass C5 |
+| 표시·읽기 전용·순서·필수 제어 | AutoClass C6 `install` |
+| 검색 선택 후 다른 필드 채우기 | AutoClass C7 `accept(record)` 안의 `record.attributes` 주석 |
+| 클래스 결정·부서 조회 연결 | Service S1·S2 |
+| 클래스 코드·클래스 속성 조회 | Service S3 |
+| 등록창 제어 객체 조회 | Service S4 |
+| 모델 검색·ID로 전체 속성 조회 | Service S5 `search`·`readAttributes` |
 
-각 파일의 위치 표시는 다음과 같습니다. 파일 안에서 해당 문자를 검색하면 변경 위치 안내로 이동할 수 있습니다.
+OOTB 연결은 생성 → 데이터 준비 → 폼 연결 → 검증 → 제출 순서로 기존 공개 API를 호출합니다.
+기본 속성과 분류 속성의 생성 시점이 달라 각 연결 지점은 유지합니다.
+각 기능의 함수 범위, 세션 격리, 지연 로딩, 종료 시 정리를 보존합니다.
 
-| 파일 | 위치 표시 |
+## 기존 정상 배포본에서 갱신
+
+1. 위 커스텀 JS 세 파일을 함께 배포합니다. **OOTB 추가 수정은 없습니다.**
+2. `sdxECCAService.js`가 새 배포 파일입니다. 기존 AutoClass와 함께 같은 버전으로 반영합니다.
+3. 아래 일곱 개의 예전 개별 JS 파일은 새 버전에서 사용하지 않습니다.
+   기존 AMD 이름은 통합 파일 내부에서 유지하므로 OOTB의 호출명은 바꾸지 않습니다.
+4. 기존 생성창을 닫고 캐시를 갱신한 뒤 새로 엽니다. 이전 열린 화면을 유지한 상태에서 파일을 섞어 교체하지 않습니다.
+
+| 예전 개별 파일 | 현재 위치 |
 |---|---|
-| `ENOChgGovernanceUX.js` | `G0` 함수 추가, `G1` 생성 호출, `G2` 기본 타입 저장 |
-| `ENONewWidget.js` | `A` facet 구성, `B` 기본 폼, `C` Dialog. 속성 변경 콜백은 `B4` |
-| `ClassificationsFacet.js` | `F0~F4` 분류 facet, `M0~M1` 클래스 모델 생성 |
-| `ClassificationProp.js` | `P0` 함수 추가, `P1` 분류 속성 로딩 콜백 |
+| sdxECCAAttributeControl.js | AutoClass C6 |
+| sdxECCAObjectSearch.js | AutoClass C7 |
+| sdxECCAClassRuleService.js | Service S1 |
+| sdxECCAOrganizationProvider.js | Service S2 |
+| sdxECCAClassAttributeService.js | Service S3 |
+| sdxECCAAttributeControlService.js | Service S4 |
+| sdxECCAModelSearchService.js | Service S5 |
 
-원본 검색용 조각은 그대로 표시하고, 교체 코드는 여러 줄로 정리했습니다. 검색 키와 교체 시작·끝 범위, 남겨야 하는 주변 코드도 메모에 적었습니다.
+예전 개별 파일을 따로 갱신하거나 신규 배포하지 않습니다.
+`sdxECCA.js` → AutoClass → Service 순으로 시작하면 두 파일에 포함된 named AMD 모듈이 함께 등록됩니다.
+내부 모듈을 통합 파일보다 먼저 개별 URL로 직접 로딩하는 별도 커스텀 진입은 사용하지 않습니다.
+일반 위젯은 기존 OOTB 경로를 사용합니다.
+이번 정리는 Java 서비스·DB·타입·policy·발번 JPO/트리거를 변경하지 않습니다.
 
-각 메모는 다음 순서로 적용합니다.
+## 최초 설치 시 OOTB 연결
 
-1. `[대상 AMD 모듈]` 이름을 원본 파일에서 검색합니다.
-2. `[추가 위치]`에 표시된 함수를 해당 factory 안에 한 번 추가합니다. `"use strict"`가 있으면 그 문장 다음에 넣습니다. 다른 factory나 파일 맨 끝에 넣지 않습니다.
-3. 같은 모듈 안에서 모든 `[변경 N — 원본에서 찾을 부분]`을 찾아 `[아래 코드로 교체]`의 코드로 바꿉니다. **같은 모듈의 변경은 모두 함께** 적용합니다.
-4. 다음 대상 AMD 모듈로 이동하여 반복합니다.
+이미 연결을 적용한 설치본은 OOTB를 원복하거나 다시 수정하지 않습니다.
+처음 적용할 때만 서버와 동일한 **2025 릴리스/핫픽스의 변경 전 원본**에 아래 메모를 적용합니다. 2024는 참고용입니다.
 
-`define` 의존성 배열과 factory 인자는 원본 그대로 둡니다. 메모의 `[2025 OOTB 헤더 유지]`는 확인용이며 교체 작업이 아닙니다. `DS/sdxECCA/...`나 `DS/sdxECCAAutoClass/...`를 공통 define 의존성에 추가하지 않습니다.
+| 수정할 OOTB 파일 | 연결 메모·위치 표시 |
+|---|---|
+| ENOChgGovernanceUX.js | [G0~G2 생성 진입·기본 타입](webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js) |
+| ENONewWidget.js | [A facet / B 기본 폼 / C Dialog](webapps/ENONewWidget/ENONewWidget.js) |
+| ClassificationsFacet.js | [F0~F4 facet / M0~M1 모델](webapps/ClassificationsFacet/ClassificationsFacet.js) |
+| ClassificationProp.js | [P0~P1 속성 로딩 전후](webapps/ClassificationProp/ClassificationProp.js) |
 
-변수명이 다른 설치 소스에서는 의미에 맞게 연결합니다. 분류 속성 메모의 `i`는 클래스 모델, `a`는 속성 응답입니다. 설치 소스가 `i`, `r`이면 그 이름을 사용합니다. 원래 `_onCompleteLoadModel` 또는 `onCompleteLoadModel` 함수명과 기존 옵션은 유지합니다.
+이 네 파일은 **수정 메모**입니다. 서버 OOTB에 전체 덮어쓰지 않습니다.
+`[대상 AMD 모듈]`을 찾고 해당 factory의 함수 추가·교체 조각을 모두 함께 적용합니다.
+원래 `define` 의존성/인자는 유지합니다. 공통 OOTB에 커스텀 AMD 의존성을 추가하지 않습니다.
+압축 변수명과 `_onCompleteLoadModel`/`onCompleteLoadModel` 이름은 설치 원본에 맞춥니다.
+Node 실행·소스 조립·별도 빌드는 배포에 필요 없습니다. tests는 개발자용이며 서버에 배포하지 않습니다.
 
-## 3. 우리 위젯 전용 HTML에 설정 추가
+## 유지한 동작과 상세 설명
 
-[ENOChgGovernance.html 설정 메모](webapps/ENOChgGovernanceUX/ENOChgGovernance.html)의 설정을 **우리 커스텀 위젯 전용 HTML의 실행되는 스크립트 위치**에 넣습니다. 공용 OOTB HTML이나 다른 위젯에는 넣지 않습니다.
+- [속성 제어](ATTRIBUTE-CONTROL.md): 제어 bus의 Read/Edit/Order/Mandatory/MandatoryCheck, CCMAttr 조회명, 분류 우선 중복 숨김.
+- [모델 검색](MODEL-SEARCH.md): sdxMTopAssy 단일 선택, 직접 입력 미저장, 선택 ID로 속성 재조회.
+- [협업공간 변경](SECURITY-CONTEXT-VALIDATION.md): 새 세션·분류 재조회, 이전 응답 차단, 최종 요청 문맥 일치.
+- [부서 규칙](DEPARTMENT.md): 향후 부서 조회 연결. 현재 code 모드는 EC Library/EC_MX를 사용합니다.
 
-기본 설정은 `sdxECChangeAction`, `sdxECR`, `EC Library`, `EC_MX`입니다. 실제 환경 값이 다르면 해당 값만 맞춥니다. 이미 같은 설정이 있다면 중복으로 넣지 않습니다. 별도 활성화 옵션이나 새 onLoad는 만들지 않습니다.
+`sdxECOrganization`은 값 출처가 아직 미정입니다. 해당 세션의 `organizationValue`에 문자열을 지정하면 C2에서
+`publicAttributes`의 숨김 속성에 반영합니다. 미지정·빈 문자열이면 기존 값을 유지합니다.
+Text 복사와 policy 처리도 C2의 원래 OOTB 제출 콜백 뒤에서 수행합니다.
 
-## 4. 배포 후 확인
+## 검증
 
-캐시를 갱신하고 새로 연 화면에서 대상 CA 생성창의 타입·분류 속성·필수 검증·저장·policy·Text 복사·검색을 확인합니다. 일반 위젯의 생성창과 CO/CR 생성도 확인합니다.
-
-일반 위젯에서는 커스텀 파일을 요청하지 않고 원래 생성 코드를 실행합니다. 우리 위젯에서는 커스텀 API를 먼저 준비하고 원래 생성 코드를 실행합니다. 세션이 없는 다른 폼·모델은 기존 조건에 따라 변경하지 않습니다.
-
-## 검증 범위
-
-이전 커스텀 수정이 없는 실제 2025 원본 네 묶음에 메모의 변경 조각을 적용하여 구문, 원래 AMD 의존성/인자, 일반 생성, API 지연 준비, 세션 구분, 2025 버튼 복원, 커스텀 로딩 실패 처리를 검사했습니다. 메모에 적힌 추가 함수와 교체 조각이 검사 데이터와 일치하는지도 확인합니다.
-
-실제 서버 UI·저장은 아직 미검증입니다. 같은 위젯에서 여러 팝업을 동시에 여는 경우도 통합 확인이 필요합니다. `tests`는 개발자 검증용이며 사용자가 실행하거나 서버에 배포하지 않습니다.
-
-## 생성창 협업공간 변경 — 2026-10-27
-
-협업공간 변경 시 새 세션/분류 UI로 재조회합니다. 재조회 및 필수 검증 완료 후 저장하며,
-기본 입력은 유지하고 분류 영역의 입력/선택은 초기화합니다.
-**AutoClass 전체 파일과 ENONewWidget B3·B4, ClassificationsFacet F2를 함께 갱신**하십시오.
-[검증 결과 및 현장 확인 절차](SECURITY-CONTEXT-VALIDATION.md)를 참고하십시오.
-
-초기 팝업의 자격증명 이벤트에서 발생할 수 있는 동기 재진입을 보완했습니다.
-`sdxECCAAutoClass.js`, `sdxECCAObjectSearch.js`를 함께 갱신하고,
-기존 B4의 `changeContext` 호출은 유지하십시오. 재초기화는 대화상자 준비 후 실행합니다.
-
-## sdxECModel 검색 선택 전용 — 2026-10-27
-
-필드는 선택 사항으로 유지합니다. 자동완성 후보 또는 돋보기에서 선택한 `sdxMTopAssy` 값만 저장하며,
-직접 입력한 검색어는 저장하지 않습니다. 선택 후 다시 입력하면 기존 선택을 해제합니다.
-AutoClass·ObjectSearch 갱신과 새 ModelSearchService 배포가 필요합니다.
-[배포·참조 소스·검사 결과](MODEL-SEARCH.md)를 참고하십시오. Searchable 서비스 배포는 필요하지 않습니다.
-
-### 저장 직전 조직값 설정
-
-`sdxECCAAutoClass.js`의 `sdxECCAPrepareOrganization()`은 `publicAttributes`에 포함된 숨김 속성 `sdxECOrganization`을 최종 생성 요청에 반영합니다. 조직값 출처는 아직 미정이며, 추후 해당 생성 세션의 `session.organizationValue`에 문자열을 설정하면 적용됩니다. 미지정·빈 문자열은 기존 값을 유지합니다. SecurityContext에서 조직을 임의로 추출하지 않습니다. OOTB 검증 이후 처리하므로 숨김 필드의 필수 검증을 대신하지 않습니다.
-
-## 제어 객체 기반 등록창 — 2026-11-02
-
-기존 Searchable=false 필터를 제거하고 **sdxECAttributeControl의 MX/JS에서 전달한 상태 목록**으로 등록창을 구성합니다.
-목록 밖/Read=N은 숨김, Edit=N은 읽기 전용, Order는 인터페이스 간 순서,
-Mandatory는 아이콘, MandatoryCheck는 실제 필수 빈값 검증입니다.
-새 OOTB 수정 없이 기존 prepareFixedType/installFields 연결을 사용합니다.
-Java 서비스 교체, 커스텀 AutoClass 갱신, 새 AttributeControl/AttributeControlService 배포가 필요합니다.
-[배포할 파일·기존 Searchable 제거·응답 예시·검증](ATTRIBUTE-CONTROL.md)을 참고하십시오.
-
-상태는 sdxECCAAttributeControlState 설정에서 전달합니다(예: ECR_CREATE).
-자동 Classification 속성에도 같은 규칙을 적용하며, 기본·분류 규칙이 모두 준비된 뒤 생성할 수 있습니다.
-기존 OOTB 연결은 그대로 사용합니다.
-
-Classification 속성의 끝 CCMAttr은 제어 bus 조회 키에서만 제외합니다.
-기본/확장 속성과 이름이 겹치면 분류 속성만 표시하고 기본 속성의 모델/값은 유지합니다.
+[현재 검사 결과와 범위](VALIDATION.md)를 참고하십시오.
+RequireJS 실제 파일 로딩과 기존 대역 검사는 실제 ENOVIA 화면·DB 저장을 대신하지 않습니다.
+배포 후 기본/분류 입력, 펼치기, 필수 아이콘·오류 시점·저장 버튼, 검색 선택·속성 조회,
+Text·조직값, 협업공간 변경·저장, 일반 위젯과 CO/CR을 확인합니다.

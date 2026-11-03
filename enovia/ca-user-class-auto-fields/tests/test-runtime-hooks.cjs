@@ -1,4 +1,5 @@
 'use strict';
+const readSource = require('./read-source.cjs');
 // Developer verification against local 2025 originals. Users do not run this to deploy.
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'),sourceDir=process.argv[2];
@@ -40,8 +41,8 @@ const helper=run(helperId,[{ENONewFACET_CLASSIFICATION:'classificationFacet'},{g
 const data=()=>({defaultAttributes:{Type:{value:'sdxECChangeAction'},SecurityContext:{value:'ctx'}}});
 let facets=helper.getFacetList(data(),[{name:'classificationFacet'}],{});assert(!facets[0].options.sdxECCAAutoSession);
 // Real AutoClass: the common helper was already initialized before the custom runtime exists.
-const autoRows=collect(fs.readFileSync(path.join(root,'webapps/sdxECCAAutoClass/sdxECCAAutoClass.js'),'utf8'));
-const auto=vm.runInNewContext('('+autoRows[0].source+')',{widget,setTimeout:()=>1,clearTimeout(){},Set,Map})(()=>{}, {},{},{});
+const autoRows=collect(readSource(path.join(root,'webapps/sdxECCAAutoClass/sdxECCAAutoClass.js'),'utf8'));
+const auto=vm.runInNewContext('('+autoRows[0].source+')',{widget,setTimeout:()=>1,clearTimeout(){},Set,Map})(()=>{}, {classRule:{},organization:{},classAttribute:{}});
 widgetValues.sdxECCAEnableAutoClassByOrganization=true;widgetValues.sdxECCAAutoClassType='sdxECChangeAction';widget.sdxECCARuntime=auto;
 facets=helper.getFacetList(data(),[{name:'classificationFacet'}],{});assert(facets[0].options.sdxECCAAutoSession);assert.notEqual(facets[1].visible,false);assert.equal(facets[1].alwaysCalled,true);
 const next=helper.getFacetList(data(),[{name:'classificationFacet'}],{});assert.notEqual(next[0].options.sdxECCAAutoSession,facets[0].options.sdxECCAAutoSession);

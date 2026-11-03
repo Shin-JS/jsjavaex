@@ -1,7 +1,8 @@
 'use strict';
+const readSource = require('./read-source.cjs');
 const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('node:assert/strict');
 let api,mode='ok',loads=0,doneLoad,finishInstall,installs=0;
-const source=fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAutoClass.js'),'utf8')
+const source=readSource(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAutoClass.js'),'utf8')
  .replace('installFields: sdxECCAInstallAutoFields,','installFields: sdxECCAInstallAutoFields, testSchedule: sdxECCAScheduleAttributeControl, testSession: sdxECCACreateAutoSession,');
 const req=(ids,done,fail)=>{
  loads++;assert.equal(ids[0],'DS/sdxECCAAutoClass/sdxECCAAttributeControl');
@@ -12,7 +13,7 @@ const req=(ids,done,fail)=>{
  };});}});
 };
 vm.runInNewContext(source,{widget:{getValue:()=>undefined},setTimeout:()=>1,clearTimeout(){},
- define(id,deps,factory){api=factory(req,{},{},{});}});
+ define(id,deps,factory){api=factory(req,{classRule:{},organization:{},classAttribute:{}});}});
 const tick=()=>new Promise(r=>setImmediate(r));
 (async()=>{
  const make=()=>{const s=api.testSession('ctx','sdxECChangeAction',{});s.attributesLoaded=true;s.fieldsMounted=true;s.classificationControlReady=true;s.validateFields=()=>{};return s;};

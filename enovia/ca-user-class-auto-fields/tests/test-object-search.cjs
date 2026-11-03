@@ -1,10 +1,11 @@
+const readSource = require('./read-source.cjs');
 // 실제 WUX/검색 서버를 대체한 UI 계약 검사입니다. 설치본 렌더링은 별도 확인합니다.
 'use strict';
 const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
-const source=fs.readFileSync(path.join(root,'webapps/sdxECCAAutoClass/sdxECCAObjectSearch.js'),'utf8');
+const source=readSource(path.join(root,'webapps/sdxECCAAutoClass/sdxECCAObjectSearch.js'),'utf8');
 let normalizer;
-vm.runInNewContext(fs.readFileSync(path.join(root,'webapps/sdxECCAAutoClass/sdxECCAModelSearchService.js'),'utf8'),{define(id,deps,factory){normalizer=factory({},{}).normalize;}});
+vm.runInNewContext(readSource(path.join(root,'webapps/sdxECCAAutoClass/sdxECCAModelSearchService.js'),'utf8'),{define(id,deps,factory){normalizer=factory({},{}).normalize;}});
 class Element {
  constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.parentNode=null;this.style={display:''};this.events=new Map();this.value='';this.readOnly=false;const c=new Set();this.classList={add:x=>c.add(x),remove:x=>c.delete(x)};}
  appendChild(n){if(n.parentNode)n.parentNode.removeChild(n);this.children.push(n);n.parentNode=this;}

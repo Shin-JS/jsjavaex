@@ -1,10 +1,11 @@
+const readSource = require('./read-source.cjs');
 // SearchUtil의 MQL where/루트·하위 분기/페이지 응답 계약 대역 검사입니다.
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert/strict');
 let api,handler,requests=[];
 const context=vm.createContext({Promise,Error,Set,define(id,deps,factory){api=factory((ids,done)=>done({authenticatedRequest(url,options){
  const request={url,options,body:JSON.parse(options.data)};requests.push(request);handler(request);
 }}));}});
-vm.runInContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAClassAttributeService.js'),'utf8'),context);
+vm.runInContext(readSource(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAClassAttributeService.js'),'utf8'),context);
 const service={get3DSpaceUrl:()=>Promise.resolve('https://example.test/3dspace/')};
 const scope={classCode:'EC_MX',securityContext:'ctx::Leader.Org.Space',tenant:'OnPremise'};
 const attr=(name,value)=>({name,value});

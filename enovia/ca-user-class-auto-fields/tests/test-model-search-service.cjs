@@ -1,8 +1,9 @@
 'use strict';
+const readSource = require('./read-source.cjs');
 const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('node:assert/strict');
 let api,lookup,request,body,mode='ok',response;
 const data=()=>({results:[{attributes:[{name:'resourceid',value:'PID'},{name:'ds6w:identifier',value:'MODEL'},{name:'ds6w:label',value:'Model title'},{name:'ds6w:type',value:'sdxMTopAssy'}]}]});
-vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAModelSearchService.js'),'utf8'),{Map,Set,Promise,
+vm.runInNewContext(readSource(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAModelSearchService.js'),'utf8'),{Map,Set,Promise,
  define(id,deps,factory){api=factory({authenticatedRequest(url,options){request={url,options};body=options.data?JSON.parse(options.data):null;if(mode==='failure')options.onFailure();else if(mode==='timeout')options.onTimeout();else options.onComplete(response);}},
  {getServiceUrl(options){lookup=options;if(mode==='service-failure')options.onFailure();else if(mode==='service-array')options.onComplete([{platformId:'OTHER',url:'https://wrong'},{platformId:'OnPremise',url:'https://search/'}]);else options.onComplete('https://search/');}});}
 });

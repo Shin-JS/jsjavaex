@@ -1,3 +1,4 @@
+const readSource = require('./read-source.cjs');
 // 서버/WUX 대역 검사입니다. 실제 플랫폼 UI·저장 검증을 대신하지 않습니다.
 const fs = require('fs');
 const path = require('path');
@@ -36,8 +37,8 @@ const modules = {};
 context.define = function (id, dependencies, factory) {
  modules[id] = factory(...Array.from(dependencies, dep => dep === 'require' ? context.require : modules[dep]));
 };
-for (const file of ['sdxECCAClassRuleService', 'sdxECCAOrganizationProvider', 'sdxECCAClassAttributeService', 'sdxECCAObjectSearch','sdxECCAAutoClass']) {
- vm.runInContext(fs.readFileSync(path.join(root, 'webapps/sdxECCAAutoClass', file + '.js'),'utf8'),context);
+for (const file of ['sdxECCAClassRuleService', 'sdxECCAOrganizationProvider', 'sdxECCAClassAttributeService', 'sdxECCAObjectSearch','sdxECCAService','sdxECCAAutoClass']) {
+ vm.runInContext(readSource(path.join(root, 'webapps/sdxECCAAutoClass', file + '.js'),'utf8'),context);
 }
 const api = modules['DS/sdxECCAAutoClass/sdxECCAAutoClass'];
 delete context.require; // 지역 require를 캡처했으므로 전역 require 없이도 이후 지연 로딩 가능

@@ -27,13 +27,9 @@
 
 기존 설치본의 다른 OOTB 블록을 다시 변경할 필요는 없습니다.
 
-1. `webapps/sdxECCAAutoClass/sdxECCAAutoClass.js` 갱신.
-2. `webapps/sdxECCAAutoClass/sdxECCAObjectSearch.js` 갱신.
-3. 새 파일 `webapps/sdxECCAAutoClass/sdxECCAModelSearchService.js` 배포.
-4. 우리 위젯 HTML 설정의 `sdxECCAModelSearchTypes`를 `sdxMTopAssy`로 갱신.
-
-검색 후보 조회 계층은 ModelSearchService,
-UI와 선택 상태는 ObjectSearch, 최종 저장값 검증은 AutoClass로 분리했습니다.
+[README의 현재 세 파일](README.md)을 함께 배포합니다. 검색 UI와 선택 결과 처리는
+`sdxECCAAutoClass.js` C7, 모델 조회는 `sdxECCAService.js` S5에 포함됩니다.
+기존 named AMD 이름과 지연 실행을 유지합니다. 개별 ObjectSearch/ModelSearchService 파일은 배포하지 않습니다.
 공통 ENORouteMgmt 서비스/Bootstrap 인스턴스를 재사용하거나 전역 자격증명을 변경하지 않습니다.
 
 ## 참조한 소스
@@ -91,7 +87,7 @@ SecurityContext를 요청의 login 범위에 전달합니다. 돋보기는 기�
 
 ### 필드별 값 반영 위치
 
-`sdxECCAObjectSearch.js`의 `accept(record)` 내부 `then(function (details) {...})`에서
+`sdxECCAAutoClass.js` C7의 `accept(record)` 내부 `then(function (details) {...})`에서
 `record.attributes`를 설정한 다음 주석 위치에 필드별 반영 코드를 작성합니다.
 
 ```javascript
@@ -108,8 +104,8 @@ var modelCode = record.attributes["sdxModelCode"];
 
 - `server/src/com/sdx/ecca/rest/SdxEccaModelService.java` (신규)
 - `server/src/com/sdx/ecca/rest/SdxEccaModeler.java` (서비스 등록 추가)
-- `webapps/sdxECCAAutoClass/sdxECCAModelSearchService.js`
-- `webapps/sdxECCAAutoClass/sdxECCAObjectSearch.js`
+- `webapps/sdxECCAAutoClass/sdxECCAService.js` S5
+- `webapps/sdxECCAAutoClass/sdxECCAAutoClass.js` C7
 - `webapps/sdxECCAAutoClass/sdxECCAAutoClass.js` (조회 중 저장 방지)
 
 Java 파일은 기존 커스텀 REST 서비스와 같은 방식으로 컴파일/배포해야 합니다.

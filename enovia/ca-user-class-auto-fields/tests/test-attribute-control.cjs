@@ -1,11 +1,12 @@
 'use strict';
+const readSource = require('./read-source.cjs');
 // NODE_PATH=<linkedom/node_modules> node tests/test-attribute-control.cjs
 const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('node:assert/strict');
 const {parseHTML}=require('linkedom');
 const {document,MutationObserver}=parseHTML('<html><body></body></html>').window;
 const root=path.resolve(__dirname,'..');
 let api,loadMode='ok',resolveRules,seenRequest;
-vm.runInNewContext(fs.readFileSync(path.join(root,'webapps/sdxECCAAutoClass/sdxECCAAttributeControl.js'),'utf8'),{
+vm.runInNewContext(readSource(path.join(root,'webapps/sdxECCAAutoClass/sdxECCAAttributeControl.js'),'utf8'),{
  document,MutationObserver,console,Map,Set,Promise,
  define(id,deps,factory){api=factory((ids,done,fail)=>{
   if(typeof ids==='string'){assert.equal(ids,'DS/ClassificationProp/constants/ClassifPropConstants');return {FORCE_READWRITE:'force_readWrite'};}

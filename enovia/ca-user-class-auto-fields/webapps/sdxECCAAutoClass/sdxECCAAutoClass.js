@@ -1,20 +1,49 @@
 /**
- * 커스텀 AMD 모듈. 이 파일은 새로 배포하는 전체 파일입니다.
- * OOTB 파일에는 이 모듈 의존성과 연결 호출만 추가합니다.
- * 공유되는 것은 함수뿐이며 세션/선택 모델은 대화상자마다 생성합니다.
- * OOTB 모듈을 정적 의존성으로 요구하지 않아 역방향 의존 순환을 피합니다.
- * 값 검증은 실제 분류 폼 UIController의 기본 validateModels를 사용합니다.
+ * CA 생성창 처리 — 전체 배포합니다. OOTB 연결 API/AMD 이름은 유지합니다.
  *
- * 코드 조회는 ClassAttributeService, 부서 규칙/조회는 ClassRuleService와 OrganizationProvider로 분리합니다.
- * 기본 code 모드는 OOTB 조회 API로 클래스 코드와 활성 상태를 확인합니다.
+ * 환경 값: webapps/ENOChgGovernanceUX/ENOChgGovernance.html H1
+ * 서버 조회: sdxECCAService.js
+ * 이 파일: C0 설정 읽기 / C1 세션 / C2 저장 데이터 / C3 폼 / C4 검증 / C5 자동 분류
+ *          C6 속성 표시·편집·필수 제어 / C7 모델 검색 UI·선택 결과
+ *
+ * 검색 선택 후 필드 자동 채움: C7 accept()의 record.attributes
+ * 저장 직전 값 설정: C2 sdxECCABindCreatePolicy()의 onSubmit 연결
+ * 아래 세 named AMD 모듈은 이 파일에서 함께 등록합니다. 별도 JS 파일은 필요 없습니다.
+ * 기능별 함수 범위와 지연 실행을 유지하여 OOTB 초기화 순서를 바꾸지 않습니다.
  */
 define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     "require",
-    "DS/sdxECCAAutoClass/sdxECCAClassRuleService",
-    "DS/sdxECCAAutoClass/sdxECCAOrganizationProvider",
-    "DS/sdxECCAAutoClass/sdxECCAClassAttributeService"
-], function (require, ClassRuleService, OrganizationProvider, ClassAttributeService) {
+    "DS/sdxECCAAutoClass/sdxECCAService"
+], function (require, Services) {
     "use strict";
+
+    var ClassRuleService = Services.classRule;
+    var OrganizationProvider = Services.organization;
+    var ClassAttributeService = Services.classAttribute;
+
+    // C0. 환경 설정 읽기. 설정값 변경은 ENOChgGovernance.html의 H1 한곳에서 합니다.
+    // 위젯/대화상자별로 읽으며 공통 AMD 모듈에 위젯 설정을 캐시하지 않습니다.
+    function sdxECCAReadSettings() {
+        if (typeof widget === "undefined") return {};
+        return {
+            enabled: widget.getValue("sdxECCAEnableAutoClassByOrganization"),
+            type: widget.getValue("sdxECCAAutoClassType"),
+            policy: widget.getValue("sdxECCACreatePolicy"),
+            controlState: widget.getValue("sdxECCAAttributeControlState"),
+            typeDisplay: widget.getValue("sdxECCATypeDisplay"),
+            ruleMode: widget.getValue("sdxECCAClassRuleMode"),
+            classId: widget.getValue("sdxECCAFixedClassId"),
+            libraryId: widget.getValue("sdxECCAFixedLibraryId"),
+            classCode: widget.getValue("sdxECCAClassCode"),
+            libraryTitle: widget.getValue("sdxECCALibraryTitle"),
+            libraryName: widget.getValue("sdxECCALibraryName"),
+            searchEnabled: widget.getValue("sdxECCAEnableModelSearch"),
+            searchValueField: widget.getValue("sdxECCAModelSearchValueField"),
+            controlUrl: widget.getValue("sdxECCAAttributeControlUrl")
+        };
+    }
+
+    // C1. 세션 생성·종료와 협업공간 변경
 
     /** 대화상자마다 별도 세션을 만들어 초기화·속성 로딩·UI·생성 검증을 연결합니다. */
     function sdxECCACreateAutoSession(context, type, rule) {
@@ -130,11 +159,12 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     /** 대상 위젯에만 세션을 전달합니다. 클래스 코드/유형은 전용 위젯에서 설정합니다. */
     function sdxECCAAttachAutoBridge(data, facetList, settings, createPolicy) {
         if (typeof widget === "undefined") return;
-        var enabled = widget.getValue("sdxECCAEnableAutoClassByOrganization");
+        var settingsValues = sdxECCAReadSettings();
+        var enabled = settingsValues.enabled;
         if (!(enabled === true || enabled === "true")) return;
         var attrs = data && data.defaultAttributes;
         var type = attrs && attrs.Type && attrs.Type.value;
-        var targetType = widget.getValue("sdxECCAAutoClassType") || "Change Action";
+        var targetType = settingsValues.type || "Change Action";
         if (type !== targetType) return;
         var properties = facetList.find(function (item) { return item.facet.name === "ENOCreate"; });
         var classification = facetList.find(function (item) { return item.facet.name === "classificationFacet"; });
@@ -142,16 +172,16 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         var context = attrs && attrs.SecurityContext && attrs.SecurityContext.value;
         context = context || settings && settings.securityContext;
         var rule = null, configError = null;
-        var typeDisplay = widget.getValue("sdxECCATypeDisplay") || "hidden";
+        var typeDisplay = settingsValues.typeDisplay || "hidden";
         try {
-            var ruleMode = widget.getValue("sdxECCAClassRuleMode") || "code";
+            var ruleMode = settingsValues.ruleMode || "code";
             if (ruleMode !== "fixed" && ruleMode !== "department" && ruleMode !== "code") {
                 throw new Error("sdxECCAClassRuleMode는 code, fixed 또는 department로 지정해 주세요.");
             }
             // code/department 모드에는 고정 ID가 필요하지 않습니다. 조회 실패 시 고정값으로 우회하지 않습니다.
             if (ruleMode === "fixed") rule = ClassRuleService.resolveFixed({
-                classId: widget.getValue("sdxECCAFixedClassId"),
-                libraryId: widget.getValue("sdxECCAFixedLibraryId")
+                classId: settingsValues.classId,
+                libraryId: settingsValues.libraryId
             });
             if (typeDisplay !== "hidden" && typeDisplay !== "disabled") {
                 throw new Error("sdxECCATypeDisplay는 hidden 또는 disabled로 지정해 주세요.");
@@ -159,14 +189,14 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         } catch (error) { configError = error; }
         var session = sdxECCACreateAutoSession(context, type, rule);
         session.facetEntries = facetList;
-        session.createPolicy = createPolicy === undefined ? widget.getValue("sdxECCACreatePolicy") : createPolicy;
+        session.createPolicy = createPolicy === undefined ? settingsValues.policy : createPolicy;
         session.attributeControlState = settings && settings.attributeControlState ||
-            widget.getValue("sdxECCAAttributeControlState") || "CREATE";
+            settingsValues.controlState || "CREATE";
         session.typeDisplay = typeDisplay;
         session.ruleMode = ruleMode;
-        session.classCode = widget.getValue("sdxECCAClassCode") || "EC_MX";
+        session.classCode = settingsValues.classCode || "EC_MX";
         // 기존 LibraryName 설정값도 제목으로 해석하여 이전 위젯 설정을 호환합니다.
-        session.libraryTitle = widget.getValue("sdxECCALibraryTitle") || widget.getValue("sdxECCALibraryName") || "EC Library";
+        session.libraryTitle = settingsValues.libraryTitle || settingsValues.libraryName || "EC Library";
         session.tenant = settings && settings.tenant || "OnPremise";
         properties.options = properties.options || {};
         classification.options = classification.options || {};
@@ -221,6 +251,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     }
 
     /** sdxECChangeAction 전용 필드입니다. 숨긴 모델도 만들어 저장 데이터에 값을 유지합니다. */
+    // C2. 폼 데이터 준비와 저장 전 값 설정 (Text·조직·EC Type·policy)
+
     function sdxECCAPrepareECType(data, session) {
         if (session.type !== "sdxECChangeAction") return;
         var groups = data && data.attributes;
@@ -450,12 +482,15 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         view.onSubmit = wrapped;
     }
 
+    // C3. 기본 폼 연결·자동 분류 영역 배치·검색 예약
+
     /** OOTB 분류 폼을 이동하고 대상 타입의 모델 검색을 연결합니다. */
     function sdxECCAInstallAutoFields(facet, options) {
         var session = options.sdxECCAAutoSession;
         if (!session) return;
+        var settingsValues = sdxECCAReadSettings();
         session.propertiesFacet = facet;
-        var searchEnabled = typeof widget !== "undefined" && widget.getValue("sdxECCAEnableModelSearch");
+        var searchEnabled = typeof widget !== "undefined" && settingsValues.searchEnabled;
         session.modelSearchEnabled = session.type === "sdxECChangeAction" && searchEnabled !== false && searchEnabled !== "false";
         facet.sdxECCAAutoSession = session;
         facet.sdxECCAAutoDisposed = false;
@@ -538,7 +573,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 if (session.disposed || session.transitioning || session.status === "error") return;
                 Promise.resolve().then(function () {
                     return Control.install(facet, session, {
-                        url: widget.getValue("sdxECCAAttributeControlUrl")
+                        url: sdxECCAReadSettings().controlUrl
                     });
                 }).then(function (cleanup) {
                     if (session.disposed || session.transitioning) cleanup();
@@ -551,12 +586,13 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     /** 검색 모듈은 기존 생성 폼 초기화가 끝난 다음 선택적으로 연결합니다. */
     function sdxECCAScheduleObjectSearch(facet, session) {
         if (session.type !== "sdxECChangeAction") return;
-        var enabled = widget.getValue("sdxECCAEnableModelSearch");
+        var settingsValues = sdxECCAReadSettings();
+        var enabled = settingsValues.searchEnabled;
         if (enabled === false || enabled === "false") return;
         var config = {
             enabled: enabled,
             allowedTypes: "sdxMTopAssy",
-            valueField: widget.getValue("sdxECCAModelSearchValueField")
+            valueField: settingsValues.searchValueField
         };
         function report(error) {
             if (!session.disposed) console.error("[sdxECCAObjectSearch] 검색 연결 실패. 생성창은 계속 사용 가능합니다.", error);
@@ -660,6 +696,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         if (facet.sdxECCAAutoRoot && facet.sdxECCAAutoRoot.parentNode) facet.sdxECCAAutoRoot.parentNode.removeChild(facet.sdxECCAAutoRoot);
         if (facet.sdxECCAAutoSession) facet.sdxECCAAutoSession.dispose();
     }
+
+    // C4. OOTB 검증 결과와 생성 버튼 연결
 
     function sdxECCAFindAutoSession(dialog) {
         var facets = dialog.View && dialog.View.facets || dialog.facets || [];
@@ -822,6 +860,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     }
 
     /** 비동기 OOTB 컨트롤러가 준비되면 자동 선택을 시작합니다. 다른 위젯은 즉시 반환합니다. */
+    // C5. 클래스 자동 선택·분류 속성 로딩
+
     function sdxECCAConnectAutoClassification(facet, options) {
         var session = options.sdxECCAAutoSession;
         if (!session) return;
@@ -1109,7 +1149,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
     /** 기존 활성화 옵션명을 유지합니다. 현재 동작은 조직 매핑 대신 지정 클래스를 사용합니다. */
     function sdxECCAIsFixedClassWidget() {
         if (typeof widget === "undefined") return false;
-        var enabled = widget.getValue("sdxECCAEnableAutoClassByOrganization");
+        var enabled = sdxECCAReadSettings().enabled;
         return enabled === true || enabled === "true";
     }
 
@@ -1119,7 +1159,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
      */
     function sdxECCAConfigureFixedCreateType(createOptions) {
         if (!sdxECCAIsFixedClassWidget()) return createOptions;
-        var type = widget.getValue("sdxECCAAutoClassType") || "Change Action";
+        var type = sdxECCAReadSettings().type || "Change Action";
         createOptions.type = type;
         createOptions.options = createOptions.options || {};
         // 커스텀 CA도 OOTB 생성 서비스의 typeName은 Change Action으로 전달합니다.
@@ -1152,3 +1192,539 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
 
 
 
+
+// C6. 속성 표시·편집·순서·필수 제어
+/** 현재 CA 등록창 인스턴스에만 제어 규칙을 적용합니다. OOTB prototype은 변경하지 않습니다. */
+define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (require) {
+    "use strict";
+    function get(field, key) {
+        var value = field && typeof field.get === "function" ? field.get(key) : undefined;
+        return value !== undefined ? value : field && field[key];
+    }
+    // 같은 OOTB 검증기를 사용하되 버튼 판단용 검사에서는 실제 필드의 오류 상태를 바꾸지 않습니다.
+    function validateWithoutMessages(ui, model) {
+        var snapshot = Object.create(model);
+        snapshot.values = function () {
+            return model.values().map(function (field) {
+                // EditPropModel.values에는 문자열/boolean 등 모델 메타데이터도 포함됩니다.
+                // OOTB 검증기는 이름 없는 값을 건너뛰므로 원래 값 그대로 전달합니다.
+                if (field === null || typeof field !== "object") return field;
+                var copy = Object.create(field);
+                copy.resetError = function () {};
+                copy.setError = function () {};
+                return copy;
+            });
+        };
+        return ui.validateModels([snapshot]);
+    }
+    function install(facet, session, options) {
+        if (!session || session.type !== "sdxECChangeAction" || session.disposed) return Promise.resolve(function () {});
+        var classification = options && options.classification === true;
+        var view = facet.listview, disposed = false, applying = false, observer = null, rules = null;
+        var names = new Set(), ranks = new Map(), restores = [], restoreModel = null;
+        function closed() { return disposed || session.disposed || session.transitioning || session.status === "error"; }
+        function collect(data) {
+            ["publicAttributes", "extensionAttributes"].forEach(function (group) {
+                var rows = data && data.attributes && data.attributes[group];
+                (Array.isArray(rows) ? rows : []).forEach(function (row) { if (row && row.name) names.add(row.name); });
+            });
+        }
+        collect(view.data);
+        function ruleName(name) { return classification && typeof name === "string" ? name.replace(/CCMAttr$/, "") : name; }
+        function visible(name) {
+            var rule = rules && rules.get(ruleName(name));
+            // 규칙 조회가 완료되면 기본 폼을 먼저 표시합니다.
+            // 분류 목록이 도착하면 알려진 중복만 숨깁니다. 분류 대기가 기본 폼을 막지 않습니다.
+            if (!classification && session.classificationControlNames && session.classificationControlNames.has(name)) return false;
+            // 이전 Text 복사/EC Type 저장 규칙은 계속 숨깁니다.
+            return !!rule && rule.read && (classification || (name !== "sdxECType" && !/Text$/.test(name)));
+        }
+        function controlled(field) {
+            var name = get(field, "name");
+            if (!field || get(field, "defaultAttribute") || typeof field.getIdentifier !== "function" ||
+                    typeof name !== "string" || !name ||
+                    (classification && get(field, "facet") !== session.classId)) return false;
+            // BL이 typeinfo 목록 밖의 모델을 추가해도 허용 목록을 우회하지 못합니다.
+            names.add(name);
+            return true;
+        }
+        function apply(field) {
+            var name = get(field, "name");
+            if (!controlled(field) || typeof field.set !== "function") return;
+            var rule = rules && rules.get(ruleName(name)), show = visible(name);
+            var flags = {visible: show, readOnly: !show || !rule.edit,
+                mandatory: show && rule.mandatoryCheck, positionUI: "2-1-" + (ranks.get(ruleName(name)) || 1000000),
+                // 분류의 class ID와 기존 section/form/group은 유지합니다.
+                // 기본 폼은 OOTB 기본 영역/ExtensionsFacet(펼치기) 구획을 사용합니다.
+                facet: classification ? get(field, "facet") :
+                    show && (rule.mandatory || rule.mandatoryCheck) ? "" : "ExtensionsFacet"};
+            Object.keys(flags).forEach(function (key) {
+                if (get(field, key) !== flags[key]) field.set(key, flags[key]);
+            });
+        }
+        function all() {
+            var model = view.propModel;
+            return model && model.getAllAttributes ? model.getAllAttributes() : {};
+        }
+        function syncClassificationNames() {
+            if (!classification || closed()) return;
+            var current = new Set(), fields = all();
+            Object.keys(fields).forEach(function (id) {
+                var field = fields[id];
+                if (controlled(field)) current.add(ruleName(get(field, "name")));
+            });
+            var previous = session.classificationControlNames;
+            var changed = !previous || current.size !== previous.size ||
+                Array.from(current).some(function (name) { return !previous.has(name); });
+            if (changed) {
+                session.classificationControlNames = current;
+                if (session.refreshBaseAttributeControl) session.refreshBaseAttributeControl();
+            }
+        }
+        function refreshBase() {
+            if (!closed()) { enforce(); view.refresh(); }
+        }
+        function enforce() {
+            if (closed() || applying) return;
+            applying = true;
+            try { syncClassificationNames(); var fields = all(); Object.keys(fields).forEach(function (key) { apply(fields[key]); }); }
+            finally { applying = false; }
+        }
+        function decorate() {
+            if (closed()) return;
+            var ui = view.propUI, section = ui && ui.getFormSection && ui.getFormSection();
+            var organizers = section && section.getOrganizers && section.getOrganizers();
+            var fields = all();
+            Object.keys(organizers || {}).forEach(function (key) {
+                (organizers[key]._forms || []).forEach(function (form) {
+                    (form.fields || []).forEach(function (line) {
+                        var field = fields[line._idAttr], name = get(field, "name");
+                        if (!controlled(field)) return;
+                        var flex = line.elements && line.elements.flexLine;
+                        if (classification && flex) {
+                            var content = typeof line.getContent === "function" ? line.getContent() : flex;
+                            var display = visible(name) ? "" : "none";
+                            if (content.style.display !== display) content.style.display = display;
+                        }
+                        var label = flex && flex.querySelector(".formLabel");
+                        if (!label) return;
+                        if (!label.classList.contains("sdxECCAControlledLabel")) label.classList.add("sdxECCAControlledLabel");
+                        var icon = label.querySelector(".sdxECCAControlMandatory");
+                        var rule = rules && rules.get(ruleName(name)), show = visible(name) && rule.mandatory;
+                        if (show && !icon) {
+                            icon = document.createElement("span");
+                            icon.className = "mandIcon wux-ui3ds wux-ui-3ds-new-create sdxECCAControlMandatory";
+                            icon.setAttribute("aria-hidden", "true");
+                            // OOTB 제목 텍스트와 같은 인라인 컨테이너에 둡니다.
+                            var title = label.querySelector(".textContainer") || label.querySelector(".attrLabel") || label;
+                            title.appendChild(icon);
+                        } else if (!show && icon) icon.parentNode.removeChild(icon);
+                    });
+                });
+            });
+        }
+        function wrap(object, key, handler) {
+            var original = object[key];
+            if (typeof original !== "function") throw new Error("OOTB " + key + " 연결을 확인해 주세요.");
+            var wrapped = handler(original);
+            object[key] = wrapped;
+            restores.push(function () { if (object[key] === wrapped) object[key] = original; });
+        }
+        function bindModel() {
+            if (restoreModel) restoreModel();
+            var model = view.propModel, original = model && model.set;
+            if (typeof original !== "function") throw new Error("OOTB 속성 모델 set을 확인해 주세요.");
+            // BL/검색이 새 AttributeModel을 넣을 때도 규칙을 먼저 적용합니다.
+            var wrapped = function (key, value) {
+                if (!closed()) {
+                    var values = arguments.length > 1 ? [value] :
+                        Array.isArray(key) ? key : key && typeof key.getIdentifier === "function" ? [key] : Object.values(key || {});
+                    values.forEach(apply);
+                }
+                var result = original.apply(this, arguments);
+                syncClassificationNames();
+                return result;
+            };
+            model.set = wrapped;
+            restoreModel = function () { if (model.set === wrapped) model.set = original; };
+        }
+        function cleanup() {
+            disposed = true;
+            if (observer) observer.disconnect();
+            if (restoreModel) restoreModel();
+            restores.reverse().forEach(function (restore) { restore(); });
+            if (style.parentNode) style.parentNode.removeChild(style);
+            if (!classification) {
+                if (session.cleanupClassificationControl) session.cleanupClassificationControl();
+                session.attachClassificationControl = null;
+                if (session.refreshBaseAttributeControl === refreshBase) session.refreshBaseAttributeControl = null;
+            }
+        }
+        var style = document.createElement("style");
+        style.textContent = ".sdxECCAControlledLabel .mandIcon,.sdxECCAControlledLabel .attrMand{display:none!important}" +
+            ".sdxECCAControlledLabel .sdxECCAControlMandatory{display:inline!important;margin-left:3px;vertical-align:middle;font-size:7px;font-family:DSFontIcon;color:rgb(234,79,55)!important}";
+        facet.skeleton.appendChild(style);
+        if (classification) {
+            session.cleanupClassificationControl = cleanup;
+        } else {
+            session.cleanupAttributeControl = cleanup;
+            session.refreshBaseAttributeControl = refreshBase;
+        }
+        try {
+            bindModel();
+            if (classification) {
+                wrap(options.propertiesUI, "updateTableManager", function (original) { return function () {
+                    enforce();
+                    var result = original.apply(this, arguments);
+                    decorate(); return result;
+                }; });
+            } else {
+                wrap(view, "dispatchEvent", function (original) { return function (event, args) {
+                    if (!closed() && rules && event === "onValidActivation" && args && args[0] === true) {
+                        var errors = validateWithoutMessages(this.propUI.elements.UIController, this.propModel);
+                        var forwarded = Array.prototype.slice.call(arguments);
+                        forwarded[1] = [!errors || !errors.length];
+                        return original.apply(this, forwarded);
+                    }
+                    return original.apply(this, arguments);
+                }; });
+                wrap(view, "buildModel", function (original) { return function (data) {
+                    collect(data);
+                    var result = original.apply(this, arguments);
+                    bindModel(); enforce(); return result;
+                }; });
+                ["refresh", "loadView"].forEach(function (key) {
+                    wrap(view, key, function (original) { return function () {
+                        enforce();
+                        var result = original.apply(this, arguments);
+                        decorate();
+                        // 초기 전체 검증은 오류 문구를 만들지 않고 버튼 상태에만 반영합니다.
+                        if (typeof this.updateValidStatus === "function") this.updateValidStatus();
+                        return result;
+                    }; });
+                });
+                wrap(view, "addAttributeOnUI", function (original) { return function (id, show) {
+                    var field = view.propModel.get(id), name = get(field, "name");
+                    // BL이 재표시를 요청해도 제어 설정의 숨김을 유지합니다.
+                    if (controlled(field)) show = visible(name);
+                    return original.call(this, id, show);
+                }; });
+            }
+            if (typeof MutationObserver !== "undefined") {
+                observer = new MutationObserver(decorate);
+                observer.observe(facet.skeleton, {childList: true, subtree: true});
+            }
+        } catch (error) { cleanup(); return Promise.reject(error); }
+        // 조회 완료 전에는 prepareFixedType에서 모든 제어 대상 모델을 숨겨 두었습니다.
+        var query = classification ? Promise.resolve(options.rules) : new Promise(function (resolve, reject) {
+            require(["DS/sdxECCAAutoClass/sdxECCAAttributeControlService"], resolve, reject);
+        }).then(function (Service) {
+            if (closed()) return null;
+            return Service.read({securityContext: session.context, tenant: session.tenant,
+                url: options && options.url, state: session.attributeControlState, isCancelled: closed});
+        });
+        return query.then(function (result) {
+            if (closed() || !result) { cleanup(); return function () {}; }
+            rules = result;
+            Array.from(rules.values()).sort(function (a, b) {
+                return a.order - b.order || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+            }).forEach(function (rule, index) { ranks.set(rule.name, index + 1); });
+            enforce();
+            view.refresh();
+            if (classification) {
+                session.classificationControlReady = true;
+                facet.skeleton.style.visibility = "";
+            } else {
+                session.attributeControlRules = rules;
+                session.attributeControlReady = true;
+                session.attachClassificationControl = function (form) {
+                    if (closed()) return;
+                    if (session.cleanupClassificationControl) session.cleanupClassificationControl();
+                    session.classificationControlReady = false;
+                    installClassification(form, session, rules).catch(function (error) {
+                        if (!closed()) session.fail(error);
+                    });
+                };
+                if (session.classControlForm) session.attachClassificationControl(session.classControlForm);
+            }
+            session.refreshReady(); session.notify();
+            return cleanup;
+        }).catch(function (error) { cleanup(); throw error; });
+    }
+    /** 분류 폼도 같은 규칙·검증·라벨 처리를 사용하고 원래 모델/저장 경로는 유지합니다. */
+    function installClassification(form, session, rules) {
+        var ui = form.propertiesUI;
+        if (!ui || !ui.elements || !ui.elements.formSection || typeof ui.updateTableManager !== "function" || typeof ui.initData !== "function") {
+            return Promise.reject(new Error("분류 속성 UI의 initData/updateTableManager 연결을 확인해 주세요."));
+        }
+        // Properties 생성에 이미 사용된 OOTB 상수입니다. 기본 폼 로딩에는 추가 의존성을 만들지 않습니다.
+        var ClassifConstants;
+        try { ClassifConstants = require("DS/ClassificationProp/constants/ClassifPropConstants"); }
+        catch (error) { return Promise.reject(error); }
+        var view = {propModel: form.model, data: {},
+            propUI: {getFormSection: function () { return ui.elements.formSection; }},
+            // updateTableManager만 호출하면 기존 조회 모드가 유지되어 입력창이 생기지 않습니다.
+            refresh: function () { return ui.initData([form.model], {edition: ClassifConstants.FORCE_READWRITE}); }};
+        return install({listview: view, skeleton: form.root}, session,
+            {classification: true, rules: rules, propertiesUI: ui});
+    }
+    return {install: install, validateWithoutMessages: validateWithoutMessages};
+});
+
+// C7. 모델 검색 UI와 선택 결과 반영
+/** sdxECModel: OOTB 자동완성/6W 선택 결과만 저장하고 검색어는 저장하지 않습니다. */
+define("DS/sdxECCAAutoClass/sdxECCAObjectSearch", ["require"], function (require) {
+    "use strict";
+    var MODEL_TYPE = "sdxMTopAssy";
+    function install(facet, session, config) {
+        if (session.type !== "sdxECChangeAction" || config.enabled === false || config.enabled === "false") return function () {};
+        var disposed = false, search = null, loading = false, observer = null, mounted = null, toolkit = null;
+        var inputRevision = 0, requestNumber = 0, chooserNumber = 0, detailNumber = 0, candidates = new Map(), synchronizing = false;
+        var valueField = config.valueField || "name";
+        function closed() { return disposed || session.disposed || session.transitioning || session.status === "error"; }
+        function read(field, key) {
+            var value = field && typeof field.get === "function" ? field.get(key) : undefined;
+            return value != null ? value : field && field[key];
+        }
+        function fieldModel() {
+            var model = facet.listview && facet.listview.propModel;
+            var fields = model && typeof model.getAttributeFromField === "function" && model.getAttributeFromField("name", "sdxECModel");
+            return fields && fields[0];
+        }
+        function message(text) { if (mounted) mounted.error.textContent = text; }
+        function write(value) {
+            var current = fieldModel();
+            if (!toolkit || !current || read(current, "readOnly") || read(current, "visible") === false) return;
+            if (read(current, "valueDB") === value && read(current, "value") === value) return;
+            var updated = new toolkit.AttributeModel(current);
+            updated.set("value", value); updated.set("valueDB", value);
+            updated.set("isModified", true); updated.set("isUIModified", true);
+            facet.listview.propModel.set(current.getIdentifier(), updated);
+        }
+        function forget() {
+            detailNumber++; session.modelSearchLoading = false;
+            session.modelSearchSelection = null; write("");
+        }
+        function syncNode(record) {
+            if (!mounted || !mounted.auto) return;
+            synchronizing = true;
+            try {
+                var node;
+                if (record) {
+                    node = new toolkit.Node({label: record.title || record.name, value: record.id,
+                        name: record.name, searchText: (record.title || "") + " " + record.name, grid: {name: record.name}});
+                    candidates.set(node, {record: record, revision: inputRevision});
+                }
+                mounted.auto.selectedItems = node;
+            } finally { synchronizing = false; }
+        }
+        function accept(record) {
+            if (closed()) return;
+            var current = fieldModel(), value = record && record[valueField];
+            if (!current || read(current, "readOnly") || read(current, "visible") === false) return;
+            if (!record || record.type !== MODEL_TYPE || typeof value !== "string" || !value) {
+                message("검색 결과에 저장할 " + valueField + " 값이 없습니다."); return;
+            }
+            requestNumber++; chooserNumber++;
+            forget();
+            var number = detailNumber, revision = inputRevision, context = session.context;
+            function stale() { return closed() || number !== detailNumber || revision !== inputRevision || context !== session.context; }
+            session.modelSearchLoading = true;
+            syncNode(record); message("모델 속성을 조회하고 있습니다.");
+            Promise.resolve().then(function () {
+                if (stale()) return null;
+                return toolkit.Service.readAttributes({id: record.id, tenant: session.tenant,
+                    securityContext: context, isCancelled: stale});
+            }).then(function (details) {
+                if (stale() || !details) return;
+                current = fieldModel();
+                if (!current || read(current, "readOnly") || read(current, "visible") === false) {
+                    forget(); return;
+                }
+                record = Object.assign({}, record, {name: details.name, attributes: details.attributes});
+                value = record[valueField];
+                if (typeof value !== "string" || !value) throw new Error("모델의 저장값을 확인해 주세요.");
+                // 필드별 자동 채움은 여기서 record.attributes["속성명"]을 사용합니다.
+                session.modelSearchSelection = {id: record.id, type: MODEL_TYPE, value: value, context: context, record: record};
+                session.modelSearchLoading = false;
+                write(value); syncNode(record); message("");
+            }).catch(function (error) {
+                if (stale()) return;
+                forget(); syncNode(null); message(error.message || "모델 속성을 조회하지 못했습니다.");
+            });
+        }
+        function onSelection() {
+            if (closed() || synchronizing || !mounted || !mounted.auto) return;
+            var node = mounted.auto.selectedItems;
+            if (Array.isArray(node)) node = node.length === 1 ? node[0] : null;
+            if (!node) { inputRevision++; requestNumber++; chooserNumber++; candidates.clear(); forget(); return; }
+            var proof = candidates.get(node);
+            if (!proof || proof.revision !== inputRevision) { forget(); syncNode(null); return; }
+            accept(proof.record);
+        }
+        // Capture runs before the native LineEditor input listener. Clearing selection can reset
+        // its DOM value, so restore the user's query before the OOTB listener consumes the event.
+        function onInput(event) {
+            if (closed() || synchronizing || !event.target || typeof event.target.value !== "string") return;
+            var query = event.target.value;
+            inputRevision++; requestNumber++; chooserNumber++; candidates.clear();
+            forget(); syncNode(null);
+            event.target.value = query;
+            message("");
+        }
+        function stopEnter(event) { if (event.keyCode === 13 || event.key === "Enter") event.stopPropagation(); }
+        function query(text) {
+            var tree = new toolkit.Tree(), revision = inputRevision, number = ++requestNumber;
+            if (closed() || typeof text !== "string" || text.trim().length < 3) return Promise.resolve(tree);
+            return toolkit.Service.search({query: text, tenant: session.tenant, securityContext: session.context,
+                isCancelled: function () { return closed() || revision !== inputRevision || number !== requestNumber; }
+            }).then(function (records) {
+                if (closed() || revision !== inputRevision || number !== requestNumber) return tree;
+                records.forEach(function (record) {
+                    var node = new toolkit.Node({label: record.title || record.name, value: record.id,
+                        name: record.name, searchText: (record.title || "") + " " + record.name, grid: {name: record.name}});
+                    candidates.set(node, {record: record, revision: revision}); tree.addRoot(node);
+                });
+                message(""); return tree;
+            }).catch(function (error) {
+                if (!closed() && revision === inputRevision && number === requestNumber) message(error.message || "모델 검색에 실패했습니다.");
+                return tree;
+            });
+        }
+        function chooserResult(objects, revision, number) {
+            if (closed() || revision !== inputRevision || number !== chooserNumber || !objects || !objects.length) return;
+            if (objects.length !== 1) { message("객체를 하나만 선택해 주세요."); return; }
+            var record = toolkit.Service.normalize(objects[0]);
+            if (!record) { message("검색 결과의 객체 ID·이름·타입을 확인해 주세요."); return; }
+            accept(record);
+        }
+        function launch() {
+            if (closed() || loading || !toolkit) return;
+            message("");
+            var revision = inputRevision, number = ++chooserNumber;
+            function open() {
+                if (closed() || revision !== inputRevision || number !== chooserNumber) return;
+                try {
+                    search.launchSearch({title: "모델 선택", allowedTypes: MODEL_TYPE,
+                        criteria: "", multiSel: false, defaultMode: false, default_with_precond: true,
+                        in_apps_callback: function (objects) { chooserResult(objects, revision, number); }});
+                } catch (error) { message("객체 검색을 열지 못했습니다: " + error.message); }
+            }
+            if (search) { open(); return; }
+            loading = true;
+            require(["DS/ENOXSearchUIController/ENOXSearchUIController"], function () {
+                if (closed()) { loading = false; return; }
+                require(["DS/ENOXSearchUIController/ObjectOpenSearchUtil"], function (SearchUtil) {
+                    loading = false;
+                    if (closed()) return;
+                    try { search = Object.create(SearchUtil); search.initialize(); open(); }
+                    catch (error) { message("객체 검색 초기화에 실패했습니다: " + error.message); }
+                }, function () { loading = false; message("객체 검색 모듈을 불러오지 못했습니다."); });
+            }, function () { loading = false; message("객체 검색 번들을 불러오지 못했습니다."); });
+        }
+        function unmount() {
+            if (!mounted) return;
+            inputRevision++; requestNumber++; chooserNumber++; detailNumber++; session.modelSearchLoading = false; candidates.clear();
+            mounted.button.removeEventListener("click", launch);
+            if (mounted.auto) {
+                var content = mounted.auto.getContent();
+                content.removeEventListener("input", onInput, true);
+                content.removeEventListener("keydown", stopEnter);
+                content.removeEventListener("keyup", stopEnter);
+                mounted.auto.removeEventListener("change", onSelection);
+                mounted.auto.destroy();
+            }
+            mounted.originals.forEach(function (entry) { entry.node.style.display = entry.display; });
+            mounted.inputs.forEach(function (entry) { entry.node.readOnly = entry.readOnly; });
+            [mounted.host, mounted.button, mounted.error].forEach(function (node) { if (node.parentNode) node.parentNode.removeChild(node); });
+            mounted.target.classList.remove("sdxECCAObjectSearchValue"); mounted = null;
+        }
+        function targetElement(current) {
+            var result = null, ui = facet.listview && facet.listview.propUI;
+            var section = ui && ui.getFormSection && ui.getFormSection();
+            var organizers = section && typeof section.getOrganizers === "function" && section.getOrganizers();
+            Object.keys(organizers || {}).forEach(function (key) {
+                (organizers[key]._forms || []).forEach(function (form) {
+                    (form.fields || []).forEach(function (line) {
+                        if (line._idAttr === current.getIdentifier()) {
+                            var flex = line.elements && line.elements.flexLine;
+                            result = flex && flex.querySelector(".formValue");
+                        }
+                    });
+                });
+            });
+            return result;
+        }
+        function mount() {
+            if (closed()) return;
+            var current = fieldModel();
+            var target = current && !read(current, "readOnly") && read(current, "visible") !== false ? targetElement(current) : null;
+            if (mounted && (mounted.target !== target || mounted.host.parentNode !== target)) unmount();
+            if (!target) return;
+            if (!mounted) {
+                var host = document.createElement("div"), button = document.createElement("button"), error = document.createElement("span");
+                host.className = "sdxECCAObjectSearchAutoComplete"; host.style.flex = "1"; host.style.minWidth = "0";
+                button.type = "button"; button.className = "sdxECCAObjectSearchButton"; button.title = "모델 검색";
+                button.setAttribute("aria-label", "모델 검색"); button.disabled = true;
+                var icon = document.createElement("span"); icon.className = "fonticon fonticon-search"; icon.setAttribute("aria-hidden", "true"); button.appendChild(icon);
+                error.className = "sdxECCAObjectSearchError"; error.setAttribute("role", "alert");
+                var originals = Array.from(target.children).map(function (node) { return {node: node, display: node.style.display}; });
+                var inputs = Array.from(target.querySelectorAll("input, textarea")).map(function (node) { var entry = {node: node, readOnly: node.readOnly}; node.readOnly = true; return entry; });
+                mounted = {target: target, host: host, button: button, error: error, originals: originals, inputs: inputs, auto: null};
+                target.classList.add("sdxECCAObjectSearchValue"); button.addEventListener("click", launch);
+                target.appendChild(host); target.appendChild(button); target.appendChild(error);
+            }
+            // OOTB가 같은 formValue 아래 tweaker를 다시 그려도 원래 편집기는 노출하지 않습니다.
+            Array.from(target.children).forEach(function (node) {
+                if (node === mounted.host || node === mounted.button || node === mounted.error) return;
+                if (!mounted.originals.some(function (entry) { return entry.node === node; })) {
+                    mounted.originals.push({node: node, display: node.style.display});
+                }
+                if (mounted.auto) node.style.display = "none";
+            });
+            if (!toolkit || mounted.auto) return;
+            var auto = new toolkit.AutoComplete({multiSearchMode: false, allowFreeInputFlag: false,
+                allowResetToUndefinedByUIFlag: true, keepSearchResultsFlag: false,
+                minLengthBeforeSearch: 3, typeDelayBeforeSearch: 300,
+                placeholder: "모델 검색", elementsTree: query,
+                defaultFilterOptions: {property: "searchText", type: "contains"}});
+            mounted.auto = auto; auto.inject(mounted.host);
+            auto.addEventListener("change", onSelection);
+            auto.getContent().addEventListener("input", onInput, true);
+            auto.getContent().addEventListener("keydown", stopEnter);
+            auto.getContent().addEventListener("keyup", stopEnter);
+            mounted.originals.forEach(function (entry) { entry.node.style.display = "none"; });
+            mounted.button.disabled = false;
+            var chosen = session.modelSearchSelection;
+            if (chosen && chosen.context === session.context) { write(chosen.value); syncNode(chosen.record); }
+            else forget();
+        }
+        function report(error) {
+            if (closed()) return;
+            message("모델 검색을 불러오지 못했습니다. 선택하지 않으면 빈 값으로 저장됩니다.");
+            console.error("[sdxECCAObjectSearch] 검색 연결 실패", error);
+        }
+        if (typeof MutationObserver !== "undefined") {
+            observer = new MutationObserver(function () { try { mount(); } catch (error) { observer.disconnect(); report(error); } });
+            observer.observe(facet.skeleton, {childList: true, subtree: true});
+        }
+        try {
+            mount();
+            require(["DS/WUXAutoComplete/AutoComplete", "DS/TreeModel/TreeDocument", "DS/TreeModel/TreeNodeModel",
+                "DS/EditPropWidget/models/EditPropAttributeModel", "DS/sdxECCAAutoClass/sdxECCAModelSearchService"],
+                function (AutoComplete, Tree, Node, AttributeModel, Service) {
+                    if (closed()) return;
+                    toolkit = {AutoComplete: AutoComplete, Tree: Tree, Node: Node, AttributeModel: AttributeModel, Service: Service};
+                    try { mount(); } catch (error) { report(error); }
+                }, report);
+        } catch (error) { report(error); }
+        return function () {
+            disposed = true;
+            if (observer) observer.disconnect();
+            unmount();
+            if (search && search.socket) search.destroy();
+            search = null; session.modelSearchSelection = null; session.modelSearchLoading = false;
+        };
+    }
+    return {install: install};
+});

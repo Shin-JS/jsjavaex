@@ -1,10 +1,11 @@
 'use strict';
+const readSource = require('./read-source.cjs');
 const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('node:assert/strict');
 let api,config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',
  sdxECCAAttributeControlState:'In Work',sdxECCACreatePolicy:'sdxECR'};
-vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAutoClass.js'),'utf8'),{
+vm.runInNewContext(readSource(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAutoClass.js'),'utf8'),{
  widget:{getValue:key=>config[key]},setTimeout:()=>1,clearTimeout(){},
- define(id,deps,factory){api=factory(()=>{},{},{},{});}
+ define(id,deps,factory){api=factory(()=>{},{classRule:{},organization:{},classAttribute:{}});}
 });
 function session(settings={}){
  const data={defaultAttributes:{Type:{value:'sdxECChangeAction'},SecurityContext:{value:'ctx'}}};

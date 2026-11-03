@@ -1,9 +1,10 @@
 'use strict';
+const readSource = require('./read-source.cjs');
 const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('node:assert/strict');
 let api,mode='ok',payload,request,lookup,held;
 const row=(name='A')=>({name,order:1,read:true,edit:false,mandatory:true,mandatoryCheck:false});
 const response=attributes=>({success:true,type:'sdxECChangeAction',organization:'MX',state:'CREATE',attributes});
-vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAttributeControlService.js'),'utf8'),{
+vm.runInNewContext(readSource(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAttributeControlService.js'),'utf8'),{
  define(id,deps,factory){api=factory({authenticatedRequest(url,options){
   request={url,options};if(mode==='failure')options.onFailure();else if(mode==='timeout')options.onTimeout();
   else if(mode==='late')held=options;else options.onComplete(payload);

@@ -1,5 +1,7 @@
 # SecurityContext 재초기화 및 검증 — 2026-10-27
 
+현재 배포는 [README의 통합된 세 파일](README.md)을 기준으로 합니다. 아래는 기존 문맥 보완 검증 기록입니다.
+
 ## 저장 직렬화의 SecurityContext 누락 보완
 
 사용자가 마지막 checkContext 호출의 `result.defaultAttributes.SecurityContext` 누락을 확인했습니다.
@@ -27,7 +29,7 @@ readCurrentContext는 모델 getter/직접 valueDB를 확인하고, 모델 또�
 대기 중 이전 분류/속성/검색/표시 응답과 제출 콜백은 적용하지 않습니다.
 대기 중 창을 닫으면 재초기화 타이머도 취소됩니다.
 
-이번 보완은 `sdxECCAAutoClass.js`, `sdxECCAObjectSearch.js`를
+당시 보완은 `sdxECCAAutoClass.js`, `sdxECCAObjectSearch.js`를
 함께 갱신해야 합니다. 이전 단계의 OOTB B3/B4/F2 블록은 유지하며, **B4는 `changeContext`를 사용**합니다.
 `checkContext`로 되돌리는 것은 재초기화를 생략하므로 협업공간 변경 후 저장 문제의 최종 해결이 아닙니다.
 

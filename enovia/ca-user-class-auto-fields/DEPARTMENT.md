@@ -18,7 +18,7 @@ widget.setValue("sdxECCATypeDisplay", "hidden");
 
 ## 향후 연결할 두 함수
 
-[sdxECCAOrganizationProvider.js](webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js)의 두 함수 본문에 실제 서비스 호출을 연결합니다. 서비스용 AMD 의존성이 필요하면 이 파일에서 추가하고 배열/인자의 순서를 맞춥니다. Vue나 OOTB 화면 콜백 안에 서버 조회 코드를 넣지 않습니다.
+[sdxECCAService.js](webapps/sdxECCAAutoClass/sdxECCAService.js) S2의 두 함수 본문에 실제 서비스 호출을 연결합니다. 서비스용 AMD 의존성이 필요하면 S2의 해당 define에 추가하고 배열/인자의 순서를 맞춥니다. Vue나 OOTB 화면 콜백 안에 서버 조회 코드를 넣지 않습니다.
 
 | 함수 | 입력 | 반환 계약 |
 |---|---|---|

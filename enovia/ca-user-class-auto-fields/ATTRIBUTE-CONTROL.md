@@ -88,28 +88,22 @@ state는 필수이며 최대 128자의 상태명만 받습니다. 누락/빈값/
 
 ## 적용할 변경
 
-기존에 배포한 커스텀 파일을 갱신합니다. **이번 작업을 위한 OOTB JS 수정은 0곳입니다.**
+현재 배포 파일 목록은 [README](README.md)를 기준으로 합니다. **이번 통합을 위한 OOTB 추가 수정은 0곳입니다.**
 기존 ENONewWidget의 prepareFixedType/installFields/저장 연결은 그대로 사용합니다.
 
-| 파일 | 작업 |
+| 파일 | 역할 |
 |---|---|
-| server/src/com/sdx/ecca/rest/SdxEccaAttributeService.java | 기존 클래스 교체·컴파일·배포 |
-| webapps/sdxECCAAutoClass/sdxECCAAutoClass.js | 커스텀 AutoClassService 갱신 |
-| webapps/sdxECCAAutoClass/sdxECCAAttributeControl.js | 신규 UI/규칙 적용 모듈 |
-| webapps/sdxECCAAutoClass/sdxECCAAttributeControlService.js | 신규 조회 전용 모듈 |
+| server/src/com/sdx/ecca/rest/SdxEccaAttributeService.java | 기존 제어 객체 조회 서비스. 이번 통합에서 변경 없음 |
+| webapps/sdxECCAAutoClass/sdxECCAAutoClass.js C6 | UI/규칙 적용. 이전 AttributeControl 모듈 포함 |
+| webapps/sdxECCAAutoClass/sdxECCAService.js S4 | 조회 전용. 이전 AttributeControlService 모듈 포함 |
 
 SdxEccaModeler.java의 기존 서비스 등록을 그대로 사용합니다. 새 JPO/JSP/web.xml은 필요 없습니다.
-실제 서버 라이브러리로 Java를 컴파일하고 기존 방식으로 배포한 뒤 TomEE를 재시작합니다.
 테스트용 java-stubs와 tests는 배포하지 않습니다.
+기존에 서버 Java 서비스를 배포한 환경은 이번 통합 때문에 다시 컴파일할 필요가 없습니다.
+새로 설치하는 경우에만 실제 서버 라이브러리로 Java를 컴파일해 기존 방식으로 배포합니다.
 
-사용자 PC에서 sdxECCAAutoClassService.js라는 이름으로 운영한다면 해당 커스텀 파일에 변경 내용을 반영합니다.
-DS/sdxENOChgGovernanceUX/custom/services 구조를 쓴다면 다음 세 경로를 함께 맞춥니다.
-
-1. AutoClassService 안의 require: DS/.../services/sdxECCAAttributeControl
-2. AttributeControl의 define과 내부 Service require: DS/.../services/sdxECCAAttributeControlService
-3. AttributeControlService의 define
-
-공통 OOTB define 의존성에는 추가하지 않습니다.
+별도 AMD 경로로 운영하는 설치본은 통합 파일의 named define과 require 이름을 함께 맞춥니다.
+개별 AttributeControl/AttributeControlService 파일은 배포하지 않습니다. 공통 OOTB define 의존성에는 추가하지 않습니다.
 
 기존 설정 sdxECCAAttributeVisibilityUrl과 별도 복사해 둔 sdxECCAScheduleAttributeVisibility/V1~V3 연결은 제거합니다.
 기존 sdxECCAAttributeVisibility.js는 더 이상 배포하지 않습니다.
