@@ -834,15 +834,20 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
         session.tenant = options.tenant || session.tenant;
         facet.sdxECCAAutoContext = options.securityContext || session.context;
         session.checkContext(facet.sdxECCAAutoContext);
-        var started = Date.now();
+        var started = Date.now(), connected = false;
         facet.sdxECCAAutoTimer = setInterval(function () {
-            if (session.disposed || session.transitioning || session.status === "error") { clearInterval(facet.sdxECCAAutoTimer); return; }
+            if (connected || session.disposed || session.transitioning || session.status === "error") { clearInterval(facet.sdxECCAAutoTimer); return; }
             if (session.refreshValidation) session.refreshValidation();
-            var occurrence = typeof facet.getOccurrence === "function" ? facet.getOccurrence() : null;
+            var isCA = session.type === "sdxECChangeAction";
+            var occurrence = !isCA && typeof facet.getOccurrence === "function" ? facet.getOccurrence() : null;
             var ui = facet.initUI && facet.initUI.getController();
             var ctrl = ui && ui.plmNewLibraryActive;
-            if (occurrence && typeof occurrence.setValidation === "function" &&
-                ctrl && ctrl.autoComplete && ctrl.classifPropertiesView && ctrl.accordeonCon) {
+            // CA 검증은 facetValidation과 Dialog 집계로 연결합니다.
+            // occurrence의 지연 생성이 라이브러리 초기화를 막지 않게 분리합니다.
+            var occurrenceReady = isCA ||
+                (occurrence && typeof occurrence.setValidation === "function");
+            if (occurrenceReady && ctrl && ctrl.autoComplete && ctrl.classifPropertiesView && ctrl.accordeonCon) {
+                connected = true;
                 clearInterval(facet.sdxECCAAutoTimer);
                 try {
                     if ((ctrl.autoComplete.selectedItems || []).length || (ctrl.classifPropModels || []).length) {
@@ -892,7 +897,14 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                 } catch (error) { session.fail(error); }
             } else if (Date.now() - started > 30000) {
                 clearInterval(facet.sdxECCAAutoTimer);
-                session.fail(new Error("분류 컨트롤러 또는 facet occurrence 준비 시간이 초과되었습니다."));
+                var missing = [];
+                if (!ctrl) missing.push("controller");
+                else ["autoComplete", "classifPropertiesView", "accordeonCon"].forEach(function (key) {
+                    if (!ctrl[key]) missing.push(key);
+                });
+                if (!occurrenceReady) missing.push("occurrence.setValidation");
+                console.warn("[sdxECCA] 분류 초기화 준비 미완료", missing);
+                session.fail(new Error("분류 입력창 준비 시간이 초과되었습니다. 콘솔의 준비 미완료 항목을 확인해 주세요."));
             }
         }, 100);
     }

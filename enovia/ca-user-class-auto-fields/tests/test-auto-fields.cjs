@@ -105,6 +105,17 @@ function makeController(session){
 // 비활성 위젯과 다른 타입의 공용 호출에는 세션을 추가하지 않습니다.
 config={};let facets=metadata();api.attachBridge(data(),facets,{});assert.equal(facets[0].options.sdxECCAAutoSession,undefined);
 config={sdxECCAEnableAutoClassByOrganization:true};facets=metadata();const other=data();other.defaultAttributes.Type.value='Part';api.attachBridge(other,facets,{});assert.equal(facets[0].options.sdxECCAAutoSession,undefined);
+// CA 컨트롤러가 준비되면 occurrence 지연/부재와 무관하게 초기화가 정확히 한 번 시작됩니다.
+for (const mode of ['absent', 'delayed', 'missing-method', 'uninitialized']) {
+ const entry=makeSession();const state=entry.session;state.type='sdxECChangeAction';
+ const controller=makeController(state), delayed=classificationFacet(controller);
+ delayed.getOccurrence=()=>{if(mode==='uninitialized')throw Error('occurrence not initialized');return mode==='missing-method'?{}:null;};
+ api.connectClassification(delayed,{sdxECCAAutoSession:state,securityContext:state.context});
+ const poll=timers.get(delayed.sdxECCAAutoTimer);
+ poll();assert.ok(controller.request(),mode+' occurrence must not block CA');
+ const request=controller.request();delayed.getOccurrence=()=>({setValidation(){}});poll();
+ assert.equal(controller.request(),request);assert.notEqual(state.status,'error');state.dispose();
+}
 // 부서 조회와 조직 파싱 없이도 지정 클래스만으로 동작합니다.
 let {session,facets:activeFacets}=makeSession();const second=makeSession('C2').session;
 assert.notEqual(session,second);assert.equal(second.rule.classId,'C2');second.dispose();
@@ -560,7 +571,7 @@ for (const typeName of ['sdxECChangeAction','Change Action','Change Order','Chan
 config={sdxECCAEnableAutoClassByOrganization:false,sdxECCAAutoClassType:'sdxECChangeAction'};
 const untouched={type:'Change Request',options:{typeName:'Change Request',preferedType:'Change Request'}};
 api.configureCreateType(untouched);assert.equal(untouched.options.typeName,'Change Request');
-console.log('PASS: widget/type isolation, fixed class without department lookup, asynchronous selection/loading, validation/blur, context change, form restore, late responses, config/type/library/response errors, timeout, hidden/read-only type with original schema, launch type isolation');
+console.log('PASS: widget/type isolation, fixed class without department lookup, asynchronous selection/loading, validation/blur, context change, form restore, late responses, config/type/library/response errors, timeout, CA occurrence-independent initialization, hidden/read-only type with original schema, launch type isolation');
 
 // 클래스 코드 조회 → 기존 경로/폼 흐름 연결, 지연 응답과 조회 실패 처리.
 {

@@ -21,8 +21,9 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
         function ruleName(name) { return classification && typeof name === "string" ? name.replace(/CCMAttr$/, "") : name; }
         function visible(name) {
             var rule = rules && rules.get(ruleName(name));
-            // 분류 목록을 확인한 뒤 기본 폼을 표시합니다. 중복은 분류 폼에만 표시합니다.
-            if (!classification && (!session.classificationControlNames || session.classificationControlNames.has(name))) return false;
+            // 규칙 조회가 완료되면 기본 폼을 먼저 표시합니다.
+            // 분류 목록이 도착하면 알려진 중복만 숨깁니다. 분류 대기가 기본 폼을 막지 않습니다.
+            if (!classification && session.classificationControlNames && session.classificationControlNames.has(name)) return false;
             // 이전 Text 복사/EC Type 저장 규칙은 계속 숨깁니다.
             return !!rule && rule.read && (classification || (name !== "sdxECType" && !/Text$/.test(name)));
         }
@@ -39,7 +40,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
             var name = get(field, "name");
             if (!controlled(field) || typeof field.set !== "function") return;
             var rule = rules && rules.get(ruleName(name)), show = visible(name);
-            var flags = {visible: show, readOnly: !show || !rule.edit,
+            var flags = {visible: show, readOnly: !show || !rule.edit || (!classification && !session.classificationControlNames),
                 mandatory: show && rule.mandatoryCheck, positionUI: "2-1-" + (ranks.get(ruleName(name)) || 1000000),
                 // 필수 여부/인터페이스에 따른 OOTB 구획 분리를 없애 설정 순서를 그대로 사용합니다.
                 facet: classification ? get(field, "facet") : "",

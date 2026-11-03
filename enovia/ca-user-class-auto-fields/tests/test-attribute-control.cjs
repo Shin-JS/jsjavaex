@@ -134,6 +134,15 @@ const tick=()=>new Promise(r=>setImmediate(r));
  loadMode='ok';f=fixture();const empty=api.install(f.facet,f.session,{});await tick();resolveRules(new Map());await empty;
  assert(Object.values(f.fields).filter(v=>!v.defaultAttribute).every(v=>v.visible===false));
  f.session.cleanupAttributeControl();
+ // Rules arriving before the classification controller must not leave the entire basic form blank.
+ f=fixture();delete f.session.classificationControlNames;f.field('DisplayOnly').valueDB='early-value';
+ const baseOnly=new Field('BaseOnly',{visible:false});f.model.set(baseOnly.getIdentifier(),baseOnly);
+ const early=api.install(f.facet,f.session,{});await tick();const earlyRules=rules();earlyRules.set('BaseOnly',rule('BaseOnly',50));resolveRules(earlyRules);const earlyCleanup=await early;
+ assert.equal(f.field('DisplayOnly').visible,true);assert.equal(f.field('DisplayOnly').readOnly,true);assert.equal(f.field('Unlisted').visible,false);assert.equal(baseOnly.visible,true);assert.equal(baseOnly.readOnly,true);
+ const lateClass=classificationFixture(f);f.session.attachClassificationControl(lateClass.form);await tick();
+ assert.equal(f.field('DisplayOnly').visible,false);assert.equal(f.field('DisplayOnly').valueDB,'early-value');
+ assert.equal(lateClass.field('DisplayOnly').visible,true);assert.equal(f.session.classificationControlReady,true);assert.equal(baseOnly.visible,true);assert.equal(baseOnly.readOnly,false);
+ earlyCleanup();
  // Classification arriving before rules uses the same rule snapshot, with no second request.
  f=fixture();f.field('DisplayOnly').valueDB='base-original';f.field('Both').valueDB='base-value';const cf=classificationFixture(f);f.session.attributeControlState='In Work';f.session.classControlForm=cf.form;delete f.session.classificationControlNames;
  const base=api.install(f.facet,f.session,{});await tick();assert.equal(f.field('Both').visible,false);assert.equal(seenRequest.state,'In Work');
