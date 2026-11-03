@@ -29,6 +29,8 @@ function fixture(){
  const view={data:{attributes:{publicAttributes:names.slice(0,4).map(name=>({name})),
   extensionAttributes:names.slice(4).map(name=>({name}))}},propModel:model,
   propUI:{getFormSection:()=>({getOrganizers:()=>organizers})},
+  validateForm(){this.nativeChecks=(this.nativeChecks||0)+1;this.isFormValid=false;return false;},
+  updateValidStatus(){this.nativePublished=this.isFormValid;},
   buildModel(data){this.data=data;},
   loadView(){this.refresh();},
   refresh(){renders++;const container=document.createElement('div');const lines=[];
@@ -133,6 +135,7 @@ const tick=()=>new Promise(r=>setImmediate(r));
  f=fixture();delete f.session.classificationControlNames;f.field('DisplayOnly').valueDB='early-value';
  const baseOnly=new Field('BaseOnly',{visible:false});f.model.set(baseOnly.getIdentifier(),baseOnly);
  const early=api.install(f.facet,f.session,{});await tick();const earlyRules=rules();earlyRules.set('BaseOnly',rule('BaseOnly',50));resolveRules(earlyRules);const earlyCleanup=await early;
+ assert(f.view.nativeChecks>0);assert.equal(f.view.nativePublished,false);
  assert.equal(f.field('DisplayOnly').visible,true);assert.equal(f.field('DisplayOnly').readOnly,false);assert.equal(f.field('Unlisted').visible,false);assert.equal(baseOnly.visible,true);assert.equal(baseOnly.readOnly,false);
  const lateClass=classificationFixture(f);f.session.attachClassificationControl(lateClass.form);await tick();
  assert.equal(f.field('DisplayOnly').visible,false);assert.equal(f.field('DisplayOnly').valueDB,'early-value');

@@ -21,9 +21,14 @@ const original=[{name:'ACCMAttr',extension:'C1',mandatory:true,readOnly:false,va
  {name:'Other',extension:'C2',mandatory:true,readOnly:false}];
 const response={attribute:[{name:'ACCMAttr'}],results:[{data:original}]};
 assert.equal(api.prepareAttributes(model,response),true);
-assert.equal(response.results[0].data[0].mandatory,false);assert.equal(response.results[0].data[0].readOnly,true);
+assert.equal(response.results[0].data[0].mandatory,false);assert.equal(response.results[0].data[0].readOnly,false);
 assert.equal(original[0].mandatory,true);assert.equal(original[0].readOnly,false);
 assert.deepEqual(response.results[0].data[0].value,['keep']);assert.equal(response.results[0].data[1],original[1]);
+// Preserve server readonly flags too; waiting must not invent or remove access.
+const locked={name:'ACCMAttr',extension:'C1',readOnly:true};
+const lockedResponse={attribute:[{name:'ACCMAttr'}],results:[{data:[locked]}]};
+assert.equal(api.prepareAttributes(model,lockedResponse),true);
+assert.equal(lockedResponse.results[0].data[0].readOnly,true);
 assert.equal(s.classificationControlReady,false);assert.equal(s.classificationControlNames.has('A'),true);assert.equal(s.classificationControlNames.has('ACCMAttr'),false);
 const root={style:{}},rendered={get:key=>key==='objectId'?'C1':undefined,values:()=>[]};
 const propertiesUI={elements:{UIController:{validateModels(){}}}};

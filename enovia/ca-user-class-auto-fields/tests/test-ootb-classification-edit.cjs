@@ -3,8 +3,8 @@
 // node tests/test-ootb-classification-edit.cjs <2025-original-directory>
 const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('node:assert/strict');
 const dir=process.argv[2];if(!dir)throw Error('Specify 2025 original directory');
-const defs=new Map(),window={top:{perfoIncrem:0}};
-for(const file of ['ClassificationProp','EditPropWidget'])vm.runInNewContext(fs.readFileSync(path.join(dir,file+'.js'),'utf8'),{
+const defs=new Map(),window={top:{perfoIncrem:0,performance:{mark(){}}}};
+for(const file of ['ClassificationProp','EditPropWidget','ENONewWidget'])vm.runInNewContext(fs.readFileSync(path.join(dir,file+'.js'),'utf8'),{
  window,define(id,deps,factory){defs.set(id,{deps:Array.from(deps),factory});}
 });
 const constants=defs.get('DS/ClassificationProp/constants/ClassifPropConstants').factory();
@@ -47,3 +47,49 @@ for(const id of ['DS/EditPropWidget/utils/AttributesUtils','DS/ClassificationPro
  assert(!errors||!errors.length,'OOTB readonly behavior must be preserved');
 }
 console.log('PASS: actual Classification Properties.initData FORCE_READWRITE enables edit mode, preserves values and readonly access; actual base/classification OOTB validation follows mandatoryCheck');
+
+// Exercise the real post-load access decision, including the pre-render custom hook.
+let custom;
+vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAutoClass.js'),'utf8'),{
+ define(id,deps,factory){custom=factory(()=>{},{},{},{});}
+});
+const controllerDef=defs.get('DS/ClassificationProp/facets/Properties/ClassifPropController');
+const controller=controllerDef.factory(...controllerDef.deps.map(dep=>dep.endsWith('/ClassifPropConstants')?constants:stub));
+for(const serverReadonly of [false,true]){
+ const session={type:'sdxECChangeAction',classId:'C1',mandatory:true};
+ const model={sdxECCAAutoSession:session,sdxECCAAutoClassId:'C1'};
+ const response={attribute:[{name:'ACCMAttr'}],results:[{data:[{name:'ACCMAttr',extension:'C1',readOnly:serverReadonly}]}]};
+ assert.equal(custom.prepareAttributes(model,response),true);
+ let readonly=false,rendered=false;
+ const ctx={hideLoader(){},_manageNotificationFromAnswer(){},isReadOnly:()=>false,updateReadWriteAccess(){},
+  _buildFromResponse(){return {modifyAccess:true,allAttributeAreRO:response.results[0].data.every(a=>a.readOnly===true),oneSuccess:true};},
+  getModel:()=>model,editPropertiesUI:{switchComponentMode(value){readonly=value;},setAccordionProperties(){},
+   initData(){rendered=true;}}};
+ controller._onCompleteLoadModel.call(ctx,response,{initTable:true,buildBehavior:constants.FORCE_DEFAULT});
+ assert(rendered);assert.equal(readonly,serverReadonly,'staging must preserve native editable/readonly access');
+}
+// Native basic form skips untouched fields initially. Full native validation seeds
+// isFormValid, and onValidActivation then drives the actual native dialog buttons.
+const basicUtils=defs.get('DS/EditPropWidget/utils/AttributesUtils').factory({isArray:Array.isArray},{commonChar:()=>0},nls);
+const listDef=defs.get('DS/ENONewWidget/ENONew/View/ENOListView');
+class Attribute {}
+const list=listDef.factory(...listDef.deps.map(dep=>dep==='UWA/Controls/Abstract'?stub:
+ dep.endsWith('/EditPropAttributeModel')?Attribute:dep.endsWith('/AttributesUtils')?basicUtils:{}));
+const dialogDef=defs.get('DS/ENONewWidget/ENONew/Controller/ENONewDialogController');
+const dialogMethods=dialogDef.factory(...dialogDef.deps.map((dep,i)=>i===0?stub:dep.startsWith('i18n!')?nls:{}));
+const dialog=Object.assign({},dialogMethods,{viewType:'tabView',isPropertiesFormValid:true,
+ View:{evaluateFacetValidation:()=>true},footerButtons:{Ok:{value:'Ok'},Save:{value:'Save'},createBtnCombo:{},Discard:{value:'Discard'}},
+ myDialog:{elements:{_checkbox:{}}},removeLoadingOverlay(){}});
+const attr=Object.assign(new Attribute(),field(true));
+const model={values:()=>[attr],getAllAttributes:()=>({A:attr}),isMergedModel:()=>false};
+const view=Object.assign({},list,{propModel:model,isFormValid:true,propUI:{
+ validateModel(models){const errors=basicUtils.validateModels(models);return !errors||!errors.length;},
+ updateFormSection(){}},checkForUXBLValidation:()=>true,
+ dispatchEvent(event,args){assert.equal(event,'onValidActivation');dialog.isPropertiesFormValid=args[0];dialog.evaluateValidationStatus();}});
+view.updateValidStatus();assert.equal(dialog.footerButtons.Ok.disabled,false,'native initial untouched behavior');
+view.validateForm();view.updateValidStatus();
+for(const key of ['Ok','Save','createBtnCombo'])assert.equal(dialog.footerButtons[key].disabled,true);
+attr.value=attr.valueDB='entered';view.updateValidStatus();assert.equal(dialog.footerButtons.Ok.disabled,false);
+attr.value=attr.valueDB='';attr.isUIModified=true;view.updateValidStatus();assert.equal(dialog.footerButtons.Ok.disabled,true);
+assert(!dialog.footerButtons.Discard.disabled);
+console.log('PASS: custom preparation preserves native classification access; actual native basic validation disables buttons for untouched required values and recovers after input');

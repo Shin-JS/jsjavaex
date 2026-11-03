@@ -176,7 +176,14 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
                     wrap(view, key, function (original) { return function () {
                         enforce();
                         var result = original.apply(this, arguments);
-                        decorate(); return result;
+                        decorate();
+                        // OOTB 초기 검사는 수정한 필드 위주입니다. 규칙 변경 후에는 전체를
+                        // 기본 validateForm으로 검사해 onValidActivation 경로로 버튼에 전달합니다.
+                        if (typeof this.validateForm === "function" && typeof this.updateValidStatus === "function") {
+                            this.validateForm();
+                            this.updateValidStatus();
+                        }
+                        return result;
                     }; });
                 });
                 wrap(view, "addAttributeOnUI", function (original) { return function (id, show) {

@@ -164,3 +164,12 @@ test-ootb-control-layout.cjs는 실제 2025 AttributeModel/FormSections/Form/man
 - 별도 빈값 검사와 AttributeControl의 onSubmit 래퍼를 제거했습니다. 기본 폼 원래 onSubmit과 분류 UIController.validateModels를 유지합니다.
 - DOM 검사로 입력창 생성과 별표의 textContainer 내부 배치를 확인했습니다. OOTB 원본 파일의 추가 수정은 없습니다.
 - 실제 설치 환경의 WUX 렌더링/별표 위치/저장 동작은 배포 후 확인해야 합니다.
+
+2026-11-03 후속 수정: 분류 폼 전체 잠금 원인 제거 및 초기 버튼 검증:
+
+- 이전 검사에는 prepareAttributes → _onCompleteLoadModel의 allAttributeAreRO 집계가 빠져 있었습니다.
+- prepareAttributes가 모든 분류 속성에 readOnly=true를 넣어 OOTB가 폼 전체를 조회 전용으로 판정하던 부분을 제거했습니다. 응답의 편집 가능/읽기 전용 값을 보존합니다.
+- 실제 OOTB _onCompleteLoadModel로 커스텀 prepareAttributes 결과를 처리하여 편집 가능/읽기 전용 양쪽 판정을 확인했습니다. 모델 생성/네트워크 부분은 대역입니다.
+- 규칙 적용 후 기본 폼의 원래 validateForm/updateValidStatus를 호출합니다. 별도 빈값 검사나 버튼 직접 활성화는 추가하지 않았습니다.
+- 실제 ENOListView/AttributesUtils/DialogController로 초기 미수정 필드의 검사 생략을 재현하고, 전체 검증 후 생성 버튼 비활성화 → 값 입력 시 활성화 → 값 제거 시 비활성화를 확인했습니다. 취소 버튼은 유지됩니다.
+- 분류 속성의 모델 변경 검증/버튼 집계와 기존 필수 표시·검증 분리는 유지합니다. 실제 배포 화면에서의 확인은 별도로 필요합니다.

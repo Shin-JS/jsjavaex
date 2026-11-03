@@ -139,8 +139,12 @@ widget.setValue(
 4. 필수 아이콘은 별도 표시하고 OOTB mandatory에는 MandatoryCheck를 적용합니다.
 5. 현재 view/model 인스턴스에만 BL 갱신/폼 재생성 연결을 둡니다. 전역 prototype은 변경하지 않습니다.
 6. 기본 폼의 원래 onSubmit/검증을 유지하고, 분류는 실제 UIController.validateModels를 호출합니다.
+   기본 폼의 규칙 적용/재렌더링 직후 validateForm → updateValidStatus → onValidActivation으로
+   초기 미입력 필드까지 OOTB 전체 검증 결과를 저장 버튼에 전달합니다.
    별도 빈값 검사와 AttributeControl의 onSubmit 래퍼는 사용하지 않습니다.
 7. 기존 prepareAttributes/notifyAttributesLoaded 연결에서 Classification 모델/값을 보존해 대기시킵니다.
+   prepareAttributes에서 readOnly를 임의로 true로 바꾸지 않습니다. OOTB가 allAttributeAreRO로
+   폼 전체의 편집 가능 여부를 결정하므로, 원래 응답의 readOnly를 보존합니다.
    분류 응답과 규칙 중 어느 쪽이 먼저 도착해도 준비 완료 후 같은 규칙을 적용합니다.
    ClassificationProp의 initData에 FORCE_READWRITE를 전달해 원래 편집 모드로 그립니다.
    필드별 readOnly와 실제 접근 권한은 유지하고, visible을 지원하지 않는 분류 행은 DOM 표시도 제어합니다.

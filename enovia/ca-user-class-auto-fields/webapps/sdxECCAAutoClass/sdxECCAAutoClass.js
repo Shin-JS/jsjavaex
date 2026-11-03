@@ -1009,7 +1009,9 @@ define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
                     if (!Array.isArray(row.data)) return row;
                     return Object.assign({}, row, {data: row.data.map(function (attr) {
                         if (attr.extension !== session.classId || !controlledNames.has(attr.name)) return attr;
-                        return Object.assign({}, attr, {mandatory: false, readOnly: true});
+                        // OOTB는 여기의 readOnly로 allAttributeAreRO를 계산해 폼 전체를 잠급니다.
+                        // 대기 중 숨김은 폼 컨테이너로 처리하고 원래 편집 메타데이터는 보존합니다.
+                        return Object.assign({}, attr, {mandatory: false});
                     })});
                 });
                 session.mandatoryPrepared = true;
