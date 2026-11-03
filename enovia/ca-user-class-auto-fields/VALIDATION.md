@@ -2,9 +2,12 @@
 
 ## 현재 파일 통합 검증 — 2026-11-03
 
+실제 폴더명 확인에 따라 `custom/services`(복수형)로 세 파일 위치, 대표 AMD 이름,
+생성 진입 호출, 테스트 및 안내 문서를 일치시켰습니다. 단수형 경로는 사용하지 않습니다.
+
 생성 진입 보완: 실제 호출 대상인 `sdxECCACreateService`에 `launch()`를 두고,
 서버 조회 묶음은 `sdxECCADataService`로 구분했습니다. 별도 sdxECCA.js는 사용하지 않습니다.
-세 파일 모두 custom/service 아래에서 직접 로딩하는 실제 RequireJS 검사와 독립 회귀 검사
+세 파일 모두 custom/services 아래에서 직접 로딩하는 실제 RequireJS 검사와 독립 회귀 검사
 13개를 다시 실행해 모두 통과했습니다. G0 메모와 runtime-hooks fixture의 호출 경로도 일치시켰습니다.
 실제 서버에서 보고된 생성창 오류가 해소됐는지는 배포 후 확인이 필요합니다.
 
@@ -60,7 +63,7 @@ test-ootb-button-state를 기존 인자로 추가 실행할 수 있습니다.
 ```sh
 node tests/test-auto-fields.cjs
 node tests/test-amd-headers.cjs
-node --check webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js
+node --check webapps/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService.js
 node --check webapps/sdxECCAAutoClass/sdxECCAClassRuleService.js
 node --check webapps/sdxECCAAutoClass/sdxECCAOrganizationProvider.js
 ```

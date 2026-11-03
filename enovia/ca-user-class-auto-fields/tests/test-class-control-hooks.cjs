@@ -3,7 +3,7 @@ const readSource = require('./read-source.cjs');
 const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('node:assert/strict');
 let api,config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',
  sdxECCAAttributeControlState:'In Work',sdxECCACreatePolicy:'sdxECR'};
-vm.runInNewContext(readSource(path.join(__dirname,'../webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js'),'utf8'),{
+vm.runInNewContext(readSource(path.join(__dirname,'../webapps/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService.js'),'utf8'),{
  widget:{getValue:key=>config[key]},setTimeout:()=>1,clearTimeout(){},
  define(id,deps,factory){api=factory(()=>{},{classRule:{},organization:{},classAttribute:{}});}
 });

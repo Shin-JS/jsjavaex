@@ -2,8 +2,8 @@
  * 기존 자동 분류 모듈을 우리 CA 생성 진입부에서만 먼저 로딩합니다.
  * OOTB 모듈의 define 의존성에는 이 파일이나 자동 분류 모듈을 추가하지 않습니다.
  */
-define("DS/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService", [
-    "DS/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService"
+define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService", [
+    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService"
 ], function (AutoClass) {
     "use strict";
     return {

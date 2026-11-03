@@ -3,16 +3,16 @@
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm');
 const serviceNames = new Set(['sdxECCAService', 'sdxECCADataService', 'sdxECCAClassRuleService', 'sdxECCAOrganizationProvider',
  'sdxECCAClassAttributeService', 'sdxECCAAttributeControlService', 'sdxECCAModelSearchService']);
-const directory = path.resolve(__dirname, '../webapps/sdxENOChgGovernanceUX/custom/service');
+const directory = path.resolve(__dirname, '../webapps/sdxENOChgGovernanceUX/custom/services');
 const primaryIds = {
- sdxECCAAutoClass: 'DS/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService',
- sdxECCAAutoClassService: 'DS/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService',
- sdxECCAService: 'DS/sdxENOChgGovernanceUX/custom/service/sdxECCADataService',
- sdxECCADataService: 'DS/sdxENOChgGovernanceUX/custom/service/sdxECCADataService'
+ sdxECCAAutoClass: 'DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService',
+ sdxECCAAutoClassService: 'DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService',
+ sdxECCAService: 'DS/sdxENOChgGovernanceUX/custom/services/sdxECCADataService',
+ sdxECCADataService: 'DS/sdxENOChgGovernanceUX/custom/services/sdxECCADataService'
 };
 module.exports = function readSource(file, encoding) {
  const location = String(file).replaceAll('\\', '/');
- if (!location.includes('/webapps/sdxECCAAutoClass/') && !location.includes('/webapps/sdxENOChgGovernanceUX/custom/service/')) {
+ if (!location.includes('/webapps/sdxECCAAutoClass/') && !location.includes('/webapps/sdxENOChgGovernanceUX/custom/services/')) {
   return fs.readFileSync(file, encoding);
  }
  const name = path.basename(file, '.js');

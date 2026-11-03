@@ -51,7 +51,7 @@ console.log('PASS: actual Classification Properties.initData FORCE_READWRITE ena
 
 // Exercise the real post-load access decision, including the pre-render custom hook.
 let custom;
-vm.runInNewContext(readSource(path.join(__dirname,'../webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js'),'utf8'),{
+vm.runInNewContext(readSource(path.join(__dirname,'../webapps/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService.js'),'utf8'),{
  define(id,deps,factory){custom=factory(()=>{},{classRule:{},organization:{},classAttribute:{}});}
 });
 const controllerDef=defs.get('DS/ClassificationProp/facets/Properties/ClassifPropController');

@@ -4,7 +4,7 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert/strict'),path=req
 let api, dependencies, pending=[], loads=0, installed=0, reports=0, mode='missing', config={};
 let success;
 const clearedTimers=[];
-const source=readSource(path.join(__dirname,'../webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js'),'utf8')
+const source=readSource(path.join(__dirname,'../webapps/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService.js'),'utf8')
  .replace('installFields: sdxECCAInstallAutoFields,','installFields: sdxECCAInstallAutoFields, testSchedule: sdxECCAScheduleObjectSearch,');
 const requireStub=(ids,done,fail)=>{
  loads++;

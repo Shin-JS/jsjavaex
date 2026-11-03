@@ -11,9 +11,9 @@
  * 아래 세 named AMD 모듈은 이 파일에서 함께 등록합니다. 별도 JS 파일은 필요 없습니다.
  * 기능별 함수 범위와 지연 실행을 유지하여 OOTB 초기화 순서를 바꾸지 않습니다.
  */
-define("DS/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService", [
+define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
     "require",
-    "DS/sdxENOChgGovernanceUX/custom/service/sdxECCADataService"
+    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCADataService"
 ], function (require, Services) {
     "use strict";
 

@@ -64,7 +64,7 @@ readCurrentContext는 모델 getter/직접 valueDB를 확인하고, 모델 또�
 
 ## 반드시 함께 배포할 파일/블록
 
-- `webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js`: 전체 커스텀 모듈 교체.
+- `webapps/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService.js`: 전체 커스텀 모듈 교체.
 - `webapps/ENONewWidget/ENONewWidget.js`: 적용 메모의 **B3와 B4** 교체.
   B4는 `checkContext` 대신 `changeContext`를 호출합니다. B3는 이전 문맥의 늦은
   typeInfo 응답이면 OOTB updateFacet 적용을 중단합니다.

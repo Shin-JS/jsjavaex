@@ -104,9 +104,9 @@ var modelCode = record.attributes["sdxModelCode"];
 
 - `server/src/com/sdx/ecca/rest/SdxEccaModelService.java` (신규)
 - `server/src/com/sdx/ecca/rest/SdxEccaModeler.java` (서비스 등록 추가)
-- `webapps/sdxENOChgGovernanceUX/custom/service/sdxECCADataService.js` S5
-- `webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js` C7
-- `webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js` (조회 중 저장 방지)
+- `webapps/sdxENOChgGovernanceUX/custom/services/sdxECCADataService.js` S5
+- `webapps/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService.js` C7
+- `webapps/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService.js` (조회 중 저장 방지)
 
 Java 파일은 기존 커스텀 REST 서비스와 같은 방식으로 컴파일/배포해야 합니다.
 이 개발 환경에는 Java 컴파일러와 ENOVIA 라이브러리가 없어 Java 실제 컴파일/호출 검증은

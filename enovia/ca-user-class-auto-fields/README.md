@@ -6,7 +6,7 @@
 
 ## 설치 경로 반영 — 2026-11-03
 
-세 파일 모두 `DS/sdxENOChgGovernanceUX/custom/service` 경로를 사용합니다.
+세 파일 모두 `DS/sdxENOChgGovernanceUX/custom/services` 경로를 사용합니다.
 기존 생성 진입부는 `sdxECCACreateService`를 직접 로딩하고 `launch()`를 실행합니다.
 CreateService는 생성 진입을 담당하며, 조회 묶음은 별도 `sdxECCADataService`가 담당합니다.
 `sdxECCA.js`는 배포하지 않습니다. 세 파일의 define/의존성도 이 구조로 맞췄습니다.
@@ -18,9 +18,9 @@ CreateService는 생성 진입을 담당하며, 조회 묶음은 별도 `sdxECCA
 
 | 파일 | 역할 |
 |---|---|
-| [sdxECCAAutoClassService.js](webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js) | 생성창 세션, 자동 분류, 속성 제어, 검색 UI, 검증, 저장 전 처리 |
-| [sdxECCADataService.js](webapps/sdxENOChgGovernanceUX/custom/service/sdxECCADataService.js) | 클래스 규칙·속성, 제어 객체, 모델 검색·상세 속성 조회 |
-| [sdxECCACreateService.js](webapps/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService.js) | 우리 위젯에서 커스텀 모듈을 준비하고 기존 생성 호출 실행 |
+| [sdxECCAAutoClassService.js](webapps/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService.js) | 생성창 세션, 자동 분류, 속성 제어, 검색 UI, 검증, 저장 전 처리 |
+| [sdxECCADataService.js](webapps/sdxENOChgGovernanceUX/custom/services/sdxECCADataService.js) | 클래스 규칙·속성, 제어 객체, 모델 검색·상세 속성 조회 |
+| [sdxECCACreateService.js](webapps/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService.js) | 우리 위젯에서 커스텀 모듈을 준비하고 기존 생성 호출 실행 |
 
 환경별 값은 기존 [ENOChgGovernance.html의 H1 설정](webapps/ENOChgGovernanceUX/ENOChgGovernance.html) 한곳에서 변경합니다.
 이 HTML은 설정 적용 메모이며 서버 HTML 전체 교체본이 아닙니다. 공용 HTML이 아닌 우리 위젯의 기존 초기화 위치에 적용합니다.

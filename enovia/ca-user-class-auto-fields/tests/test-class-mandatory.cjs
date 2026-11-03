@@ -8,7 +8,7 @@ const context=vm.createContext({console,Promise,Map,Set,Error,setTimeout,clearTi
 function requireAMD(ids,done){assert.equal(ids[0],'DS/WAFData/WAFData');done({authenticatedRequest(url,opts){request={url,opts};if(nextError)opts.onFailure();else opts.onComplete(nextResponse);}});}
 for(const name of ['sdxECCAClassRuleService','sdxECCAOrganizationProvider','sdxECCAClassAttributeService','sdxECCAObjectSearch','sdxECCAService','sdxECCAAutoClass'])
  vm.runInContext(readSource(path.join(root,'webapps/sdxECCAAutoClass',name+'.js'),'utf8'),context);
-const service=modules['DS/sdxECCAAutoClass/sdxECCAClassAttributeService'], api=modules['DS/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService'];
+const service=modules['DS/sdxECCAAutoClass/sdxECCAClassAttributeService'], api=modules['DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService'];
 const response=value=>({results:[{physicalID:'C1',data:[{name:'sdxClassAttrMandatory',value}]}]});
 for(const [value,expected] of [['Y',true],[['Y'],true],[' Y ',true],['N',false],['',false],[[],false],['y',false]])
  assert.equal(service.readMandatory(response(value),'C1'),expected);

@@ -2,7 +2,7 @@
 const readSource = require('./read-source.cjs');
 const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('node:assert/strict');
 let api,mode='ok',loads=0,doneLoad,finishInstall,installs=0;
-const source=readSource(path.join(__dirname,'../webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js'),'utf8')
+const source=readSource(path.join(__dirname,'../webapps/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService.js'),'utf8')
  .replace('installFields: sdxECCAInstallAutoFields,','installFields: sdxECCAInstallAutoFields, testSchedule: sdxECCAScheduleAttributeControl, testSession: sdxECCACreateAutoSession,');
 const req=(ids,done,fail)=>{
  loads++;assert.equal(ids[0],'DS/sdxECCAAutoClass/sdxECCAAttributeControl');

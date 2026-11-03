@@ -41,7 +41,7 @@ const helper=run(helperId,[{ENONewFACET_CLASSIFICATION:'classificationFacet'},{g
 const data=()=>({defaultAttributes:{Type:{value:'sdxECChangeAction'},SecurityContext:{value:'ctx'}}});
 let facets=helper.getFacetList(data(),[{name:'classificationFacet'}],{});assert(!facets[0].options.sdxECCAAutoSession);
 // Real AutoClass: the common helper was already initialized before the custom runtime exists.
-const autoRows=collect(readSource(path.join(root,'webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js'),'utf8'));
+const autoRows=collect(readSource(path.join(root,'webapps/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService.js'),'utf8'));
 const auto=vm.runInNewContext('('+autoRows[0].source+')',{widget,setTimeout:()=>1,clearTimeout(){},Set,Map})(()=>{}, {classRule:{},organization:{},classAttribute:{}});
 widgetValues.sdxECCAEnableAutoClassByOrganization=true;widgetValues.sdxECCAAutoClassType='sdxECChangeAction';widget.sdxECCARuntime=auto;
 facets=helper.getFacetList(data(),[{name:'classificationFacet'}],{});assert(facets[0].options.sdxECCAAutoSession);assert.notEqual(facets[1].visible,false);assert.equal(facets[1].alwaysCalled,true);
@@ -56,7 +56,7 @@ widget.sdxECCARuntime={canSubmitDialog:()=>false};
 dialog.onSubmitDialog.call({resetButtonLabel:()=>calls.push('label'),disableFormInput:()=>calls.push('restore')},'createClose');assert.deepEqual(calls.slice(-2),['label','restore']);
 delete widget.sdxECCARuntime;
 // New custom entry keeps the caller's options and installs the runtime before CreateNew.
-let entryFactory;new vm.Script(fs.readFileSync(path.join(root,'webapps/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService.js'),'utf8')).runInNewContext({define:(id,deps,factory)=>{assert.equal(id,'DS/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService');assert.deepEqual(Array.from(deps),['DS/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService']);entryFactory=factory;},widget});
+let entryFactory;new vm.Script(fs.readFileSync(path.join(root,'webapps/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService.js'),'utf8')).runInNewContext({define:(id,deps,factory)=>{assert.equal(id,'DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService');assert.deepEqual(Array.from(deps),['DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService']);entryFactory=factory;},widget});
 const runtime={isEnabled:()=>true,configureCreateType:opts=>{opts.type='sdxECChangeAction';opts.options.typeName='Change Action';}};
 const entry=entryFactory(runtime),options={type:'Change Action',options:{preferedType:'Change Action'},events:{}};
 entry.launch(options,configured=>{assert.equal(widget.sdxECCARuntime,runtime);assert.equal(configured.type,'sdxECChangeAction');assert.equal(configured.events,options.events);});assert.equal(options.type,'Change Action');assert.equal(options.options.typeName,undefined);
@@ -65,7 +65,7 @@ runtime.isEnabled=()=>false;assert.throws(()=>entry.launch(options,()=>assert.fa
 const caId='DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction';
 function caRun(enabled,mode){widgetValues.sdxECCAEnableAutoClassByOrganization=enabled;const events=[],savedPreferences=[];let createOptions;
  const Launcher=function(){};Launcher.prototype.CreateNew=function(o){events.push('original-create');assert.equal(o.type,'Change Action');createOptions=o;};
- const req=(names,ok,fail)=>{if(typeof names==='string')return {cloudProbeUtils:{genericCommandClickEventForAnalytics(){}},launchPropertyPanelContext(){events.push('panel-update');},displayObjectInfoInsideIDcard(){events.push('idcard-update');}};events.push('custom-request');assert.equal(names[0],'DS/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService');if(mode==='missing')fail(Error('missing'));else if(mode==='throw')throw Error('loader');else ok({launch:(o,create)=>create(o)});};
+ const req=(names,ok,fail)=>{if(typeof names==='string')return {cloudProbeUtils:{genericCommandClickEventForAnalytics(){}},launchPropertyPanelContext(){events.push('panel-update');},displayObjectInfoInsideIDcard(){events.push('idcard-update');}};events.push('custom-request');assert.equal(names[0],'DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService');if(mode==='missing')fail(Error('missing'));else if(mode==='throw')throw Error('loader');else ok({launch:(o,create)=>create(o)});};
  const args=[Launcher,{getGlobalVariable:()=>({tenant:'OnPremise',getSecurityContext:()=> 'ctx'})},{getUserPreference:()=> 'Change Action',saveUserPreference:value=>savedPreferences.push(value)},{keys:{createKeys:{CA_DEF_TYPE:'key'}}},{},{mask(){}},req];
  const command={isClickProcessing:true};run(caId,args,{document:{getElementsByClassName:()=>[]}}).launchCreateChangeActionDialog(command);return {events,command,createOptions,savedPreferences};}
 for(const flag of [undefined,false,'false'])assert.deepEqual(caRun(flag).events,['original-create']);

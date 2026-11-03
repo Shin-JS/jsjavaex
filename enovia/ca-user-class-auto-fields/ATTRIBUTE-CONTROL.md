@@ -94,8 +94,8 @@ state는 필수이며 최대 128자의 상태명만 받습니다. 누락/빈값/
 | 파일 | 역할 |
 |---|---|
 | server/src/com/sdx/ecca/rest/SdxEccaAttributeService.java | 기존 제어 객체 조회 서비스. 이번 통합에서 변경 없음 |
-| webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js C6 | UI/규칙 적용. 이전 AttributeControl 모듈 포함 |
-| webapps/sdxENOChgGovernanceUX/custom/service/sdxECCADataService.js S4 | 조회 전용. 이전 AttributeControlService 모듈 포함 |
+| webapps/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService.js C6 | UI/규칙 적용. 이전 AttributeControl 모듈 포함 |
+| webapps/sdxENOChgGovernanceUX/custom/services/sdxECCADataService.js S4 | 조회 전용. 이전 AttributeControlService 모듈 포함 |
 
 SdxEccaModeler.java의 기존 서비스 등록을 그대로 사용합니다. 새 JPO/JSP/web.xml은 필요 없습니다.
 테스트용 java-stubs와 tests는 배포하지 않습니다.
