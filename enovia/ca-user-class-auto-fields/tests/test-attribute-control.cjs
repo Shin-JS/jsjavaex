@@ -24,13 +24,14 @@ function fixture(){
  const special=new Field('Type',{defaultAttribute:true,visible:true,facet:'',positionUI:'6-1-1'});fields[special.getIdentifier()]=special;
  const classField=new Field('ClassificationOnly',{visible:true,mandatory:true});
  let renders=0,submits=0,events=0,organizers={};
- const model={getAllAttributes:()=>fields,get:id=>fields[id],set(id,value){fields[id]=value;events++;}};
+ const model={getAllAttributes:()=>fields,values:()=>Object.values(fields),get:id=>fields[id],set(id,value){fields[id]=value;events++;}};
  const skeleton=document.createElement('div');document.body.appendChild(skeleton);
  const view={data:{attributes:{publicAttributes:names.slice(0,4).map(name=>({name})),
   extensionAttributes:names.slice(4).map(name=>({name}))}},propModel:model,
-  propUI:{getFormSection:()=>({getOrganizers:()=>organizers})},
-  validateForm(){this.nativeChecks=(this.nativeChecks||0)+1;this.isFormValid=false;return false;},
-  updateValidStatus(){this.nativePublished=this.isFormValid;},
+  propUI:{elements:{UIController:{validateModels(models){view.quietChecks=(view.quietChecks||0)+1;models[0].values().forEach(f=>{f.resetError();f.setError("required");});return [{message:"required"}];}}},getFormSection:()=>({getOrganizers:()=>organizers})},
+  validateForm(){throw Error("initial submit-style validation must not run");},
+  dispatchEvent(event,args){if(event==="onValidActivation")this.nativePublished=args[0];else this.forwarded=Array.from(arguments);},
+  updateValidStatus(){this.dispatchEvent("onValidActivation",[true]);},
   buildModel(data){this.data=data;},
   loadView(){this.refresh();},
   refresh(){renders++;const container=document.createElement('div');const lines=[];
@@ -135,7 +136,8 @@ const tick=()=>new Promise(r=>setImmediate(r));
  f=fixture();delete f.session.classificationControlNames;f.field('DisplayOnly').valueDB='early-value';
  const baseOnly=new Field('BaseOnly',{visible:false});f.model.set(baseOnly.getIdentifier(),baseOnly);
  const early=api.install(f.facet,f.session,{});await tick();const earlyRules=rules();earlyRules.set('BaseOnly',rule('BaseOnly',50));resolveRules(earlyRules);const earlyCleanup=await early;
- assert(f.view.nativeChecks>0);assert.equal(f.view.nativePublished,false);
+ assert(f.view.quietChecks>0);assert.equal(f.view.nativePublished,false);
+ f.view.dispatchEvent("other",[1],"keep",4);assert.deepEqual(f.view.forwarded,["other",[1],"keep",4]);
  assert.equal(f.field('DisplayOnly').visible,true);assert.equal(f.field('DisplayOnly').readOnly,false);assert.equal(f.field('Unlisted').visible,false);assert.equal(baseOnly.visible,true);assert.equal(baseOnly.readOnly,false);
  const lateClass=classificationFixture(f);f.session.attachClassificationControl(lateClass.form);await tick();
  assert.equal(f.field('DisplayOnly').visible,false);assert.equal(f.field('DisplayOnly').valueDB,'early-value');

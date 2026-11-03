@@ -68,8 +68,7 @@ for(const serverReadonly of [false,true]){
  controller._onCompleteLoadModel.call(ctx,response,{initTable:true,buildBehavior:constants.FORCE_DEFAULT});
  assert(rendered);assert.equal(readonly,serverReadonly,'staging must preserve native editable/readonly access');
 }
-// Native basic form skips untouched fields initially. Full native validation seeds
-// isFormValid, and onValidActivation then drives the actual native dialog buttons.
+// Initial button checks must use OOTB validation without changing real error state.
 const basicUtils=defs.get('DS/EditPropWidget/utils/AttributesUtils').factory({isArray:Array.isArray},{commonChar:()=>0},nls);
 const listDef=defs.get('DS/ENONewWidget/ENONew/View/ENOListView');
 class Attribute {}
@@ -80,16 +79,26 @@ const dialogMethods=dialogDef.factory(...dialogDef.deps.map((dep,i)=>i===0?stub:
 const dialog=Object.assign({},dialogMethods,{viewType:'tabView',isPropertiesFormValid:true,
  View:{evaluateFacetValidation:()=>true},footerButtons:{Ok:{value:'Ok'},Save:{value:'Save'},createBtnCombo:{},Discard:{value:'Discard'}},
  myDialog:{elements:{_checkbox:{}}},removeLoadingOverlay(){}});
+let control;
+vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxECCAAutoClass/sdxECCAAttributeControl.js'),'utf8'),{
+ define(id,deps,factory){control=factory(()=>{});}
+});
 const attr=Object.assign(new Attribute(),field(true));
 const model={values:()=>[attr],getAllAttributes:()=>({A:attr}),isMergedModel:()=>false};
 const view=Object.assign({},list,{propModel:model,isFormValid:true,propUI:{
  validateModel(models){const errors=basicUtils.validateModels(models);return !errors||!errors.length;},
  updateFormSection(){}},checkForUXBLValidation:()=>true,
- dispatchEvent(event,args){assert.equal(event,'onValidActivation');dialog.isPropertiesFormValid=args[0];dialog.evaluateValidationStatus();}});
-view.updateValidStatus();assert.equal(dialog.footerButtons.Ok.disabled,false,'native initial untouched behavior');
-view.validateForm();view.updateValidStatus();
+ dispatchEvent(event,args){assert.equal(event,'onValidActivation');
+  if(args[0]){const errors=control.validateWithoutMessages({validateModels:models=>basicUtils.validateModels(models)},model);args=[!errors||!errors.length];}
+  dialog.isPropertiesFormValid=args[0];dialog.evaluateValidationStatus();}});
+view.updateValidStatus();
+assert.equal(attr.error,undefined,'initial button check must not create real validation messages');
+assert.equal(view.isFormValid,true,'initial status must not force all fields into native error display');
 for(const key of ['Ok','Save','createBtnCombo'])assert.equal(dialog.footerButtons[key].disabled,true);
 attr.value=attr.valueDB='entered';view.updateValidStatus();assert.equal(dialog.footerButtons.Ok.disabled,false);
 attr.value=attr.valueDB='';attr.isUIModified=true;view.updateValidStatus();assert.equal(dialog.footerButtons.Ok.disabled,true);
+assert(attr.error,'native interaction validation must still display errors');
 assert(!dialog.footerButtons.Discard.disabled);
-console.log('PASS: custom preparation preserves native classification access; actual native basic validation disables buttons for untouched required values and recovers after input');
+attr.isUIModified=false;delete attr.error;view.validateForm();assert(attr.error,'native submit validation remains unchanged');
+attr.error={server:true,message:'server error'};const existing=attr.error;control.validateWithoutMessages({validateModels:models=>basicUtils.validateModels(models)},model);assert.equal(attr.error,existing,'quiet checking must not erase existing errors');
+console.log('PASS: custom preparation preserves native classification access; quiet native validation disables buttons without initial error messages; interaction and submit retain native messages');

@@ -38,7 +38,7 @@ const model={getAllAttributes:()=>fields,get:id=>fields[id],set(id,value){fields
 let sections,headersHidden=0,accordionCalls=0;
 const skeleton=document.createElement('div');document.body.appendChild(skeleton);
 const view={data:{},propModel:model,propUI:{getFormSection:()=>({getOrganizers:()=>({})})},
- buildModel(){},loadView(){this.refresh();},addAttributeOnUI(){},onSubmit(callback){callback(false);},
+ dispatchEvent(){},buildModel(){},loadView(){this.refresh();},addAttributeOnUI(){},onSubmit(callback){callback(false);},
  refresh(){
   sections=[];
   const sectionContext={options:{showSections:true},_accordionProperties:{ExtensionsFacet:{name:'ExtensionsFacet',nameNLS:'Extensions',weight:-10}},

@@ -173,3 +173,11 @@ test-ootb-control-layout.cjs는 실제 2025 AttributeModel/FormSections/Form/man
 - 규칙 적용 후 기본 폼의 원래 validateForm/updateValidStatus를 호출합니다. 별도 빈값 검사나 버튼 직접 활성화는 추가하지 않았습니다.
 - 실제 ENOListView/AttributesUtils/DialogController로 초기 미수정 필드의 검사 생략을 재현하고, 전체 검증 후 생성 버튼 비활성화 → 값 입력 시 활성화 → 값 제거 시 비활성화를 확인했습니다. 취소 버튼은 유지됩니다.
 - 분류 속성의 모델 변경 검증/버튼 집계와 기존 필수 표시·검증 분리는 유지합니다. 실제 배포 화면에서의 확인은 별도로 필요합니다.
+
+2026-11-03 초기 오류 문구 표시 수정:
+
+- 직전 수정의 초기 validateForm 호출이 새 창에서 제목 등의 필수 오류를 표시하는 부작용이 있어 제거했습니다.
+- onValidActivation의 활성화 판단에 OOTB validateModels 결과를 합칩니다. 검사 대상은 원래 모델/필드를 상속하는 임시 객체이며 오류 resetError/setError는 실제 필드에 쓰지 않습니다.
+- 실제 isFormValid, isUIModified, 기존 서버 오류, 원래 onSubmit은 변경하지 않습니다. 다른 dispatchEvent의 인수도 그대로 전달합니다.
+- 실제 OOTB ENOListView/AttributesUtils/DialogController 기반 검사: 초기 필수값 미입력 시 버튼 비활성화 및 실제 오류 상태 없음, 입력 시 활성화, 수정 후 비우기/저장 시 원래 오류 표시, 기존 오류 유지.
+- 실제 WUX 화면 렌더링은 설치 환경에서 확인해야 합니다. 배포 변경은 sdxECCAAttributeControl.js 하나입니다.

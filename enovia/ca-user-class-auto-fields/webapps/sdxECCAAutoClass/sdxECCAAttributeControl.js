@@ -5,6 +5,19 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
         var value = field && typeof field.get === "function" ? field.get(key) : undefined;
         return value !== undefined ? value : field && field[key];
     }
+    // 같은 OOTB 검증기를 사용하되 버튼 판단용 검사에서는 실제 필드의 오류 상태를 바꾸지 않습니다.
+    function validateWithoutMessages(ui, model) {
+        var snapshot = Object.create(model);
+        snapshot.values = function () {
+            return model.values().map(function (field) {
+                var copy = Object.create(field);
+                copy.resetError = function () {};
+                copy.setError = function () {};
+                return copy;
+            });
+        };
+        return ui.validateModels([snapshot]);
+    }
     function install(facet, session, options) {
         if (!session || session.type !== "sdxECChangeAction" || session.disposed) return Promise.resolve(function () {});
         var classification = options && options.classification === true;
@@ -167,6 +180,15 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
                     decorate(); return result;
                 }; });
             } else {
+                wrap(view, "dispatchEvent", function (original) { return function (event, args) {
+                    if (!closed() && rules && event === "onValidActivation" && args && args[0] === true) {
+                        var errors = validateWithoutMessages(this.propUI.elements.UIController, this.propModel);
+                        var forwarded = Array.prototype.slice.call(arguments);
+                        forwarded[1] = [!errors || !errors.length];
+                        return original.apply(this, forwarded);
+                    }
+                    return original.apply(this, arguments);
+                }; });
                 wrap(view, "buildModel", function (original) { return function (data) {
                     collect(data);
                     var result = original.apply(this, arguments);
@@ -177,12 +199,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
                         enforce();
                         var result = original.apply(this, arguments);
                         decorate();
-                        // OOTB 초기 검사는 수정한 필드 위주입니다. 규칙 변경 후에는 전체를
-                        // 기본 validateForm으로 검사해 onValidActivation 경로로 버튼에 전달합니다.
-                        if (typeof this.validateForm === "function" && typeof this.updateValidStatus === "function") {
-                            this.validateForm();
-                            this.updateValidStatus();
-                        }
+                        // 초기 전체 검증은 오류 문구를 만들지 않고 버튼 상태에만 반영합니다.
+                        if (typeof this.updateValidStatus === "function") this.updateValidStatus();
                         return result;
                     }; });
                 });
@@ -251,5 +269,5 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
         return install({listview: view, skeleton: form.root}, session,
             {classification: true, rules: rules, propertiesUI: ui});
     }
-    return {install: install};
+    return {install: install, validateWithoutMessages: validateWithoutMessages};
 });
