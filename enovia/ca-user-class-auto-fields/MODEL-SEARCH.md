@@ -28,7 +28,7 @@
 기존 설치본의 다른 OOTB 블록을 다시 변경할 필요는 없습니다.
 
 [README의 현재 세 파일](README.md)을 함께 배포합니다. 검색 UI와 선택 결과 처리는
-`sdxECCAAutoClassService.js` C7, 모델 조회는 `sdxECCACreateService.js` S5에 포함됩니다.
+`sdxECCAAutoClassService.js` C7, 모델 조회는 `sdxECCADataService.js` S5에 포함됩니다.
 기존 named AMD 이름과 지연 실행을 유지합니다. 개별 ObjectSearch/ModelSearchService 파일은 배포하지 않습니다.
 공통 ENORouteMgmt 서비스/Bootstrap 인스턴스를 재사용하거나 전역 자격증명을 변경하지 않습니다.
 
@@ -104,7 +104,7 @@ var modelCode = record.attributes["sdxModelCode"];
 
 - `server/src/com/sdx/ecca/rest/SdxEccaModelService.java` (신규)
 - `server/src/com/sdx/ecca/rest/SdxEccaModeler.java` (서비스 등록 추가)
-- `webapps/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService.js` S5
+- `webapps/sdxENOChgGovernanceUX/custom/service/sdxECCADataService.js` S5
 - `webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js` C7
 - `webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js` (조회 중 저장 방지)
 

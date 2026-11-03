@@ -2,7 +2,7 @@
  * CA 생성창 처리 — 전체 배포합니다. OOTB 연결 API/AMD 이름은 유지합니다.
  *
  * 환경 값: webapps/ENOChgGovernanceUX/ENOChgGovernance.html H1
- * 서버 조회: sdxECCACreateService.js
+ * 서버 조회: sdxECCADataService.js
  * 이 파일: C0 설정 읽기 / C1 세션 / C2 저장 데이터 / C3 폼 / C4 검증 / C5 자동 분류
  *          C6 속성 표시·편집·필수 제어 / C7 모델 검색 UI·선택 결과
  *
@@ -13,7 +13,7 @@
  */
 define("DS/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService", [
     "require",
-    "DS/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService"
+    "DS/sdxENOChgGovernanceUX/custom/service/sdxECCADataService"
 ], function (require, Services) {
     "use strict";
 

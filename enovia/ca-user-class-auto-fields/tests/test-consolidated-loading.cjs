@@ -13,12 +13,11 @@ global.widget = {getValue: name => values[name]};
 requirejs.define('DS/WAFData/WAFData', [], () => ({}));
 requirejs.define('DS/i3DXCompassPlatformServices/i3DXCompassPlatformServices', [], () => ({}));
 const req = requirejs.config({baseUrl: root, paths: {
- 'DS/sdxECCA': path.join(root, 'sdxECCA'),
  'DS/sdxENOChgGovernanceUX': path.join(root, 'sdxENOChgGovernanceUX')
 }});
 const load = ids => new Promise((resolve, reject) => req(ids, (...modules) => resolve(modules), reject));
 (async function () {
- const [entry] = await load(['DS/sdxECCA/sdxECCA']);
+ const [entry] = await load(['DS/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService']);
  const result = entry.launch({options: {preserved: true}}, options => {
   assert.equal(options.type, 'sdxECChangeAction');
   assert.equal(options.options.typeName, 'Change Action');
@@ -28,7 +27,7 @@ const load = ids => new Promise((resolve, reject) => req(ids, (...modules) => re
  assert.equal(result, 'created');
  assert.equal(typeof widget.sdxECCARuntime.canSubmitDialog, 'function');
  assert.deepEqual(requested.slice().sort(), [
-  'DS/sdxECCA/sdxECCA', 'DS/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService', 'DS/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService'
+  'DS/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService', 'DS/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService', 'DS/sdxENOChgGovernanceUX/custom/service/sdxECCADataService'
  ].sort());
  assert.ok(!instantiated.includes('DS/WAFData/WAFData'), 'optional REST dependencies stay lazy');
  // 생성창/서비스 파일이 이미 등록한 내부 AMD 모듈은 별도 URL로 요청하지 않습니다.

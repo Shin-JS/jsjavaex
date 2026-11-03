@@ -2,9 +2,10 @@
 
 ## 현재 파일 통합 검증 — 2026-11-03
 
-설치 경로 보완: 통합 파일을 `sdxENOChgGovernanceUX/custom/service`로 이동하고
-`sdxECCAAutoClassService`/`sdxECCACreateService`의 define과 생성 진입 의존성을 맞췄습니다.
-변경된 실제 경로로 RequireJS 로딩 및 독립 회귀 검사 13개를 다시 실행해 모두 통과했습니다.
+생성 진입 보완: 실제 호출 대상인 `sdxECCACreateService`에 `launch()`를 두고,
+서버 조회 묶음은 `sdxECCADataService`로 구분했습니다. 별도 sdxECCA.js는 사용하지 않습니다.
+세 파일 모두 custom/service 아래에서 직접 로딩하는 실제 RequireJS 검사와 독립 회귀 검사
+13개를 다시 실행해 모두 통과했습니다. G0 메모와 runtime-hooks fixture의 호출 경로도 일치시켰습니다.
 실제 서버에서 보고된 생성창 오류가 해소됐는지는 배포 후 확인이 필요합니다.
 
 현재 배포 기준은 [README](README.md)입니다. 아래 과거 기록의 개별 파일 배포 안내는 통합 전 기준입니다.

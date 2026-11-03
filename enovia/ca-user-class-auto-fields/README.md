@@ -6,10 +6,11 @@
 
 ## 설치 경로 반영 — 2026-11-03
 
-두 통합 파일은 실제 설치 경로 `DS/sdxENOChgGovernanceUX/custom/service`를 사용합니다.
-파일명은 `sdxECCAAutoClassService.js`, `sdxECCACreateService.js`이며 define/의존성도 일치시켰습니다.
-`sdxECCA.js`의 의존성을 함께 갱신해야 합니다. 아래 내부 보조 named AMD 이름은 유지합니다.
-이전 `webapps/sdxECCAAutoClass`의 두 통합 파일 대신 아래 경로의 파일을 그대로 배포합니다.
+세 파일 모두 `DS/sdxENOChgGovernanceUX/custom/service` 경로를 사용합니다.
+기존 생성 진입부는 `sdxECCACreateService`를 직접 로딩하고 `launch()`를 실행합니다.
+CreateService는 생성 진입을 담당하며, 조회 묶음은 별도 `sdxECCADataService`가 담당합니다.
+`sdxECCA.js`는 배포하지 않습니다. 세 파일의 define/의존성도 이 구조로 맞췄습니다.
+내부 보조 named AMD 이름은 유지합니다.
 
 ## 배포 파일
 
@@ -18,8 +19,8 @@
 | 파일 | 역할 |
 |---|---|
 | [sdxECCAAutoClassService.js](webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js) | 생성창 세션, 자동 분류, 속성 제어, 검색 UI, 검증, 저장 전 처리 |
-| [sdxECCACreateService.js](webapps/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService.js) | 클래스 규칙·속성, 제어 객체, 모델 검색·상세 속성 조회 |
-| [sdxECCA.js](webapps/sdxECCA/sdxECCA.js) | 우리 위젯에서 커스텀 모듈을 준비하고 기존 생성 호출 실행 |
+| [sdxECCADataService.js](webapps/sdxENOChgGovernanceUX/custom/service/sdxECCADataService.js) | 클래스 규칙·속성, 제어 객체, 모델 검색·상세 속성 조회 |
+| [sdxECCACreateService.js](webapps/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService.js) | 우리 위젯에서 커스텀 모듈을 준비하고 기존 생성 호출 실행 |
 
 환경별 값은 기존 [ENOChgGovernance.html의 H1 설정](webapps/ENOChgGovernanceUX/ENOChgGovernance.html) 한곳에서 변경합니다.
 이 HTML은 설정 적용 메모이며 서버 HTML 전체 교체본이 아닙니다. 공용 HTML이 아닌 우리 위젯의 기존 초기화 위치에 적용합니다.
@@ -50,8 +51,9 @@ OOTB 연결은 생성 → 데이터 준비 → 폼 연결 → 검증 → 제출 
 
 ## 기존 정상 배포본에서 갱신
 
-1. 위 커스텀 JS 세 파일을 함께 배포합니다. **OOTB 추가 수정은 없습니다.**
-2. `sdxECCACreateService.js`가 새 배포 파일입니다. 기존 AutoClass와 함께 같은 버전으로 반영합니다.
+1. 위 커스텀 JS 세 파일을 함께 배포합니다. 기존에 CreateService를 직접 호출한 서버는 OOTB 추가 수정이 없습니다.
+2. `sdxECCADataService.js`는 새 조회 묶음입니다. CreateService/AutoClassService와 함께 같은 버전으로 반영합니다.
+   이전 예시의 `DS/sdxECCA/sdxECCA`를 사용한 설치본만 G0의 로딩 경로를 CreateService로 바꿉니다.
 3. 아래 일곱 개의 예전 개별 JS 파일은 새 버전에서 사용하지 않습니다.
    기존 AMD 이름은 통합 파일 내부에서 유지하므로 OOTB의 호출명은 바꾸지 않습니다.
 4. 기존 생성창을 닫고 캐시를 갱신한 뒤 새로 엽니다. 이전 열린 화면을 유지한 상태에서 파일을 섞어 교체하지 않습니다.
@@ -67,7 +69,7 @@ OOTB 연결은 생성 → 데이터 준비 → 폼 연결 → 검증 → 제출 
 | sdxECCAModelSearchService.js | Service S5 |
 
 예전 개별 파일을 따로 갱신하거나 신규 배포하지 않습니다.
-`sdxECCA.js` → AutoClass → Service 순으로 시작하면 두 파일에 포함된 named AMD 모듈이 함께 등록됩니다.
+`sdxECCACreateService.js` → AutoClass → Service 순으로 시작하면 두 파일에 포함된 named AMD 모듈이 함께 등록됩니다.
 내부 모듈을 통합 파일보다 먼저 개별 URL로 직접 로딩하는 별도 커스텀 진입은 사용하지 않습니다.
 일반 위젯은 기존 OOTB 경로를 사용합니다.
 이번 정리는 Java 서비스·DB·타입·policy·발번 JPO/트리거를 변경하지 않습니다.

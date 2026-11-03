@@ -65,7 +65,7 @@ function sdxECCALaunch(options, Launcher, localRequire, command) {
     }
 
     try {
-        localRequire(["DS/sdxECCA/sdxECCA"], function (entry) {
+        localRequire(["DS/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService"], function (entry) {
             try {
                 entry.launch(options, function (configuredOptions) {
                     return (new Launcher).CreateNew(configuredOptions);
