@@ -3,7 +3,7 @@
  * OOTB 모듈의 define 의존성에는 이 파일이나 자동 분류 모듈을 추가하지 않습니다.
  */
 define("DS/sdxECCA/sdxECCA", [
-    "DS/sdxECCAAutoClass/sdxECCAAutoClass"
+    "DS/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService"
 ], function (AutoClass) {
     "use strict";
     return {

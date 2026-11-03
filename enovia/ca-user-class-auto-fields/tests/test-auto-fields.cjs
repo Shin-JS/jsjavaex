@@ -40,7 +40,7 @@ context.define = function (id, dependencies, factory) {
 for (const file of ['sdxECCAClassRuleService', 'sdxECCAOrganizationProvider', 'sdxECCAClassAttributeService', 'sdxECCAObjectSearch','sdxECCAService','sdxECCAAutoClass']) {
  vm.runInContext(readSource(path.join(root, 'webapps/sdxECCAAutoClass', file + '.js'),'utf8'),context);
 }
-const api = modules['DS/sdxECCAAutoClass/sdxECCAAutoClass'];
+const api = modules['DS/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService'];
 delete context.require; // 지역 require를 캡처했으므로 전역 require 없이도 이후 지연 로딩 가능
 assert.ok(api);assert.equal(timers.size,0); // AMD를 로드하는 것만으로 세션을 만들지 않음
 assert.equal(context.sdxECCAAttachAutoBridge,undefined); // 전역 함수로 노출되지 않음

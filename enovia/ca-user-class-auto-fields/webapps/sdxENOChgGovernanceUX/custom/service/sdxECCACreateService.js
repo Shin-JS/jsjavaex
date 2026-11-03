@@ -482,7 +482,7 @@ define("DS/sdxECCAAutoClass/sdxECCAModelSearchService", [
 
 // 생성창 진입 시 이 파일 전체의 named 모듈을 먼저 등록합니다.
 // 검색·제어 조회 모듈은 여기의 필수 의존성에 넣지 않습니다.
-define("DS/sdxECCAAutoClass/sdxECCAService", [
+define("DS/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService", [
     "DS/sdxECCAAutoClass/sdxECCAClassRuleService",
     "DS/sdxECCAAutoClass/sdxECCAOrganizationProvider",
     "DS/sdxECCAAutoClass/sdxECCAClassAttributeService"

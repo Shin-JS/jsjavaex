@@ -2,7 +2,7 @@
  * CA 생성창 처리 — 전체 배포합니다. OOTB 연결 API/AMD 이름은 유지합니다.
  *
  * 환경 값: webapps/ENOChgGovernanceUX/ENOChgGovernance.html H1
- * 서버 조회: sdxECCAService.js
+ * 서버 조회: sdxECCACreateService.js
  * 이 파일: C0 설정 읽기 / C1 세션 / C2 저장 데이터 / C3 폼 / C4 검증 / C5 자동 분류
  *          C6 속성 표시·편집·필수 제어 / C7 모델 검색 UI·선택 결과
  *
@@ -11,9 +11,9 @@
  * 아래 세 named AMD 모듈은 이 파일에서 함께 등록합니다. 별도 JS 파일은 필요 없습니다.
  * 기능별 함수 범위와 지연 실행을 유지하여 OOTB 초기화 순서를 바꾸지 않습니다.
  */
-define("DS/sdxECCAAutoClass/sdxECCAAutoClass", [
+define("DS/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService", [
     "require",
-    "DS/sdxECCAAutoClass/sdxECCAService"
+    "DS/sdxENOChgGovernanceUX/custom/service/sdxECCACreateService"
 ], function (require, Services) {
     "use strict";
 

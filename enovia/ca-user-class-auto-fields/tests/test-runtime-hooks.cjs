@@ -41,7 +41,7 @@ const helper=run(helperId,[{ENONewFACET_CLASSIFICATION:'classificationFacet'},{g
 const data=()=>({defaultAttributes:{Type:{value:'sdxECChangeAction'},SecurityContext:{value:'ctx'}}});
 let facets=helper.getFacetList(data(),[{name:'classificationFacet'}],{});assert(!facets[0].options.sdxECCAAutoSession);
 // Real AutoClass: the common helper was already initialized before the custom runtime exists.
-const autoRows=collect(readSource(path.join(root,'webapps/sdxECCAAutoClass/sdxECCAAutoClass.js'),'utf8'));
+const autoRows=collect(readSource(path.join(root,'webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js'),'utf8'));
 const auto=vm.runInNewContext('('+autoRows[0].source+')',{widget,setTimeout:()=>1,clearTimeout(){},Set,Map})(()=>{}, {classRule:{},organization:{},classAttribute:{}});
 widgetValues.sdxECCAEnableAutoClassByOrganization=true;widgetValues.sdxECCAAutoClassType='sdxECChangeAction';widget.sdxECCARuntime=auto;
 facets=helper.getFacetList(data(),[{name:'classificationFacet'}],{});assert(facets[0].options.sdxECCAAutoSession);assert.notEqual(facets[1].visible,false);assert.equal(facets[1].alwaysCalled,true);
@@ -56,7 +56,7 @@ widget.sdxECCARuntime={canSubmitDialog:()=>false};
 dialog.onSubmitDialog.call({resetButtonLabel:()=>calls.push('label'),disableFormInput:()=>calls.push('restore')},'createClose');assert.deepEqual(calls.slice(-2),['label','restore']);
 delete widget.sdxECCARuntime;
 // New custom entry keeps the caller's options and installs the runtime before CreateNew.
-let entryFactory;new vm.Script(fs.readFileSync(path.join(root,'webapps/sdxECCA/sdxECCA.js'),'utf8')).runInNewContext({define:(id,deps,factory)=>{assert.equal(id,'DS/sdxECCA/sdxECCA');assert.deepEqual(Array.from(deps),['DS/sdxECCAAutoClass/sdxECCAAutoClass']);entryFactory=factory;},widget});
+let entryFactory;new vm.Script(fs.readFileSync(path.join(root,'webapps/sdxECCA/sdxECCA.js'),'utf8')).runInNewContext({define:(id,deps,factory)=>{assert.equal(id,'DS/sdxECCA/sdxECCA');assert.deepEqual(Array.from(deps),['DS/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService']);entryFactory=factory;},widget});
 const runtime={isEnabled:()=>true,configureCreateType:opts=>{opts.type='sdxECChangeAction';opts.options.typeName='Change Action';}};
 const entry=entryFactory(runtime),options={type:'Change Action',options:{preferedType:'Change Action'},events:{}};
 entry.launch(options,configured=>{assert.equal(widget.sdxECCARuntime,runtime);assert.equal(configured.type,'sdxECChangeAction');assert.equal(configured.events,options.events);});assert.equal(options.type,'Change Action');assert.equal(options.options.typeName,undefined);

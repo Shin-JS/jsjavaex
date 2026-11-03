@@ -11,7 +11,7 @@ null/undefined인 경우, 현재 선택값을 세션 문맥과 검증한 뒤 nam
 덮어쓰지 않고 계속 차단합니다. 기본 속성 객체 자체가 없으면 오류 처리합니다.
 
 이번 변경은 이 저장 보완과 관련 테스트만 반영합니다. Searchable 적용이나 재초기화 설계의
-추가 변경은 포함하지 않습니다. 배포 대상은 `sdxECCAAutoClass.js` 및 ENONewWidget 수정 메모의 B4입니다.
+추가 변경은 포함하지 않습니다. 배포 대상은 `sdxECCAAutoClassService.js` 및 ENONewWidget 수정 메모의 B4입니다.
 세션의 currentContext는 생성 시 초기화하고 B4가 실제 선택 이벤트 값으로 갱신합니다.
 readCurrentContext는 모델 getter/직접 valueDB를 확인하고, 모델 또는 값이 없으면 currentContext를 사용합니다.
 
@@ -29,7 +29,7 @@ readCurrentContext는 모델 getter/직접 valueDB를 확인하고, 모델 또�
 대기 중 이전 분류/속성/검색/표시 응답과 제출 콜백은 적용하지 않습니다.
 대기 중 창을 닫으면 재초기화 타이머도 취소됩니다.
 
-당시 보완은 `sdxECCAAutoClass.js`, `sdxECCAObjectSearch.js`를
+당시 보완은 `sdxECCAAutoClassService.js`, `sdxECCAObjectSearch.js`를
 함께 갱신해야 합니다. 이전 단계의 OOTB B3/B4/F2 블록은 유지하며, **B4는 `changeContext`를 사용**합니다.
 `checkContext`로 되돌리는 것은 재초기화를 생략하므로 협업공간 변경 후 저장 문제의 최종 해결이 아닙니다.
 
@@ -64,7 +64,7 @@ readCurrentContext는 모델 getter/직접 valueDB를 확인하고, 모델 또�
 
 ## 반드시 함께 배포할 파일/블록
 
-- `webapps/sdxECCAAutoClass/sdxECCAAutoClass.js`: 전체 커스텀 모듈 교체.
+- `webapps/sdxENOChgGovernanceUX/custom/service/sdxECCAAutoClassService.js`: 전체 커스텀 모듈 교체.
 - `webapps/ENONewWidget/ENONewWidget.js`: 적용 메모의 **B3와 B4** 교체.
   B4는 `checkContext` 대신 `changeContext`를 호출합니다. B3는 이전 문맥의 늦은
   typeInfo 응답이면 OOTB updateFacet 적용을 중단합니다.
