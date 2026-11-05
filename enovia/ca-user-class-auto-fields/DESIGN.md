@@ -2,6 +2,11 @@
 
 검토일: 2026-10-14
 
+2026-11-05 현재 구현은 [README](README.md)와 [전환 안내](MIGRATION.md)를 기준으로 합니다.
+위젯 소스는 R2026x를 우선 검토하며, OOTB 수정은 ENOChgGovernanceUX의 생성 진입부만 남깁니다.
+전용 엔진·Controller·Dialog·facet 상속으로 분리하고 공통 helper/prototype은 변경하지 않습니다.
+아래는 초기 설계 검토 기록이며 현재 설치 절차가 아닙니다.
+
 새 Change Action 생성 화면을 열 때 사용자 정보로 적용할 클래스를 결정하고, 검색창 없이 해당 클래스의 속성과 입력 필드를 속성 탭에 표시하는 방안입니다.
 
 이 문서는 최초 가능성 검토 기록입니다. 이후 작성한 조직별 자동 적용 소스와 적용 방법은 [README](README.md)를 참고하세요. 기존 작업은 [ca-isolated-kit](../ca-isolated-kit/README.md)에 있으며, 이 문서는 그 코드의 확장 방향을 설명합니다.

@@ -2,6 +2,7 @@
 // 실제 배포 파일 세 개만 RequireJS로 로드합니다. 단위 검사 소스 선택기는 사용하지 않습니다.
 const assert = require('node:assert/strict'), path = require('node:path');
 const requirejs = require('requirejs');
+const Base = require('./uwa-class-stub.cjs');
 const root = path.resolve(__dirname, '../webapps');
 const requested = [], instantiated = [];
 const originalLoad = requirejs.load;
@@ -12,20 +13,28 @@ global.widget = {getValue: name => values[name]};
 // ENOVIA 외부 의존성이 필요한 기능을 실행할 때만 로드되는지도 확인합니다.
 requirejs.define('DS/WAFData/WAFData', [], () => ({}));
 requirejs.define('DS/i3DXCompassPlatformServices/i3DXCompassPlatformServices', [], () => ({}));
+for (const id of ['DS/ENONewWidget/ENONew/ENONewEngine',
+ 'DS/ENONewWidget/ENONew/Controller/ENONewController',
+ 'DS/ENONewWidget/ENONew/Controller/ENONewDialogController',
+ 'DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet',
+ 'DS/ClassificationsFacet/PLMNewClassificationFacet',
+ 'DS/ClassificationProp/facets/Properties/ClassifPropController']) requirejs.define(id, [], () => Base.extend({objInfo:{options:{},events:{}}}));
+requirejs.define('DS/ClassificationsFacet/InitClassificationCmpUI', [], () => function () {});
 const req = requirejs.config({baseUrl: root, paths: {
  'DS/sdxENOChgGovernanceUX': path.join(root, 'sdxENOChgGovernanceUX')
 }});
 const load = ids => new Promise((resolve, reject) => req(ids, (...modules) => resolve(modules), reject));
 (async function () {
  const [entry] = await load(['DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService']);
- const result = entry.launch({options: {preserved: true}}, options => {
-  assert.equal(options.type, 'sdxECChangeAction');
-  assert.equal(options.options.typeName, 'Change Action');
-  assert.equal(options.options.preserved, true);
-  return 'created';
- });
- assert.equal(result, 'created');
- assert.equal(typeof widget.sdxECCARuntime.canSubmitDialog, 'function');
+ const caller = {type:'Change Action', options:{preserved:true}, events:{onSuccess(){}}};
+ const result = entry.launch(caller);
+ assert.equal(result.options.type, 'sdxECChangeAction');
+ assert.equal(result.options.options.typeName, 'Change Action');
+ assert.equal(result.options.options.preserved, true);
+ assert.equal(result.options.events, caller.events);
+ assert.equal(caller.type, 'Change Action');
+ assert.equal(caller.options.typeName, undefined);
+ assert.equal(widget.sdxECCARuntime, undefined, 'no global runtime hooks');
  assert.deepEqual(requested.slice().sort(), [
   'DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService', 'DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService', 'DS/sdxENOChgGovernanceUX/custom/services/sdxECCADataService'
  ].sort());
@@ -37,11 +46,16 @@ const load = ids => new Promise((resolve, reject) => req(ids, (...modules) => re
  ]);
  assert.equal(typeof control.install, 'function'); assert.equal(typeof search.install, 'function');
  assert.equal(typeof controlService.read, 'function'); assert.equal(typeof modelService.readAttributes, 'function');
+ const [properties, classification, classProperties] = await load([
+  'DS/sdxECCACreate/PropertiesFacet', 'DS/sdxECCACreate/ClassificationFacet', 'DS/sdxECCACreate/ClassifPropController'
+ ]);
+ assert.equal(typeof properties.prototype.init, 'function');
+ assert.equal(typeof classification.prototype.sdxECCARebuildUI, 'function');
+ assert.equal(typeof classProperties.prototype._onCompleteLoadModel, 'function');
  assert.equal(requested.length, 3);
  // 공통 모듈은 위젯 설정을 캐시하지 않고 현재 위젯만 확인합니다.
  values.sdxECCAEnableAutoClassByOrganization = false;
- assert.equal(widget.sdxECCARuntime.isEnabled(), false);
- assert.throws(() => entry.launch({}, () => {}), /설정/);
+ assert.throws(() => entry.launch({}), /설정/);
  delete global.widget;
  console.log('PASS: actual RequireJS cold load uses 3 files, internal modules need no old URLs, REST stays lazy, widget settings remain isolated');
 })().catch(error => {console.error(error); process.exitCode = 1;});

@@ -17,4 +17,4 @@ for(const row of fixtures){
  assert.deepEqual(JSON.parse(dependencyJson),row.originalDependencies);
  assert.deepEqual(block.match(/function\(([^)]*)\)/)[1].split(','),row.originalArguments);
 }
-console.log('PASS: 7 original 2025 AMD headers preserved; no mandatory custom dependencies.');
+console.log('PASS: only Governance entry is patched; its original AMD header is preserved.');
