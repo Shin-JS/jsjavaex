@@ -280,23 +280,41 @@ define("DS/sdxECCACreate/ClassificationInitializer", [
                         var definition = JSON.parse(text);
                         var moduleId = definition.facets.library.require;
                         if (typeof moduleId !== "string" || !moduleId) throw new Error("library.require 설정이 없습니다.");
-                        ui.sdxECCAInitStage = "module: " + moduleId;
-                        require([moduleId], function (Controller) {
+                        function loadController() {
                             if (stale()) return;
-                            try {
-                                ui.sdxECCAInitStage = "constructor: " + moduleId;
-                                ui.plmNewLibraryActive = new Controller({
-                                    dialogButtons: true, selectionMode: "ONLYSingle", favoriteButton: true,
-                                    appId: "Libraries", handleClassification: true, OKButtonLabel: "OK",
-                                    componentTitle: "OK", isRootSelectable: true, isClassifyMultiEveDispatch: false,
-                                    isonSetActiveEveDispatch: true, container: container,
-                                    getClassificationAttributes: true, attributesReadOnly: false,
-                                    isInformationPanel: options.isInformationPanel, objectId: ui.objectId,
-                                    securityContext: options.securityContext, tenant: options.tenant
-                                });
-                                ui.sdxECCAInitStage = "controller";
-                            } catch (error) { fail("컨트롤러 생성", error); }
-                        }, function (error) { fail("모듈 로딩 (" + moduleId + ")", error); });
+                            ui.sdxECCAInitStage = "module: " + moduleId;
+                            require([moduleId], function (Controller) {
+                                if (stale()) return;
+                                try {
+                                    ui.sdxECCAInitStage = "constructor: " + moduleId;
+                                    ui.plmNewLibraryActive = new Controller({
+                                        dialogButtons: true, selectionMode: "ONLYSingle", favoriteButton: true,
+                                        appId: "Libraries", handleClassification: true, OKButtonLabel: "OK",
+                                        componentTitle: "OK", isRootSelectable: true, isClassifyMultiEveDispatch: false,
+                                        isonSetActiveEveDispatch: true, container: container,
+                                        getClassificationAttributes: true, attributesReadOnly: false,
+                                        isInformationPanel: options.isInformationPanel, objectId: ui.objectId,
+                                        securityContext: options.securityContext, tenant: options.tenant
+                                    });
+                                    ui.sdxECCAInitStage = "controller";
+                                } catch (error) { fail("컨트롤러 생성", error); }
+                            }, function (error) { fail("모듈 로딩 (" + moduleId + ")", error); });
+                        }
+                        // R2026x는 Controller.js가 아니라 이 번들 안에 named define을 제공합니다.
+                        // 위젯에 공통 bundle 매핑이 없어도 실제 파일부터 로딩합니다.
+                        if (moduleId === "DS/PLMNewLibraryActive/PLMNewLibraryActiveController") {
+                            var bundleId = "DS/PLMNewLibraryActive/PLMNewLibraryActive";
+                            ui.sdxECCAInitStage = "bundle: " + bundleId;
+                            require([bundleId], loadController, function (error) {
+                                // enforceDefine 환경에서는 번들명 define 없이 내부 모듈만 등록될 수 있습니다.
+                                if (error && error.requireType === "nodefine" &&
+                                    typeof require.specified === "function" && require.specified(moduleId)) {
+                                    loadController();
+                                    return;
+                                }
+                                fail("번들 로딩 (" + bundleId + ")", error);
+                            });
+                        } else loadController();
                     } catch (error) { fail("초기화 설정", error); }
                 }, function (error) { fail("초기화 설정 로딩", error); });
             } catch (error) { fail("초기화 요청", error); }

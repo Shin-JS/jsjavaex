@@ -1,5 +1,24 @@
 # 검사 결과와 현장 확인 범위 — 2026-10-19
 
+## 라이브러리 컨트롤러 번들 로딩 — 2026-11-05
+
+실제 환경에서 `PLMNewLibraryActiveController` script error가 보고되어 배포 파일과 AMD ID를 대조했습니다.
+R2026x 앱 설정 blob `dc39d2912dd280c0f0eb186ea4a126d8e063b0e3`은
+`DS/PLMNewLibraryActive/PLMNewLibraryActiveController`를 지정하지만, 해당 named define은
+`PLMNewLibraryActive/PLMNewLibraryActive.js` blob `a127454661fb76ce5a3d06689ff88d25e798a588`에 들어 있습니다.
+참조 소스에 별도 Controller.js는 없습니다. 이전 검사는 가짜 moduleId로 대체하여 이 배포 형태를 놓쳤습니다.
+
+설정이 이 원본 ID를 가리킬 때 실제 번들을 먼저 요청하고, 등록된 Controller를 이어서 로딩하도록 수정했습니다.
+설정이 별도 커스텀 ID를 가리키면 기존 직접 로딩을 유지합니다. 전역 RequireJS 설정/원본 AMD ID는 변경하지 않습니다.
+enforceDefine에서 번들명 define이 없어 nodefine이 발생하더라도 실제 Controller가 등록된 경우에만 이어서 로딩합니다.
+설정/번들/모듈/생성자 오류는 기존 세션 실패 경로로 전달합니다.
+
+독립 검사 18개와 원본 입력 검사 9개를 통과했습니다.
+추가 검사는 실제 RequireJS에 새 컨텍스트를 만들고 실제 R2026x 번들 파일을 읽혀 Controller factory/생성자를 실행합니다.
+일반/enforceDefine 모드 모두 Controller.js URL 요청 없이 PLMNewLibraryActive.js만 요청하는 것을 확인했습니다.
+외부 컨트롤 의존성은 대역이며 실제 서버 배포 성공 여부는 별도 확인이 필요합니다.
+서버 교체 대상은 CreateService 한 파일입니다. 이전 실패 상태가 로더에 남지 않도록 페이지를 새로고침합니다.
+
 ## 분류 컨트롤러 초기화 분리 — 2026-11-05
 
 현장에서는 `getUI`에 isBookmark/isLibrary=true가 전달되고 북마크 require 요청은 200이지만,
