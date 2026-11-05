@@ -228,7 +228,10 @@ define("DS/sdxECCACreate/ClassificationFacet", [
         },
         sdxECCARebuildUI: function (context) {
             var old = this.elements.container;
-            if (this.initUI) this.initUI.sdxECCAClosed = true;
+            if (this.initUI) {
+                this.initUI.sdxECCAClosed = true;
+                if (this.initUI.sdxECCACancelDiagnostics) this.initUI.sdxECCACancelDiagnostics();
+            }
             var next = Initializer.create(Object.assign({}, this.options, {
                 securityContext: context, sdxECCAAutoSession: this.sdxECCAAutoSession
             }));
@@ -240,7 +243,10 @@ define("DS/sdxECCACreate/ClassificationFacet", [
             this.elements.container = next.container;
         },
         destroy: function () {
-            if (this.initUI) this.initUI.sdxECCAClosed = true;
+            if (this.initUI) {
+                this.initUI.sdxECCAClosed = true;
+                if (this.initUI.sdxECCACancelDiagnostics) this.initUI.sdxECCACancelDiagnostics();
+            }
             AutoClass.disconnectClassification(this);
             return this._parent.apply(this, arguments);
         }
@@ -253,7 +259,36 @@ define("DS/sdxECCACreate/ClassificationInitializer", [
     "DS/ClassificationsFacet/InitClassificationCmpUI"
 ], function (require, InitUI) {
     "use strict";
+    // 진단에는 모듈 ID/로더 상태만 포함합니다. 폼 값·권한 문맥·요청 헤더는 읽지 않습니다.
+    function capture(stage, contexts) {
+        var target = stage && stage.indexOf(": ") >= 0 ? stage.slice(stage.indexOf(": ") + 2) : null;
+        var report = {stage: stage, contexts: [], pending: [], omitted: 0};
+        try {
+            contexts = contexts || (typeof requirejs !== "undefined" && requirejs.s && requirejs.s.contexts) || {};
+            Object.keys(contexts).forEach(function (name) {
+                var context = contexts[name], registry = context && context.registry;
+                if (!registry) return;
+                report.contexts.push({name: name, targetRegistered: !!(target && registry[target]),
+                    targetDefined: !!(target && context.defined && Object.prototype.hasOwnProperty.call(context.defined, target))});
+                Object.keys(registry).forEach(function (id) {
+                    var module = registry[id];
+                    if (!module) return;
+                    var waiting = (module.depMaps || []).filter(function (dep, i) {
+                        return dep && !(module.depMatched || [])[i];
+                    }).map(function (dep) { return typeof dep === "string" ? dep : dep.id; }).filter(Boolean);
+                    if (!module.error && (!module.enabled || (module.inited && !waiting.length))) return;
+                    if (report.pending.length >= 120) { report.omitted++; return; }
+                    report.pending.push({
+                        context: name, id: id, initialized: !!module.inited,
+                        waiting: waiting, errorType: module.error && module.error.requireType || null
+                    });
+                });
+            });
+        } catch (error) { report.unavailable = true; }
+        return report;
+    }
     return {
+        capture: capture,
         create: function (options) {
             var ui = new InitUI();
             var session = options.sdxECCAAutoSession;
@@ -264,8 +299,27 @@ define("DS/sdxECCACreate/ClassificationInitializer", [
             function stale() {
                 return ui.sdxECCAClosed || !session || session.disposed || session.transitioning || session.status === "error";
             }
+            var diagnosticTimer, unsubscribe;
+            function cancelDiagnostics() {
+                if (typeof clearTimeout === "function") clearTimeout(diagnosticTimer);
+                if (unsubscribe) { var remove = unsubscribe; unsubscribe = null; remove(); }
+            }
+            ui.sdxECCACancelDiagnostics = cancelDiagnostics;
+            function diagnose(error) {
+                if (stale()) return;
+                var report = capture(ui.sdxECCAInitStage);
+                if (error) {
+                    report.errorType = error.requireType || null;
+                    report.errorModules = error.requireModules || [];
+                }
+                ui.sdxECCAInitReport = report;
+                // 문자열로 고정해 이후 로더 상태가 바뀌어도 당시의 대기 상태를 보존합니다.
+                console.warn("[sdxECCA] 분류 로더 진단\n" + JSON.stringify(report, null, 2));
+            }
             function fail(stage, error) {
                 if (stale()) return;
+                diagnose(error);
+                cancelDiagnostics();
                 ui.sdxECCAInitStage = "error";
                 var reason = error && error.message ? error.message : String(error);
                 var failure = new Error("분류 " + stage + " 실패: " + reason);
@@ -273,6 +327,14 @@ define("DS/sdxECCACreate/ClassificationInitializer", [
                 session.fail(failure);
             }
             ui.sdxECCAInitStage = "configuration";
+            if (typeof setTimeout === "function") {
+                // 기존 30초 준비 실패 전에 상태만 기록합니다. 성공/실패 판단이나 제한 시간은 바꾸지 않습니다.
+                diagnosticTimer = setTimeout(function () { diagnose(); cancelDiagnostics(); }, 25000);
+            }
+            if (session && typeof session.subscribe === "function") {
+                unsubscribe = session.subscribe(function () { if (stale()) cancelDiagnostics(); });
+                if (stale()) cancelDiagnostics();
+            }
             try {
                 require(["text!DS/ClassificationsFacet/assets/classificationAppsRequire_setting.json"], function (text) {
                     if (stale()) return;
@@ -297,6 +359,7 @@ define("DS/sdxECCACreate/ClassificationInitializer", [
                                         securityContext: options.securityContext, tenant: options.tenant
                                     });
                                     ui.sdxECCAInitStage = "controller";
+                                    cancelDiagnostics();
                                 } catch (error) { fail("컨트롤러 생성", error); }
                             }, function (error) { fail("모듈 로딩 (" + moduleId + ")", error); });
                         }
