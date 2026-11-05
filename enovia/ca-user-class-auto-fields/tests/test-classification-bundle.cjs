@@ -10,11 +10,19 @@ const definitions=new Map();vm.runInNewContext(source,{define(id,deps,factory){d
 assert(definitions.has(moduleId));assert(!definitions.has(bundleId),'2026 file defines Controller, not the bundle ID');
 fs.mkdirSync(path.join(root,'DS/PLMNewLibraryActive'),{recursive:true});
 fs.writeFileSync(path.join(root,bundleId+'.js'),source);
+fs.mkdirSync(path.join(root,'DS/ClassificationProp'),{recursive:true});
+fs.writeFileSync(path.join(root,'DS/ClassificationProp/ClassificationProp.js'),
+ process.argv[3]?fs.readFileSync(process.argv[3],'utf8'):
+ `define('DS/ClassificationProp/ClassifPropWidget',[],function(){return function Widget(){};});`);
 const factoryDefs=new Map();vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService.js'),'utf8'),{
  define(id,deps,factory){factoryDefs.set(id,factory);}
 });
 function registerDependencies() {
 requirejs.define('DS/ClassificationsFacet/PLMNewCommomCmpUXController',[],()=>Base);
+if(process.argv[3])for(const id of ['UWA/Core','UWA/Controls/Abstract','DS/WidgetServices/WidgetServices',
+ 'DS/ClassificationProp/comm/EventManager','DS/ClassificationProp/controllers/ClassifPropMainController']) {
+ requirejs.define(id,[],()=>id==='UWA/Controls/Abstract'?Base:{});
+}
 requirejs.define('text',[],()=>({load(name,req,done){done(JSON.stringify({facets:{library:{require:moduleId}}}));}}));
 requirejs.define('i18n',[],()=>({load(name,req,done){done({});}}));
 for(const dependency of definitions.get(moduleId).deps.filter(id=>!id.startsWith('i18n!')&&id!=='DS/ClassificationsFacet/PLMNewCommomCmpUXController'))requirejs.define(dependency,[],()=>
@@ -38,6 +46,8 @@ async function run(context,config={}) {
  assert.equal(result.ui.plmNewLibraryActive.options.securityContext,'A');
  assert.equal(result.ui.plmNewLibraryActive.options.tenant,'T');
  assert(requests.filter(r=>r.context===context).every(r=>!r.url.endsWith('PLMNewLibraryActiveController.js')));
+ assert(requests.filter(r=>r.context===context).some(r=>r.url.endsWith('ClassificationProp.js')));
+ assert(requests.filter(r=>r.context===context).every(r=>!r.url.endsWith('ClassifPropWidget.js')));
 }
 (async()=>{
  await run('ecca-cold');

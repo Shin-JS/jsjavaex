@@ -1,5 +1,26 @@
 # 검사 결과와 현장 확인 범위 — 2026-10-19
 
+## ClassificationProp 위젯의 번들 선로딩 — 2026-11-05
+
+현장에서 ClassifPropWidget 직접 요청이 scripterror이고 개별 JS 요청은 404인 것을 확인했습니다.
+R2026x 참조에는 ClassificationProp/ClassifPropWidget.js가 없고, 해당 named define은 ClassificationProp.js에 있습니다.
+CreateService는 원본 ClassificationProp.js 번들 → ClassifPropWidget → 공통 컨트롤러 → 라이브러리 번들/Controller 순으로
+로딩하도록 수정했습니다. 번들에 주 모듈 define이 없는 enforceDefine 상황도 내부 모듈 등록 여부를 확인해 처리합니다.
+원본 AMD ID/파일/전역 로더 설정은 변경하지 않습니다.
+
+이전 기록의 “raw common 로딩 성공”은 확인된 사실이 아닙니다. requirejs 명령 자체의 반환 함수를
+성공 콜백 출력으로 혼동하여 선로딩으로 해결된다고 판단한 제 설명을 정정합니다.
+pluginDS 대기 재현 검사는 인공적으로 만든 조건의 회귀 검사이며 현장 근본 원인을 입증한 것이 아닙니다.
+
+- 독립 검사 19개와 원본 입력 검사 10개 통과.
+- 실제 RequireJS에 원본 PLMNewLibraryActive.js와 ClassificationProp.js를 함께 읽혀 위젯/컨트롤러 factory 실행 확인.
+- 일반/enforceDefine 새 컨텍스트에서 개별 ClassifPropWidget.js/PLMNewLibraryActiveController.js 요청 없이
+  실제 번들을 요청하고 모듈을 얻는 것 확인.
+- 속성 번들 오류/위젯 오류/공통 컨트롤러 오류 및 폐기 세션 콜백 차단 검사 통과.
+
+서버 교체 대상은 CreateService 한 파일이며 적용 후 페이지 전체 새로고침이 필요합니다.
+실제 서버 UI/자동분류/DB 저장의 성공 여부는 아직 검증하지 못했습니다.
+
 ## pluginDS 공통 컨트롤러 대기 분리 — 2026-11-05
 
 현장 진단: library 단계가 `pluginDS!DS/ClassificationsFacet/PLMNewCommomCmpUXController`를 기다리고,

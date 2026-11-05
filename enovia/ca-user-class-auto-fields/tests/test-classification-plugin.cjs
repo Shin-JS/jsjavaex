@@ -6,7 +6,9 @@ const common='DS/ClassificationsFacet/PLMNewCommomCmpUXController';
 const moduleId='DS/PLMNewLibraryActive/PLMNewLibraryActiveController',bundle='DS/PLMNewLibraryActive/PLMNewLibraryActive';
 const packageId='DS/ClassificationsFacet/ClassificationsFacet';
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'ecca-plugin-'));
-for(const dir of ['DS/ClassificationsFacet','DS/PLMNewLibraryActive'])fs.mkdirSync(path.join(root,dir),{recursive:true});
+for(const dir of ['DS/ClassificationsFacet','DS/PLMNewLibraryActive','DS/ClassificationProp'])fs.mkdirSync(path.join(root,dir),{recursive:true});
+fs.writeFileSync(path.join(root,'DS/ClassificationProp/ClassificationProp.js'),
+ `define('DS/ClassificationProp/ClassifPropWidget',[],function(){return function Widget(){};});`);
 fs.writeFileSync(path.join(root,common+'.js'),`define('${common}',[],function(){return function Common(){};});`);
 fs.writeFileSync(path.join(root,packageId+'.js'),`define('${packageId}',['hold!package'],function(){});`);
 fs.writeFileSync(path.join(root,bundle+'.js'),`define('${moduleId}',['pluginDS!${common}'],function(Common){return function(options){this.options=options;this.common=Common;};});`);

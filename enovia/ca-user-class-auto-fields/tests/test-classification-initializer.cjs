@@ -70,11 +70,20 @@ class Library {constructor(options){created++;seenOptions=options;this.autoCompl
  const ctorFail=session();initializer.create(options(ctorFail));flushConfig();pending.shift().done(class {constructor(){throw Error('ctor failed');}});
  assert.match(ctorFail.error.message,/컨트롤러 생성.*ctor failed/);
  const canonical=JSON.stringify({facets:{library:{require:'DS/PLMNewLibraryActive/PLMNewLibraryActiveController'}}});
- const commonFail=session();initializer.create(options(commonFail));pending.shift().done(canonical);
+ function reachCommon(s) {
+  initializer.create(options(s));pending.shift().done(canonical);
+  assert.equal(pending[0].id,'DS/ClassificationProp/ClassificationProp');pending.shift().done();
+  assert.equal(pending[0].id,'DS/ClassificationProp/ClassifPropWidget');pending.shift().done(function(){});
+ }
+ const commonFail=session();reachCommon(commonFail);
  assert.equal(pending[0].id,'DS/ClassificationsFacet/PLMNewCommomCmpUXController');
  pending.shift().fail(Error('common failed'));assert.match(commonFail.error.message,/공통 컨트롤러 로딩.*common failed/);
- const lateCommon=session();initializer.create(options(lateCommon));pending.shift().done(canonical);
+ const lateCommon=session();reachCommon(lateCommon);
  lateCommon.disposed=true;pending.shift().done(function(){});assert.equal(pending.length,0,'disposed common callback cannot start bundle loading');
+ const bundleFail=session();initializer.create(options(bundleFail));pending.shift().done(canonical);
+ pending.shift().fail(Error('bundle404'));assert.match(bundleFail.error.message,/번들 로딩.*ClassificationProp.*bundle404/);
+ const widgetFail=session();initializer.create(options(widgetFail));pending.shift().done(canonical);pending.shift().done();
+ pending.shift().fail(Error('widget failed'));assert.match(widgetFail.error.message,/속성 위젯 로딩.*widget failed/);
  const CustomFacet=defs.get('DS/sdxECCACreate/ClassificationFacet').factory(NativeFacet,initializer,{
   connectClassification(facet,opts){connected.push({facet,opts});},disconnectClassification(){}
  });
