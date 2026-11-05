@@ -1,5 +1,25 @@
 # 검사 결과와 현장 확인 범위 — 2026-10-19
 
+## pluginDS 공통 컨트롤러 대기 분리 — 2026-11-05
+
+현장 진단: library 단계가 `pluginDS!DS/ClassificationsFacet/PLMNewCommomCmpUXController`를 기다리고,
+공통 컨트롤러 이름으로 registry 조회는 빈 배열, defined는 false였으나 raw requirejs 요청은 생성자 함수를 반환했습니다.
+따라서 철자 오류/소스 부재로 확정하지 않고, pluginDS 패키지 대기와 직접 모듈 로딩의 차이를 대상으로 보완했습니다.
+
+R2026x AmdLoader blob `3eec7871af688cfd1e63a18718e94a42f8a26ed9`의 pluginDS는 대상이 specified이면 직접 요청하지만,
+그렇지 않으면 패키지 번들을 먼저 기다립니다. CreateService의 주입된 local require로 원본 공통 컨트롤러를
+먼저 완료한 뒤 library 번들/Controller를 로딩하도록 순서를 변경했습니다. 전역 로더/원본 모듈은 변경하지 않습니다.
+공통 컨트롤러 실패와 문맥 전환/종료 후 응답은 기존 오류·취소 처리에 연결했습니다.
+
+- 독립 검사 19개와 R2026x 원본 입력 검사 10개 통과.
+- 실제 원본 pluginDS로 패키지 대기가 끝나지 않는 조건을 만들어 현장에서 관찰한 대기/raw 성공 패턴 재현.
+- 동일 조건의 새 컨텍스트에서 공통 컨트롤러 선로딩 후 library 생성 성공, 대기 패키지 경로 미진입 확인.
+- 실제 R2026x library 번들의 factory/생성자와 RequireJS 일반/enforceDefine 검사 통과.
+
+현장 서버의 패키지 대기가 끝나지 않는 근본 원인은 확정하지 않았습니다. 실제 서버 UI/DB 저장 검증은 별도입니다.
+서버에는 CreateService 한 파일을 교체하고 페이지를 새로고침해야 합니다.
+이미 대기 중인 pluginDS 리소스는 raw 모듈 로딩 성공만으로 소급해서 완료되지 않을 수 있어, 창만 재오픈하면 부족합니다.
+
 ## 라이브러리 컨트롤러 번들 로딩 — 2026-11-05
 
 실제 환경에서 `PLMNewLibraryActiveController` script error가 보고되어 배포 파일과 AMD ID를 대조했습니다.

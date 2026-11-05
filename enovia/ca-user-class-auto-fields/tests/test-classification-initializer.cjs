@@ -69,6 +69,12 @@ class Library {constructor(options){created++;seenOptions=options;this.autoCompl
  assert.match(moduleFail.error.message,/native-library.*dependency missing/);
  const ctorFail=session();initializer.create(options(ctorFail));flushConfig();pending.shift().done(class {constructor(){throw Error('ctor failed');}});
  assert.match(ctorFail.error.message,/컨트롤러 생성.*ctor failed/);
+ const canonical=JSON.stringify({facets:{library:{require:'DS/PLMNewLibraryActive/PLMNewLibraryActiveController'}}});
+ const commonFail=session();initializer.create(options(commonFail));pending.shift().done(canonical);
+ assert.equal(pending[0].id,'DS/ClassificationsFacet/PLMNewCommomCmpUXController');
+ pending.shift().fail(Error('common failed'));assert.match(commonFail.error.message,/공통 컨트롤러 로딩.*common failed/);
+ const lateCommon=session();initializer.create(options(lateCommon));pending.shift().done(canonical);
+ lateCommon.disposed=true;pending.shift().done(function(){});assert.equal(pending.length,0,'disposed common callback cannot start bundle loading');
  const CustomFacet=defs.get('DS/sdxECCACreate/ClassificationFacet').factory(NativeFacet,initializer,{
   connectClassification(facet,opts){connected.push({facet,opts});},disconnectClassification(){}
  });

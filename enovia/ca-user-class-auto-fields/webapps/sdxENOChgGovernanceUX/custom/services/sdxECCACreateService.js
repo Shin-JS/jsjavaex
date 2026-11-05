@@ -304,15 +304,24 @@ define("DS/sdxECCACreate/ClassificationInitializer", [
                         // 위젯에 공통 bundle 매핑이 없어도 실제 파일부터 로딩합니다.
                         if (moduleId === "DS/PLMNewLibraryActive/PLMNewLibraryActiveController") {
                             var bundleId = "DS/PLMNewLibraryActive/PLMNewLibraryActive";
-                            ui.sdxECCAInitStage = "bundle: " + bundleId;
-                            require([bundleId], loadController, function (error) {
-                                // enforceDefine 환경에서는 번들명 define 없이 내부 모듈만 등록될 수 있습니다.
-                                if (error && error.requireType === "nodefine" &&
-                                    typeof require.specified === "function" && require.specified(moduleId)) {
-                                    loadController();
-                                    return;
-                                }
-                                fail("번들 로딩 (" + bundleId + ")", error);
+                            var commonId = "DS/ClassificationsFacet/PLMNewCommomCmpUXController";
+                            ui.sdxECCAInitStage = "common: " + commonId;
+                            // AMD가 주입한 local require는 전역 DS 패키지 래퍼를 거치지 않습니다.
+                            // 공통 컨트롤러를 먼저 완료시켜 library의 pluginDS 의존성이 패키지 대기에 걸리지 않게 합니다.
+                            require([commonId], function () {
+                                if (stale()) return;
+                                ui.sdxECCAInitStage = "bundle: " + bundleId;
+                                require([bundleId], loadController, function (error) {
+                                    // enforceDefine 환경에서는 번들명 define 없이 내부 모듈만 등록될 수 있습니다.
+                                    if (error && error.requireType === "nodefine" &&
+                                        typeof require.specified === "function" && require.specified(moduleId)) {
+                                        loadController();
+                                        return;
+                                    }
+                                    fail("번들 로딩 (" + bundleId + ")", error);
+                                });
+                            }, function (error) {
+                                fail("공통 컨트롤러 로딩 (" + commonId + ")", error);
                             });
                         } else loadController();
                     } catch (error) { fail("초기화 설정", error); }

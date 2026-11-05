@@ -14,9 +14,10 @@ const factoryDefs=new Map();vm.runInNewContext(fs.readFileSync(path.join(__dirna
  define(id,deps,factory){factoryDefs.set(id,factory);}
 });
 function registerDependencies() {
+requirejs.define('DS/ClassificationsFacet/PLMNewCommomCmpUXController',[],()=>Base);
 requirejs.define('text',[],()=>({load(name,req,done){done(JSON.stringify({facets:{library:{require:moduleId}}}));}}));
 requirejs.define('i18n',[],()=>({load(name,req,done){done({});}}));
-for(const dependency of definitions.get(moduleId).deps.filter(id=>!id.startsWith('i18n!')))requirejs.define(dependency,[],()=>
+for(const dependency of definitions.get(moduleId).deps.filter(id=>!id.startsWith('i18n!')&&id!=='DS/ClassificationsFacet/PLMNewCommomCmpUXController'))requirejs.define(dependency,[],()=>
  dependency==='DS/ClassificationsFacet/PLMNewCommomCmpUXController'?Base:
  dependency==='DS/ClassificationsFacet/service/PLMNewCommonWebService'?{setSecurityContext(){}}:{});
 }
