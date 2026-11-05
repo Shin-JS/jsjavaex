@@ -1,6 +1,6 @@
 /* 전체 배포본. ENOChgGovernanceUX의 우리 생성 진입에서만 로딩합니다.
  * 아래 상속 클래스는 이 파일에서 함께 등록합니다. 공통 OOTB prototype은 변경하지 않습니다.
- * ENONewWidget / ClassificationsFacet / ClassificationProp은 설치 버전의 원본을 사용합니다.
+ * ENONewWidget은 기존 연결을 유지하고, ClassificationsFacet / ClassificationProp은 원본을 사용합니다.
  */
 define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService", [
     "DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService",
@@ -16,7 +16,9 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService", [
             var options = Object.assign({}, createOptions);
             options.options = Object.assign({}, createOptions.options);
             AutoClass.configureCreateType(options);
-            // OOTB Launcher와 같은 엔진을 상속하되, 이 생성창의 Controller만 교체합니다.
+            // 기존 ENONewWidget 연결이 이 위젯의 API를 읽습니다.
+            widget.sdxECCARuntime = AutoClass;
+            // 2026 모델 문맥/지연 응답 보완만 전용 Controller에서 유지합니다.
             return new Engine(options);
         }
     };
@@ -43,17 +45,10 @@ define("DS/sdxECCACreate/Engine", [
 });
 
 define("DS/sdxECCACreate/Controller", [
-    "DS/ENONewWidget/ENONew/Controller/ENONewController",
-    "DS/sdxECCACreate/Dialog"
-], function (Base, Dialog) {
+    "DS/ENONewWidget/ENONew/Controller/ENONewController"
+], function (Base) {
     "use strict";
     return Base.extend({
-        getUI: function () {
-            if (!this.dialog) {
-                this.dialog = new Dialog({sdxECCATenant: this.context && this.context.tenant}, this.createOptsModel);
-            }
-            return this._parent.apply(this, arguments);
-        },
         // 2026의 생성 모델을 재조회 후에도 기본 폼에 전달합니다.
         refreshDialog: function () {
             if (!this.model || typeof this.model.getSecurityContext !== "function") {
@@ -100,98 +95,6 @@ define("DS/sdxECCACreate/Controller", [
         },
         destroyComponent: function () {
             this.sdxECCAClosed = true;
-            return this._parent.apply(this, arguments);
-        }
-    });
-});
-
-define("DS/sdxECCACreate/Dialog", [
-    "DS/ENONewWidget/ENONew/Controller/ENONewDialogController",
-    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService"
-], function (Base, AutoClass) {
-    "use strict";
-    return Base.extend({
-        buildContent: function (data, options) {
-            if (this.viewType !== "tabView" || !Array.isArray(this.facets)) {
-                throw new Error("자동 분류 생성창에는 속성·분류 탭 구성이 필요합니다.");
-            }
-            // OOTB helper가 만든 결과만 복제합니다. helper/공통 facet 정의는 수정하지 않습니다.
-            this.facets = this.facets.map(function (entry) {
-                return Object.assign({}, entry, {options: Object.assign({}, entry.options)});
-            });
-            AutoClass.attachBridge(data, this.facets, Object.assign({}, options, {
-                tenant: this.options.sdxECCATenant
-            }));
-            var properties = this.facets.find(function (entry) { return entry.facet.name === "ENOCreate"; });
-            var classification = this.facets.find(function (entry) { return entry.facet.name === "classificationFacet"; });
-            if (!properties || !classification || !properties.options.sdxECCAAutoSession) {
-                throw new Error("자동 분류 세션과 생성 타입 설정을 확인해 주세요.");
-            }
-            properties.require = "DS/sdxECCACreate/PropertiesFacet";
-            classification.require = "DS/sdxECCACreate/ClassificationFacet";
-            return this._parent.apply(this, arguments);
-        },
-        manageButtons: function () {
-            var result = this._parent.apply(this, arguments);
-            if (this.myDialog) AutoClass.bindDialog(this);
-            return result;
-        },
-        onSubmitDialog: function () {
-            if (!AutoClass.canSubmitDialog(this)) {
-                this.resetButtonLabel();
-                this.disableFormInput(false, false, true);
-                return;
-            }
-            return this._parent.apply(this, arguments);
-        },
-        disableFormInput: function () {
-            var result = this._parent.apply(this, arguments);
-            AutoClass.preserveValidationState(this);
-            return result;
-        },
-        destroy: function () {
-            AutoClass.disposeDialog(this);
-            return this._parent.apply(this, arguments);
-        }
-    });
-});
-
-define("DS/sdxECCACreate/PropertiesFacet", [
-    "DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet",
-    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService"
-], function (Base, AutoClass) {
-    "use strict";
-    return Base.extend({
-        init: function (options) {
-            this.sdxECCAAutoSession = options.sdxECCAAutoSession;
-            AutoClass.prepareFixedType(options.data, this.sdxECCAAutoSession);
-            this._parent.apply(this, arguments);
-            var view = this.listview;
-            var check = view && view.checkForMandatoryAttributes;
-            if (typeof check === "function") {
-                view.checkForMandatoryAttributes = function () {
-                    return AutoClass.checkMandatoryQuietly(this, check);
-                };
-            }
-            AutoClass.installFields(this, options);
-        },
-        // OOTB가 속성을 발행하기 전에 문맥 변경을 기록합니다. 원래 이벤트는 그대로 실행됩니다.
-        publishAttributeInfo: function (field) {
-            var session = this.sdxECCAAutoSession;
-            if (session && field) {
-                if (field.name === "SecurityContext") {
-                    session.currentContext = field.valueDB;
-                    session.changeContext(field.valueDB);
-                } else if (field.name === "Type") session.checkType(field.valueDB);
-            }
-            return this._parent.apply(this, arguments);
-        },
-        updateFacet: function (options) {
-            if (AutoClass.checkFacetContext(this, options) === false) return;
-            return this._parent.apply(this, arguments);
-        },
-        destroy: function () {
-            AutoClass.destroyFields(this);
             return this._parent.apply(this, arguments);
         }
     });

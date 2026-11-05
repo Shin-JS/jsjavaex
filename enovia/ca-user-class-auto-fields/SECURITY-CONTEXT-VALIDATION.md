@@ -10,7 +10,7 @@ R2026x `ENONewController.onSubmit`은 생성 모델의 `getSecurityContext()`를
 따라서 기본 폼의 `view.data.model`을 현재 선택 문맥의 기준으로 사용합니다.
 project/organisation/role 선택은 OOTB CredentialsManager가 같은 모델에 반영합니다.
 
-커스텀 기본 facet은 모델의 `onChange:securityContext` 이벤트를 구독합니다.
+ENONewWidget의 기존 installFields 연결은 모델의 `onChange:securityContext` 이벤트를 구독합니다.
 전역 위젯 자격증명만 변경하는 것으로 열린 생성창의 선택을 임의 변경하지 않습니다.
 문맥 변경 후 기본 폼을 갱신할 때도 생성 모델을 함께 전달합니다.
 

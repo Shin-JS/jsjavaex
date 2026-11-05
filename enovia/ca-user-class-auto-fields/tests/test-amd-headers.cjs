@@ -17,4 +17,4 @@ for(const row of fixtures){
  assert.deepEqual(JSON.parse(dependencyJson),row.originalDependencies);
  assert.deepEqual(block.match(/function\(([^)]*)\)/)[1].split(','),row.originalArguments);
 }
-console.log('PASS: only Governance entry is patched; its original AMD header is preserved.');
+console.log('PASS: Governance and ENONewWidget headers preserved; no Classification bundle patches.');

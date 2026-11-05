@@ -1,8 +1,9 @@
 # sdxECChangeAction 생성창
 
 2026-11-05: **위젯 소스는 R2026x를 우선 기준으로 검토합니다.**
-OOTB 수정은 이미 커스텀한 `ENOChgGovernanceUX.js`의 생성 진입부만 남깁니다.
-`ENONewWidget.js`, `ClassificationsFacet.js`, `ClassificationProp.js`는 설치 버전 원본을 사용합니다.
+OOTB 수정은 `ENOChgGovernanceUX.js`와 `ENONewWidget.js` 두 파일에 둡니다.
+`ENONewWidget.js`는 직전 푸시 전의 수정 메모를 그대로 복원했습니다.
+`ClassificationsFacet.js`와 `ClassificationProp.js`는 설치 버전 원본을 사용합니다.
 
 ## 배포할 커스텀 파일
 
@@ -10,7 +11,7 @@ OOTB 수정은 이미 커스텀한 `ENOChgGovernanceUX.js`의 생성 진입부�
 
 | 파일 | 역할 |
 |---|---|
-| [sdxECCACreateService.js](webapps/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService.js) | 생성 진입, 전용 엔진·Controller·Dialog·facet 상속 클래스 |
+| [sdxECCACreateService.js](webapps/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService.js) | 생성 진입, 2026 전용 엔진·Controller와 분류 facet 상속 클래스 |
 | [sdxECCAAutoClassService.js](webapps/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService.js) | 창별 세션, 자동 분류, 분류 폼 이동, 속성 제어, 검색, 검증·저장 전 처리 |
 | [sdxECCADataService.js](webapps/sdxENOChgGovernanceUX/custom/services/sdxECCADataService.js) | 클래스 규칙·속성·제어 bus·모델 검색·상세 조회 |
 
@@ -24,19 +25,23 @@ Node나 별도 빌드는 서버 배포에 필요하지 않습니다.
 
 ## OOTB 연결과 기존 설치본 전환
 
-[ENOChgGovernanceUX.js의 G0~G2 메모](webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js)만 적용합니다.
+[ENOChgGovernanceUX.js의 G0~G2 메모](webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js)와
+[ENONewWidget.js의 기존 A/B/C 연결](webapps/ENONewWidget/ENONewWidget.js)을 사용합니다.
 이는 전체 파일 교체본이 아니라 기존 커스텀 생성 모듈에 적용할 조각입니다.
 대상 위젯은 `entry.launch(options)`를 호출하며, 일반 위젯은 기존 Launcher를 사용합니다.
 
 **기존 네 파일 수정 방식에서 전환할 때는 [전환 안내](MIGRATION.md)를 먼저 따릅니다.**
-예전 세 OOTB 파일의 자동 분류 연결을 원복하고 커스텀 JS 세 파일을 같은 버전으로 배포합니다.
+ENONewWidget의 기존 연결을 유지/복원하고, 분류 관련 두 OOTB 파일의 자동 분류 연결만 원복합니다.
+커스텀 JS 세 파일은 같은 버전으로 배포합니다.
 서버의 릴리스·핫픽스에 맞는 원본으로 원복해야 합니다. 참고 저장소의 원본 파일을 서버에 덮어쓰지 않습니다.
 
 ## 현재 구조
 
-CreateService가 OOTB 엔진을 상속하고, 이 생성창의 Controller·Dialog·기본/분류 facet만 교체합니다.
-기본 facet 목록과 분류 위젯의 속성 facet 정의는 **해당 인스턴스의 복사본**에서 커스텀 경로로 연결합니다.
-공통 helper, RequireJS 설정, OOTB prototype은 변경하지 않습니다.
+ENONewWidget의 기존 helper/기본 폼/Dialog 연결이 위젯의 AutoClass API를 호출합니다.
+따라서 전용 Dialog·PropertiesFacet 상속은 제거했습니다.
+CreateService는 2026 문맥 재조회 보완용 엔진·Controller와 분류 쪽 상속만 유지합니다.
+클래스 선택 전에 해당 생성창의 분류 속성 facet 정의를 전용 컨트롤러로 연결합니다.
+RequireJS 설정이나 OOTB prototype을 실행 중에 변경하지 않습니다.
 
 분류 입력 폼과 모델을 그대로 속성 탭으로 이동합니다.
 기존 `postCreation`·분류 저장·기본 필드의 펼치기 구획·입력/저장 검증을 재사용합니다.

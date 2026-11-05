@@ -37,5 +37,122 @@
       "a",
       "s"
     ]
+  },
+  {
+    "module": "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper",
+    "originalDependencies": [
+      "DS/ENONewWidget/utils/ENONewFacetConstants",
+      "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls",
+      "i18n!DS/ENONewWidget/assets/nls/ENONewFacetNls"
+    ],
+    "modifiedDependencies": [
+      "DS/ENONewWidget/utils/ENONewFacetConstants",
+      "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls",
+      "i18n!DS/ENONewWidget/assets/nls/ENONewFacetNls"
+    ],
+    "originalArguments": [
+      "e",
+      "t",
+      "i"
+    ],
+    "modifiedArguments": [
+      "e",
+      "t",
+      "i"
+    ]
+  },
+  {
+    "module": "DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet",
+    "originalDependencies": [
+      "UWA/Core",
+      "DS/UIKIT/Scroller",
+      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase",
+      "DS/ENONewWidget/ENONew/View/ENOListView",
+      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper"
+    ],
+    "modifiedDependencies": [
+      "UWA/Core",
+      "DS/UIKIT/Scroller",
+      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase",
+      "DS/ENONewWidget/ENONew/View/ENOListView",
+      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper"
+    ],
+    "originalArguments": [
+      "e",
+      "t",
+      "i",
+      "n",
+      "a"
+    ],
+    "modifiedArguments": [
+      "e",
+      "t",
+      "i",
+      "n",
+      "a"
+    ]
+  },
+  {
+    "module": "DS/ENONewWidget/ENONew/Controller/ENONewDialogController",
+    "originalDependencies": [
+      "UWA/Controls/Abstract",
+      "DS/Windows/ImmersiveFrame",
+      "DS/Controls/ComboBox",
+      "DS/Controls/Button",
+      "DS/Windows/Dialog",
+      "DS/Controls/ModalLoader",
+      "DS/ENONewWidget/ENONew/Events",
+      "DS/ENONewWidget/ENONew/View/ENOListView",
+      "DS/ENONewWidget/ENONew/View/ENOTabView",
+      "DS/ENONewWidget/ENONew/View/TabUtility",
+      "DS/ENONewWidget/ENONew/View/ENOWizardView",
+      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper",
+      "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls"
+    ],
+    "modifiedDependencies": [
+      "UWA/Controls/Abstract",
+      "DS/Windows/ImmersiveFrame",
+      "DS/Controls/ComboBox",
+      "DS/Controls/Button",
+      "DS/Windows/Dialog",
+      "DS/Controls/ModalLoader",
+      "DS/ENONewWidget/ENONew/Events",
+      "DS/ENONewWidget/ENONew/View/ENOListView",
+      "DS/ENONewWidget/ENONew/View/ENOTabView",
+      "DS/ENONewWidget/ENONew/View/TabUtility",
+      "DS/ENONewWidget/ENONew/View/ENOWizardView",
+      "DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper",
+      "i18n!DS/ENONewWidget/assets/nls/ENONewWidgetNls"
+    ],
+    "originalArguments": [
+      "e",
+      "t",
+      "i",
+      "n",
+      "a",
+      "o",
+      "r",
+      "s",
+      "c",
+      "l",
+      "d",
+      "u",
+      "f"
+    ],
+    "modifiedArguments": [
+      "e",
+      "t",
+      "i",
+      "n",
+      "a",
+      "o",
+      "r",
+      "s",
+      "c",
+      "l",
+      "d",
+      "u",
+      "f"
+    ]
   }
 ]

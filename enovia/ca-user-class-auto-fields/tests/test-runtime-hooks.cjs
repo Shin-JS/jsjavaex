@@ -1,28 +1,29 @@
 'use strict';
 // node tests/test-runtime-hooks.cjs <동일 릴리스의 원본 JS 디렉터리>
-// 원본을 패치하지 않고 실제 helper, dialog.buildContent, 속성 조회 콜백과 렌더링을 실행합니다.
+// ENONewWidget의 기존 연결만 적용하고 Classification 두 원본의 조회/렌더링을 실행합니다.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
-const Base=require('./uwa-class-stub.cjs'),dir=process.argv[2];
+const Base=require('./uwa-class-stub.cjs'),applyHooks=require('./apply-newwidget-hooks.cjs'),dir=process.argv[2];
 if(!dir)throw Error('Specify original ENONewWidget/ClassificationsFacet/ClassificationProp directory');
-const defs=new Map(),window={top:{performance:{mark(){}}}},UWA={Promise};
+const defs=new Map(),window={top:{performance:{mark(){}}}},UWA={Promise},widget={};
 for(const file of ['ENONewWidget','ClassificationsFacet','ClassificationProp'])vm.runInNewContext(fs.readFileSync(path.join(dir,file+'.js'),'utf8'),{
  define(id,deps,factory){defs.set(id,{deps:Array.from(deps),factory});},window,UWA,console
 });
 let runtime,request,renderCount=0,notified=0;
 const values={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction'};
+widget.getValue=key=>values[key];
 vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService.js'),'utf8'),{
- widget:{getValue:key=>values[key]},setTimeout:()=>1,clearTimeout(){},define(id,deps,factory){
+ widget,setTimeout:()=>1,clearTimeout(){},define(id,deps,factory){
   if(id.endsWith('/sdxECCAAutoClassService'))runtime=factory(()=>{},{classRule:{},organization:{},classAttribute:{}});
  }
 });
 const constants=defs.get('DS/ClassificationProp/constants/ClassifPropConstants').factory();
 const nls={get:key=>key,replace:value=>value};
 const helperRow=defs.get('DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper');
-const helper=helperRow.factory({ENONewFACET_CLASSIFICATION:'classificationFacet'},nls,nls);
+const helper=applyHooks('DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper',helperRow.factory,{widget})({ENONewFACET_CLASSIFICATION:'classificationFacet'},nls,nls);
 const beforeHelper=Object.getOwnPropertyDescriptors(helper);
 class TabView { constructor(options){this.facets=options.facets;}loadView(done){done();} }
 const dialogRow=defs.get('DS/ENONewWidget/ENONew/Controller/ENONewDialogController');
-const OriginalDialog=dialogRow.factory(...dialogRow.deps.map(id=>id==='UWA/Controls/Abstract'?Base:id.endsWith('/ENOTabView')?TabView:{}));
+const OriginalDialog=applyHooks('DS/ENONewWidget/ENONew/Controller/ENONewDialogController',dialogRow.factory,{widget,UWA})(...dialogRow.deps.map(id=>id==='UWA/Controls/Abstract'?Base:id.endsWith('/ENOTabView')?TabView:{}));
 const modelInstances=[];
 class Model {
  constructor(id){this._attributes={objectId:id};modelInstances.push(this);}
@@ -52,8 +53,8 @@ const api=Object.assign({},runtime,{notifyAttributesLoaded(model,response){
  assert.equal(renderCount,1,'notify occurs after native initData');assert.equal(model,modelInstances[0]);
  assert(Array.isArray(response.results));notified++;
 }});
-const dialogDef=derived.get('DS/sdxECCACreate/Dialog');
-const Dialog=dialogDef.factory(OriginalDialog,api);
+const Dialog=OriginalDialog;
+widget.sdxECCARuntime=api;
 const data={defaultAttributes:{Type:{value:'sdxECChangeAction'},SecurityContext:{value:'A'}}};
 const input=helper.getFacetList(data,[{name:'classificationFacet'}],{securityContext:'A'});
 const dialog=Object.assign(Object.create(Dialog.prototype),{
@@ -61,9 +62,10 @@ const dialog=Object.assign(Object.create(Dialog.prototype),{
 });
 (async function(){
  await dialog.buildContent(data,{securityContext:'A'});
- assert.equal(dialog.View.facets,dialog.facets);assert.equal(dialog.facets[0].require,'DS/sdxECCACreate/PropertiesFacet');
+ assert.equal(dialog.View.facets,dialog.facets);assert.equal(dialog.facets[0].require,'DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet');
+ assert.equal(dialog.facets[1].require,'DS/sdxECCACreate/ClassificationFacet');
  assert.equal(input[0].require,'DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet');
- assert.equal(input[0].options.sdxECCAAutoSession,undefined);
+ assert(input[0].options.sdxECCAAutoSession);
  const session=dialog.facets[0].options.sdxECCAAutoSession;
  session.classId='C1';session.mandatory=true;session.controller={sdxECCAAutoSession:session};
  const CustomProp=derived.get('DS/sdxECCACreate/ClassifPropController').factory(OriginalProp,api);
@@ -86,10 +88,32 @@ const dialog=Object.assign(Object.create(Dialog.prototype),{
  session.disposed=true;
  request.onComplete({id:'C1',attribute:[{name:'ACCMAttr',nls_label:'old',default:'late',type:'string'}]});
  assert.equal(renderCount,1);assert.equal(notified,1);
+ // 유지한 B 연결을 실제 ListViewFacet init/update/destroy 경로에서 실행합니다.
+ const order=[];
+ widget.sdxECCARuntime={prepareFixedType(){order.push('prepare');},installFields(facet,options){facet.sdxECCAAutoSession=options.sdxECCAAutoSession;order.push('install');},
+  checkFacetContext(facet,options){return options.accept;},destroyFields(){order.push('cleanup');},
+  canSubmitDialog:()=>false,preserveValidationState(){order.push('validation');},disposeDialog(){order.push('dispose');}};
+ const listRow=defs.get('DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet');
+ const List=applyHooks('DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet',listRow.factory,{widget,console,setTimeout(){}})(
+  {createElement:()=>({}),is:value=>value!=null},{},Base,
+  function(){this.propUI={inject(){}};this.buildModel=()=>order.push('build');this.loadView=()=>order.push('load');this.destroy=()=>order.push('destroy');},helper);
+ const listSession={changeContext:value=>order.push('context:'+value),checkType:value=>order.push('type:'+value)};
+ const list=Object.assign(Object.create(List.prototype),{publishInfo:name=>order.push('publish:'+name)});
+ const listOptions={data:{},events:{onResize(){},onChangeAttribute(){order.push('original-event');}},sdxECCAAutoSession:listSession};
+ list.init(listOptions);assert.deepEqual(order,['prepare','build','load','install']);
+ order.length=0;listOptions.events.onChangeAttribute({'New-SecurityContext':{name:'SecurityContext',valueDB:'B'}});
+ assert.deepEqual(order,['context:B','publish:currentSecurityContext','original-event']);assert.equal(listSession.currentContext,'B');
+ order.length=0;list.updateFacet({accept:false,data:{}});assert.equal(order.length,0);
+ list.destroy();assert.deepEqual(order,['cleanup','destroy']);
+ order.length=0;OriginalDialog.prototype.onSubmitDialog.call({resetButtonLabel(){order.push('label');},disableFormInput(){order.push('disabled');}},'createClose');
+ assert.deepEqual(order,['label','disabled']);
+ order.length=0;OriginalDialog.prototype.destroy.call({View:{destroy(){order.push('view');}},myDialog:{destroy(){order.push('dialog');}}});
+ assert.equal(order[0],'dispose');assert.equal(order.at(-1),'dialog');
  assert.deepEqual(Object.getOwnPropertyDescriptors(helper),beforeHelper);
  assert.deepEqual(Object.getOwnPropertyDescriptors(OriginalProp.prototype),originalSnapshot);
+ delete widget.sdxECCARuntime;
  const ordinary=helper.getFacetList(data,[{name:'classificationFacet'}],{});
  assert.equal(ordinary[1].require,'DS/ClassificationsFacet/PLMNewClassificationFacet');
  assert.equal(ordinary[0].options.sdxECCAAutoSession,undefined);
- console.log('PASS: unmodified vendor helper + Dialog.buildContent + ClassifPropController.loadModels/_onCompleteLoadModel; custom paths and session tagging before AJAX; native render then notify; disposed response blocked; originals unchanged');
+ console.log('PASS: retained ENONewWidget helper/dialog hooks + unmodified ClassifPropController.loadModels/_onCompleteLoadModel; custom paths and session tagging before AJAX; native render then notify; disposed response blocked; originals unchanged');
 })().catch(error=>{console.error(error);process.exitCode=1;});

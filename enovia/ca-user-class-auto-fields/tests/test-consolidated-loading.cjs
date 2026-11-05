@@ -34,7 +34,7 @@ const load = ids => new Promise((resolve, reject) => req(ids, (...modules) => re
  assert.equal(result.options.events, caller.events);
  assert.equal(caller.type, 'Change Action');
  assert.equal(caller.options.typeName, undefined);
- assert.equal(widget.sdxECCARuntime, undefined, 'no global runtime hooks');
+ assert.equal(typeof widget.sdxECCARuntime.installFields,'function','existing ENONewWidget hooks use widget runtime');
  assert.deepEqual(requested.slice().sort(), [
   'DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService', 'DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService', 'DS/sdxENOChgGovernanceUX/custom/services/sdxECCADataService'
  ].sort());
@@ -46,10 +46,9 @@ const load = ids => new Promise((resolve, reject) => req(ids, (...modules) => re
  ]);
  assert.equal(typeof control.install, 'function'); assert.equal(typeof search.install, 'function');
  assert.equal(typeof controlService.read, 'function'); assert.equal(typeof modelService.readAttributes, 'function');
- const [properties, classification, classProperties] = await load([
-  'DS/sdxECCACreate/PropertiesFacet', 'DS/sdxECCACreate/ClassificationFacet', 'DS/sdxECCACreate/ClassifPropController'
+ const [classification, classProperties] = await load([
+  'DS/sdxECCACreate/ClassificationFacet', 'DS/sdxECCACreate/ClassifPropController'
  ]);
- assert.equal(typeof properties.prototype.init, 'function');
  assert.equal(typeof classification.prototype.sdxECCARebuildUI, 'function');
  assert.equal(typeof classProperties.prototype._onCompleteLoadModel, 'function');
  assert.equal(requested.length, 3);

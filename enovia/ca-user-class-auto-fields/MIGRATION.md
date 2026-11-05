@@ -1,76 +1,81 @@
-# 생성 진입부 한 곳만 수정하는 구조로 전환
+# ENONewWidget 기존 수정본을 유지하는 구조로 전환
 
 기준일: 2026-11-05. 위젯은 R2026x 소스를 우선 참고합니다.
 
 ## 최종 파일 구성
 
-| 파일 | 전환 후 |
+| 파일 | 최종 상태 |
 |---|---|
-| ENOChgGovernanceUX.js | 기존 커스텀 유지. G0에서 `entry.launch(options)` 호출 |
-| ENONewWidget.js | 우리 자동 분류 연결을 제거한 설치 버전 원본 |
+| ENOChgGovernanceUX.js | 기존 커스텀 유지. G0의 `entry.launch(options)` 호출 사용 |
+| ENONewWidget.js | 직전 푸시 전의 기존 A/B/C 연결을 그대로 유지/복원 |
 | ClassificationsFacet.js | 우리 자동 분류 연결을 제거한 설치 버전 원본 |
 | ClassificationProp.js | 우리 자동 분류 연결을 제거한 설치 버전 원본 |
-| custom/services의 커스텀 JS 3개 | 새 버전을 함께 배포 |
+| custom/services의 커스텀 JS 세 개 | 새 버전을 함께 배포 |
 
-이 저장소에는 위 세 OOTB 파일의 교체본을 제공하지 않습니다.
-예전 수정 메모도 제거했습니다. 잘못해서 메모 파일을 서버 원본 위에 덮어쓰지 않도록 하기 위함입니다.
+ENONewWidget 수정 메모의 내용은 직전 푸시 전 커밋 `9627977`과 같습니다.
+이는 서버 파일 전체 교체본이 아니라 변경 조각입니다. 서버 파일을 이 메모로 덮어쓰지 않습니다.
 
-## 적용 순서
+## 현재 설치 상태에 따른 적용
 
-1. 기존 배포본을 보관하고 열린 생성창을 닫습니다.
-2. 서버와 같은 릴리스·핫픽스의 변경 전 파일을 기준으로 아래 연결을 제거합니다.
-   다른 업무의 수정이 섞여 있다면 해당 수정은 보존하고 우리 자동 분류 연결만 원복합니다.
-3. 커스텀 JS 세 파일을 같은 버전으로 배포합니다.
-4. 기존 ENOChgGovernanceUX의 G0에서 CreateService 호출을 아래처럼 변경합니다.
-5. 브라우저/위젯 캐시를 갱신하고 새 생성창에서 확인합니다.
+### 직전의 한 파일 수정 구조(cd29be2)를 이미 반영한 경우
 
-기존 G0 내부 호출:
+1. 열린 생성창을 닫고 기존 배포본을 보관합니다.
+2. ENONewWidget의 A/B/C 연결을 푸시 전의 수정 상태로 복원합니다.
+3. ClassificationsFacet/ClassificationProp은 원본 상태로 유지합니다.
+4. CreateService/AutoClassService/DataService 세 파일을 함께 배포합니다.
+5. ENOChgGovernanceUX의 `entry.launch(options)` 호출은 유지합니다.
+6. 브라우저/위젯 캐시를 갱신하고 새 창에서 확인합니다.
 
-```js
-entry.launch(options, function (configuredOptions) {
-    return (new Launcher).CreateNew(configuredOptions);
-});
-```
+### 직전 푸시를 아직 서버에 반영하지 않은 경우
 
-변경 후:
+1. ENONewWidget의 기존 A/B/C 연결은 그대로 둡니다.
+2. ClassificationsFacet의 F/M, ClassificationProp의 P 연결만 제거합니다.
+3. 커스텀 JS 세 파일을 함께 배포하고 ENOChgGovernanceUX의 생성 호출을 확인합니다.
+4. 브라우저/위젯 캐시를 갱신합니다.
 
-```js
-// 대상 생성창만 전용 상속 엔진을 사용합니다.
-entry.launch(options);
-```
+원복은 서버와 같은 릴리스·핫픽스의 변경 전 소스를 기준으로 합니다.
+다른 업무의 수정이 섞여 있으면 해당 수정은 보존하고 우리 자동 분류 연결만 제거합니다.
+참고 저장소의 원본 파일을 서버에 그대로 덮어쓰지 않습니다.
 
-현재 [생성 진입 메모](webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js)에 반영되어 있습니다.
-일반 위젯의 `(new Launcher).CreateNew(options)` 분기와 G2 기본 타입 저장 분기는 유지합니다.
+## ENONewWidget에서 유지하는 연결
 
-## 원복할 기존 연결
-
-| 원복 대상 | 기존 위치·식별자 |
+| 구역 | 역할 |
 |---|---|
-| ENONewWidget.js | A: getFacetList의 attachBridge, B: prepareFixedType/installFields/updateFacet 문맥 확인/문맥 이벤트/destroyFields, C: Dialog 연결·제출 확인·버튼 상태 보존·dispose |
-| ClassificationsFacet.js | F: connectClassification/문맥 provider/새 UI 재생성/disconnectClassification, M: tagClassModel |
-| ClassificationProp.js | P: prepareAttributes → 원래 폼 생성 → notifyAttributesLoaded |
-| 위 세 파일의 보조 함수 | `sdxECCAGetApi` 및 우리 작업에서 추가한 연결 함수 |
+| A — ENONewFacetHelper | 기본/분류 facet에 같은 세션 연결 |
+| B — ENOListViewFacet | 기본 폼 준비·연결, 문맥 변경, 갱신·종료 |
+| C — ENONewDialogController | 제출 전 검증, 버튼 상태 유지, 종료 시 세션 정리 |
 
-이전 zca 연결이 남아 있으면 같은 기준으로 제거합니다.
-다른 기능의 수정까지 전부 되돌리는 작업을 의미하지 않습니다.
-`widget.sdxECCARuntime`를 사용하는 예전 연결과 새 상속 구조를 혼합하지 않습니다.
+CreateService가 `widget.sdxECCARuntime`을 설정하고 위 연결이 해당 위젯의 API를 읽습니다.
+전용 Dialog와 PropertiesFacet 상속은 제거했습니다. 기본 폼과 Dialog를 중복 연결하지 않습니다.
+분류 facet 경로는 attachBridge에서 해당 생성창에만 지정합니다.
 
-## 2026에서 달라진 문맥 경로
+## 2026 원본에서 연결을 다시 넣는 경우
 
-- 속성 폼에 전달되는 `data.model`의 `getSecurityContext()`를 먼저 사용합니다.
-- project/organisation/role 선택이 모델 문맥을 바꾸면 새 분류 세션으로 재조회합니다.
-- typeInfo와 자격증명 조회의 이전 응답은 세대/현재 모델 문맥을 확인해 무시합니다.
-- 재조회한 기본 폼에도 같은 생성 모델을 전달합니다.
-- 저장 때 같은 모델 문맥을 검증합니다. legacy SecurityContext 필드를 새로 만들어 넣지 않습니다.
+기존 수정 메모의 축약 변수명과 원문은 2025 참조 위치입니다.
+같은 기능을 2026 원본에 다시 넣을 때는 해당 모듈의 실제 변수/초기화 순서를 따릅니다.
+이미 적용된 기존 ENONewWidget을 유지하는 경우에는 다시 넣을 필요가 없습니다.
+
+- C1: Dialog를 만들고 manageButtons를 호출한 **직후** bindDialog를 호출합니다.
+  2026은 draft 버튼을 앞에서 만들고 뒤에서 inject하므로 `t.activateDraftMode`까지 교체하지 않습니다.
+- C4: destroy 메서드의 **시작**에서 disposeDialog를 호출합니다.
+  2026의 View → myDialog → immersiveFrame 정리 순서는 보존합니다.
+- A/B의 연결은 동일합니다. define의 기존 의존성/인자 순서는 바꾸지 않습니다.
+
+개발 검사는 이 위치 차이를 반영하여 2026 원본에 기존 연결을 적용합니다.
+서버 배포에 소스 조립 도구나 Node는 필요하지 않습니다.
+
+## 유지한 2026 보완
+
+- 생성 모델의 getSecurityContext와 문맥 변경 이벤트를 사용합니다.
+- 문맥 변경 후 기본 폼에도 같은 생성 모델을 전달합니다.
+- typeInfo/자격증명 조회는 요청 세대와 최종 문맥을 확인해 이전 응답의 화면 반영을 막습니다.
+- 초기 필수 오류 문구를 남기지 않고 입력/저장 시 기존 검증을 유지합니다.
+- 분류 폼·모델·저장 경로, 속성 제어, Text 복사·조직값·검색 선택값은 유지합니다.
 
 ## 설치 후 확인
 
-- 기본 속성·추가 정보 펼치기·분류 입력창·돋보기가 표시되는지 확인합니다.
-- 창을 처음 열 때 필수 오류 문구가 일괄 표시되지 않는지 확인합니다.
-- 필수값을 채우기 전/후 저장 버튼 상태와 기존 입력 검증을 확인합니다.
-- 생성 객체의 policy, Text 복사값, 모델 선택값, 분류 속성값을 확인합니다.
-- 문맥 A→B 및 A→B→C→A 전환, 조회 중 종료를 확인합니다.
-- 실제 생성 요청 헤더와 객체 협업공간이 최종 선택 문맥과 같은지 확인합니다.
-- 일반 위젯과 Change Request/Change Order가 기존 경로로 실행되는지 확인합니다.
-
-자동 검사는 실제 플랫폼 저장 성공을 보장하지 않습니다.
+기본 속성·추가 정보 펼치기·분류 입력창·돋보기, 최초 필수 오류 표시 시점,
+필수값에 따른 저장 버튼, 실제 분류값 저장을 확인합니다.
+협업공간 A→B→C→A 전환과 조회 중 종료도 확인합니다.
+최종 생성 요청 헤더/객체 협업공간, policy·Text·모델 선택값 및 일반 위젯·CO/CR 회귀를 확인합니다.
+자동 검사는 실제 플랫폼 UI·DB 저장 성공을 대신하지 않습니다.

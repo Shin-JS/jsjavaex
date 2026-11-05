@@ -3,8 +3,8 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
 const specs=JSON.parse(fs.readFileSync(path.join(__dirname,'runtime-hooks.json'),'utf8'));
-assert.equal(Object.keys(specs).length,1);
-for(const [id,spec] of Object.entries(specs)) {
+assert.equal(Object.keys(specs).length,4);
+for(const [id,spec] of Object.entries(specs).filter(([id])=>id.startsWith('DS/ENOChgGovernanceUX/'))) {
  const note=fs.readFileSync(path.join(root,'webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js'),'utf8');
  assert(note.includes(spec.setup),id);
  for(const edit of spec.changes){assert(note.includes(edit.from));assert(note.includes(edit.to));}
@@ -18,7 +18,7 @@ for(const [id,spec] of Object.entries(specs)) {
  enabled=false;runtime({},launcher,()=>assert.fail(),command);assert.equal(ordinary,1);
  enabled=true;runtime({},launcher,(ids,done,fail)=>fail(Error('missing')),command);assert.equal(command.isClickProcessing,false);
 }
-console.log('PASS: only Governance entry fragments; target uses custom engine, normal uses original Launcher, load failure restores command');
+console.log('PASS: Governance entry with retained ENONewWidget hooks; target uses custom engine, normal uses original Launcher, load failure restores command');
 
 // Optional public runtime source: prove the final value reaches the create HTTP header.
 if(process.argv[2]) {

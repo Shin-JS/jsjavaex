@@ -21,7 +21,7 @@ cache.set('DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService', ap
 function original(id, methods) { const cls = Base.extend(methods); cache.set(id,cls); return cls; }
 const Engine = original('DS/ENONewWidget/ENONew/ENONewEngine', {objInfo:{options:{},events:{}},init(options) { this.options=options; this.controller=this._getController(options); }});
 const Controller = original('DS/ENONewWidget/ENONew/Controller/ENONewController', {
- init(options) { this.context=options.context; }, getUI() { return this.dialog; }
+ init(options) { this.context=options.context; }, getUI() { return this.dialog || (this.dialog=new Dialog({})); }
 });
 const Dialog = original('DS/ENONewWidget/ENONew/Controller/ENONewDialogController', {
  buildContent() { return this.facets; }, manageButtons() { calls.push(['buttons']); },
@@ -54,30 +54,11 @@ const entry=get('DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService')
 const options={context:{tenant:'tenant-A'},options:{keep:true},events:{onSuccess(){}}};
 const engine=entry.launch(options), controller=engine.controller, dialog=controller.getUI();
 assert(engine instanceof Engine);assert(controller instanceof Controller);assert(dialog instanceof Dialog);
-assert.notEqual(engine.constructor,Engine);assert.notEqual(controller.constructor,Controller);assert.notEqual(dialog.constructor,Dialog);
-assert.equal(dialog.options.sdxECCATenant,'tenant-A');assert.equal(controller.getUI(),dialog);
+assert.notEqual(engine.constructor,Engine);assert.notEqual(controller.constructor,Controller);assert.equal(dialog.constructor,Dialog);
+assert.equal(controller.getUI(),dialog);
 assert.equal(engine.options.events,options.events);assert.equal(options.type,undefined);
 const another=entry.launch(options);assert.notEqual(another.objInfo,engine.objInfo);assert.notEqual(another.objInfo.options,engine.objInfo.options);
 assert.notEqual(engine.objInfo.events,Engine.prototype.objInfo.events);
-const originalEntries=[{require:'original-properties',facet:{name:'ENOCreate'},options:{}},
- {require:'original-classification',facet:{name:'classificationFacet'},options:{}}];
-dialog.viewType='tabView';dialog.facets=originalEntries;
-const first=dialog.buildContent({context:'A'},{securityContext:'A'});
-assert.equal(first[0].require,prefix+'PropertiesFacet');assert.equal(first[1].require,prefix+'ClassificationFacet');
-assert.equal(first[0].options.sdxECCAAutoSession,first[1].options.sdxECCAAutoSession);
-assert.equal(originalEntries[0].require,'original-properties');assert.equal(originalEntries[0].options.sdxECCAAutoSession,undefined);
-const other=controller.getUI();other.facets=originalEntries;const second=other.buildContent({context:'B'},{});
-assert.notEqual(second[0].options.sdxECCAAutoSession,first[0].options.sdxECCAAutoSession);
-const changes=[];let session={context:'A',changeContext(value){changes.push(value);calls.push(['context',value]);},checkType(value){changes.push(value);}};
-const properties=new (get(prefix+'PropertiesFacet'))({data:{},sdxECCAAutoSession:session});
-assert(properties.preparedBeforeInit);assert.equal(calls.at(-1)[0],'install');
-calls.length=0;properties.publishAttributeInfo({name:'SecurityContext',valueDB:'B'});
-assert.equal(session.currentContext,'B');assert.deepEqual(calls.map(x=>x[0]),['context','publish']);
-session={changeContext:session.changeContext,checkType:session.checkType};properties.sdxECCAAutoSession=session;
-properties.publishAttributeInfo({name:'SecurityContext',valueDB:'C'});assert.equal(session.currentContext,'C');
-calls.length=0;properties.updateFacet({accept:false});assert.equal(calls.length,0);
-properties.updateFacet({accept:true});assert.equal(calls[0][0],'update');
-calls.length=0;properties.destroy();assert.deepEqual(calls.map(x=>x[0]),['destroy-fields','destroy-properties']);
 const classification=new (get(prefix+'ClassificationFacet'))({sdxECCAAutoSession:{},securityContext:'A'});
 assert.equal(classification.plmNewContextProvider(),'A');assert.equal(classification.postCreation('original-save'),'original-save');
 let replaced;const old=classification.elements.container;old.parentNode={replaceChild(next,previous){assert.equal(previous,old);replaced=next;}};
@@ -85,12 +66,7 @@ const previousUI=classification.initUI;classification.sdxECCARebuildUI('B');
 assert.notEqual(classification.initUI,previousUI);assert.equal(previousUI.context,'A');assert.equal(classification.initUI.context,'B');
 assert.equal(classification.elements.container,replaced);
 calls.length=0;classification.destroy();assert.deepEqual(calls.map(x=>x[0]),['disconnect','destroy-classification']);
-dialog.myDialog={};calls.length=0;dialog.manageButtons();assert.deepEqual(calls.map(x=>x[0]),['buttons','bind']);
-assert.equal(dialog.onSubmitDialog('createClose'),'submitted');
-api.canSubmitDialog=()=>false;calls.length=0;dialog.onSubmitDialog('createClose');
-assert.deepEqual(calls.map(x=>x[0]),['label','inputs','validation']);assert.deepEqual(calls[1].slice(1),[false,false,true]);
-calls.length=0;dialog.destroy();assert.deepEqual(calls.map(x=>x[0]),['dispose','destroy-dialog']);
-session={status:'loading',fail(error){this.error=error;}};session.controller={sdxECCAAutoSession:session};
+let session={status:'loading',fail(error){this.error=error;}};session.controller={sdxECCAAutoSession:session};
 const prop=new (get(prefix+'ClassifPropController'))({sdxECCAAutoSession:session});
 const model={get:()=> 'C1'};prop.loadModels(model);assert.equal(model.sdxECCAAutoSession,session);
 calls.length=0;const response={attribute:[],results:[{}]},renderOptions={initTable:true};
@@ -101,4 +77,4 @@ for(const flag of ['transitioning','disposed']) { calls.length=0;session[flag]=t
 session.status='error';calls.length=0;prop._onCompleteLoadModel(response);assert.equal(calls.length,0);
 session.status='loading';calls.length=0;prop._onCompleteLoadModel({results:[]});assert.deepEqual(calls.map(x=>x[0]),['render']);
 [Engine,Controller,Dialog,Properties,Classification,PropController].forEach((cls,i)=>assert.deepEqual(Object.getOwnPropertyDescriptors(cls.prototype),snapshots[i]));
-console.log('PASS: isolated engine/controller/dialog/facets; no OOTB prototype writes; original save/events retained; context-before-publish; fresh UI closure; prepare/render/notify order; stale responses blocked');
+console.log('PASS: isolated engine/controller and classification facets; original ENONewWidget dialog reused; fresh UI closure; prepare/render/notify order; stale responses blocked');

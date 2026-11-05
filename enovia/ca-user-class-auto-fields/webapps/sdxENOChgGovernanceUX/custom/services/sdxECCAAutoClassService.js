@@ -205,6 +205,7 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         classification.options = classification.options || {};
         properties.options.sdxECCAAutoSession = session;
         classification.options.sdxECCAAutoSession = session;
+        classification.require = "DS/sdxECCACreate/ClassificationFacet";
         classification.alwaysCalled = true;
         // 속성/분류/북마크 탭 선택 영역은 OOTB 표시 상태를 유지합니다.
         if (configError) session.fail(configError);
@@ -522,6 +523,13 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         session.modelSearchEnabled = session.type === "sdxECChangeAction" && searchEnabled !== false && searchEnabled !== "false";
         facet.sdxECCAAutoSession = session;
         facet.sdxECCAAutoDisposed = false;
+        var view = facet.listview;
+        if (view && typeof view.checkForMandatoryAttributes === "function" && !facet.sdxECCAQuietMandatoryBinding) {
+            var check = view.checkForMandatoryAttributes;
+            var quietCheck = function () { return sdxECCACheckMandatoryQuietly(this, check); };
+            facet.sdxECCAQuietMandatoryBinding = {view: view, original: check, wrapped: quietCheck};
+            view.checkForMandatoryAttributes = quietCheck;
+        }
         try { sdxECCABindCreatePolicy(facet, session); }
         catch (error) { session.fail(error); }
         session.readCurrentType = function () {
@@ -731,6 +739,13 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
     function sdxECCADestroyAutoFields(facet) {
         if (facet.sdxECCAAutoDisposed) return;
         facet.sdxECCAAutoDisposed = true;
+        var quietBinding = facet.sdxECCAQuietMandatoryBinding;
+        if (quietBinding) {
+            if (quietBinding.view.checkForMandatoryAttributes === quietBinding.wrapped) {
+                quietBinding.view.checkForMandatoryAttributes = quietBinding.original;
+            }
+            delete facet.sdxECCAQuietMandatoryBinding;
+        }
         var submitBinding = facet.sdxECCAPolicySubmitBinding;
         if (submitBinding) {
             if (submitBinding.view.onSubmit === submitBinding.wrapped) submitBinding.view.onSubmit = submitBinding.original;

@@ -1,19 +1,21 @@
 # 검사 결과와 현장 확인 범위 — 2026-10-19
 
-## 생성 진입부 한 곳으로 전환 — 2026-11-05
+## ENONewWidget 기존 연결 유지와 분류 상속 — 2026-11-05
 
 위젯 관련 소스는 R2026x를 우선 기준으로 검토했습니다. 현재 배포 절차는 [전환 안내](MIGRATION.md)를 따릅니다.
 아래의 네 OOTB 파일 수정·조각 적용 검증은 이전 구현 기록입니다.
 
 - 외부 원본 없이 실행하는 회귀 검사 15개 통과.
 - 실제 RequireJS에서 커스텀 배포 파일 세 개만 로딩하고 내부 상속 모듈이 별도 URL을 요청하지 않음을 확인.
-- 공통 helper/prototype을 변경하지 않고 전용 Engine/Controller/Dialog/facet 경로를 생성함을 확인.
-- R2026x의 수정하지 않은 helper·Dialog.buildContent·분류 loadModels/렌더링 경로 실행 통과.
+- ENONewWidget 메모가 직전 푸시 전 blob과 동일함을 확인. 전용 Dialog/PropertiesFacet 상속 제거.
+- 기존 helper/기본 폼/Dialog 연결과 분류 전용 컨트롤러 경로의 연동을 확인.
+- R2026x의 helper/ListViewFacet/Dialog에 기존 연결만 적용하고, 분류 원본의 loadModels/렌더링 경로 실행 통과.
+- R2026x C1의 draft 버튼 위치와 C4의 View 우선 정리 순서를 보존하여 검사.
 - R2026x 기본/분류 AttributesUtils, 편집 권한, 추가 정보 펼치기와 표시 순서, 버튼 집계 검사 통과.
 - R2026x Controller.onSubmit → Services.createContent에서 생성 모델 문맥이 HTTP 헤더에 반영되는 검사 통과.
 - 초기 필수값 검사에는 실제 오류 문구를 남기지 않고 입력 후/저장 시 OOTB 오류 표시를 유지함을 확인.
 - 생성 모델 변경 구독/해제, typeInfo/자격증명 지연 응답, A→B→A 요청 세대 격리, 종료 후 응답 차단 확인.
-- R2025x의 원본 helper/분류 로딩과 legacy 문맥 경로는 호환 검사로 확인.
+- R2025x의 동일 helper 연결/원본 분류 로딩과 legacy 문맥 경로는 호환 검사로 확인.
 
 원본 소스를 사용하는 R2026x 추가 실행 검사 6개:
 `test-runtime-hooks`, `test-ootb-classification-edit`, `test-ootb-control-layout`,

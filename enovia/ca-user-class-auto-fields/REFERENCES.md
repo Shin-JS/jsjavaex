@@ -1,6 +1,6 @@
 # 참조 소스와 판단 근거
 
-## 생성창 상속 구조 — 2026-11-05
+## 생성창의 두 OOTB 파일 연결과 분류 상속 — 2026-11-05
 
 사용자 지시에 따라 위젯 코드는 private-rag의 `references/enovia-r2026x`를 우선 기준으로 합니다.
 R2025x는 호환 경로 확인용, R2024x는 이전 설계와 비교용입니다.
@@ -16,7 +16,8 @@ R2025x는 호환 경로 확인용, R2024x는 이전 설계와 비교용입니다
 R2026x에서 확인한 차이: 생성 모델의 getSecurityContext 기반 저장,
 project/organisation/role 자격증명 이벤트, 생성 모델을 전달하는 displayDialog,
 refreshDialog의 모델 누락, checkForMandatoryAttributes의 초기 오류 상태 변경입니다.
-기존 OOTB 메서드는 상속하고 필요한 연결만 전용 클래스에서 보완했습니다.
+ENONewWidget의 기존 helper/기본 폼/Dialog 연결은 유지하고, 분류 쪽과 2026 문맥 재조회는 전용 클래스에서 보완했습니다.
+ENONewWidget 수정 메모는 직전 푸시 전 커밋 9627977의 blob 9838a00fa0169671fcea45f37703384860da48e8과 동일합니다.
 
 R2026x/R2025x 참조의 ENOChgGovernanceUX.js는 빈 파일이므로, 해당 진입 수정 메모는
 기존 저장소에 있던 G0~G2를 유지하고 `entry.launch(options)` 호출만 갱신했습니다.
