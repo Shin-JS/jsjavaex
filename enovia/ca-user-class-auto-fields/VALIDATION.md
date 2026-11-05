@@ -1,5 +1,32 @@
 # 검사 결과와 현장 확인 범위 — 2026-10-19
 
+## 분류 컨트롤러 초기화 분리 — 2026-11-05
+
+현장에서는 `getUI`에 isBookmark/isLibrary=true가 전달되고 북마크 require 요청은 200이지만,
+생성 콜백 중단점에 진입하지 않고 모든 내부 컨트롤러가 undefined인 상태가 보고됐습니다.
+북마크를 끄는 임시 설정으로도 같은 현상이 보고됐으므로 북마크 단독 원인으로 확정하지 않습니다.
+또한 앞선 탭 목록 undefined 문제는 getFacetList 원복 중 원본 return/데이터 전달 코드가 삭제된 것이 확인됐습니다.
+아래의 탭 옵션 보완만으로 그 원인이 해결된다는 이전 추정은 정정합니다.
+
+자동분류 전용 ClassificationInitializer를 CreateService 안에 추가했습니다.
+원본 facet의 init/이벤트/저장 연결을 유지하면서 앱 자동 초기화 플래그를 복제본에서 끄고,
+설치본의 classificationAppsRequire_setting.json에 정의된 library 모듈을 직접 로딩합니다.
+원본과 동일한 라이브러리 생성자 옵션으로 원본 컨트롤러를 만들고, 기존 자동분류 연결을 사용합니다.
+bookmark→flattenedSearch→library 사전 초기화는 사용하지 않으며 실제 클래스 코드·권한 문맥 조회는 그대로 수행합니다.
+자동분류 생성창에서는 북마크/Export Control 앱을 초기화하지 않습니다. 일반 위젯 경로는 변경하지 않습니다.
+설정/모듈/생성자 오류는 세션 실패로 전달하고, 닫힌 화면·폐기 세션·문맥 전환 중의 늦은 콜백은 무시합니다.
+
+- 독립 검사 17개 통과.
+- R2026x 원본 입력 실행 8개 통과(기존 7개 + ClassificationInitializer).
+- 실제 InitClassificationCmpUI에서 북마크 모듈 콜백이 완료되지 않으면 라이브러리 조회가 진행되지 않는 상황을 재현.
+- 새 경로에서 실제 원본 PLMNewClassificationFacet.init/InitClassificationCmpUI를 실행해 북마크/사전 검색 요청 없이
+  원본 컨트롤러 생성자와 같은 옵션으로 초기화되는 것, 문맥별 UI 재생성, 원본 prototype 불변을 확인.
+- 설정/모듈 오류, 생성자 예외, 종료/문맥 전환 후 지연 응답 차단 검사 통과.
+
+이번 서버 배포 변경 파일은 `sdxECCACreateService.js` 하나입니다. 별도 AMD 파일 추가나 OOTB 수정은 없습니다.
+이전에 임시로 바꾼 Governance의 isBookmark=false는 이 경로의 동작을 좌우하지 않습니다.
+실제 서버의 모듈 로딩 미완료 원인은 확정하지 않았으며, 실제 컨트롤러 내부와 DB 저장은 현장 검증이 필요합니다.
+
 ## 자동 분류 생성창 탭 옵션 보장 — 2026-11-05
 
 `sdxECCACreateService.launch`에서 `viewType=tabView`와 분류 facet을 보장합니다.

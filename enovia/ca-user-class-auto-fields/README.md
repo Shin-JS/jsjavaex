@@ -41,6 +41,9 @@ Node나 별도 빌드는 서버 배포에 필요하지 않습니다.
 ## 현재 구조
 
 CreateService가 OOTB 엔진을 상속하고, 이 생성창의 Controller·Dialog·기본/분류 facet만 교체합니다.
+자동분류 생성창의 라이브러리 컨트롤러는 CreateService 내부 ClassificationInitializer가 직접 준비합니다.
+설치본의 앱 설정에 있는 원본 library 모듈을 사용하며 북마크·Export Control과 사전 flattenedSearch 초기화는 기다리지 않습니다.
+원본 분류 속성 폼·클래스 조회·저장 처리는 유지합니다. 일반 위젯은 기존 OOTB 초기화 경로를 사용합니다.
 기본 facet 목록과 분류 위젯의 속성 facet 정의는 **해당 인스턴스의 복사본**에서 커스텀 경로로 연결합니다.
 공통 helper, RequireJS 설정, OOTB prototype은 변경하지 않습니다.
 

@@ -45,6 +45,10 @@ const PropController = original('DS/ClassificationProp/facets/Properties/Classif
 cache.set('DS/ClassificationsFacet/InitClassificationCmpUI', class {
  getUI(options) { this.context=options.securityContext; return {context:this.context}; }
 });
+cache.set('require', (ids, done) => {
+ if(ids[0].startsWith('text!'))done(JSON.stringify({facets:{library:{require:'native-library'}}}));
+ else done(class {constructor(options){this.options=options;}});
+});
 const snapshots = [Engine,Controller,Dialog,Properties,Classification,PropController].map(cls => Object.getOwnPropertyDescriptors(cls.prototype));
 vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService.js'),'utf8'), {
  widget:{}, define(id,deps,factory) { definitions.set(id,{deps:Array.from(deps),factory}); }

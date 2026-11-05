@@ -208,15 +208,19 @@ define("DS/sdxECCACreate/PropertiesFacet", [
 
 define("DS/sdxECCACreate/ClassificationFacet", [
     "DS/ClassificationsFacet/PLMNewClassificationFacet",
-    "DS/ClassificationsFacet/InitClassificationCmpUI",
+    "DS/sdxECCACreate/ClassificationInitializer",
     "DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService"
-], function (Base, InitUI, AutoClass) {
+], function (Base, Initializer, AutoClass) {
     "use strict";
     return Base.extend({
         init: function (options) {
             this.sdxECCAAutoSession = options.sdxECCAAutoSession;
             this.sdxECCAAutoContext = options.securityContext;
-            this._parent.apply(this, arguments);
+            // 원본 init의 이벤트/분류 저장 연결은 유지하고 비동기 앱 초기화만 분리합니다.
+            this._parent(Object.assign({}, options, {isBookmark: false, isLibrary: false, isExportControl: false}));
+            // 원본 getUI가 비동기로 읽는 옵션 객체는 disabled 상태로 유지합니다.
+            this.options = Object.assign({}, this.options, options);
+            this.sdxECCARebuildUI(options.securityContext);
             AutoClass.connectClassification(this, options);
         },
         plmNewContextProvider: function () {
@@ -224,17 +228,81 @@ define("DS/sdxECCACreate/ClassificationFacet", [
         },
         sdxECCARebuildUI: function (context) {
             var old = this.elements.container;
-            var next = new InitUI();
-            var container = next.getUI(Object.assign({}, this.options, {securityContext: context}));
-            if (old && old.parentNode) old.parentNode.replaceChild(container, old);
-            this.initUI = next;
-            this.elements.container = container;
+            if (this.initUI) this.initUI.sdxECCAClosed = true;
+            var next = Initializer.create(Object.assign({}, this.options, {
+                securityContext: context, sdxECCAAutoSession: this.sdxECCAAutoSession
+            }));
+            if (old && old.parentNode) old.parentNode.replaceChild(next.container, old);
+            if (this.plmNewCreationClass && typeof this.plmNewCreationClass.inject === "function") {
+                this.plmNewCreationClass.inject(next.container);
+            }
+            this.initUI = next.ui;
+            this.elements.container = next.container;
         },
         destroy: function () {
+            if (this.initUI) this.initUI.sdxECCAClosed = true;
             AutoClass.disconnectClassification(this);
             return this._parent.apply(this, arguments);
         }
     });
+});
+
+// 자동분류 전용 초기화입니다. 공통 InitClassificationCmpUI/prototype/AMD ID는 변경하지 않습니다.
+define("DS/sdxECCACreate/ClassificationInitializer", [
+    "require",
+    "DS/ClassificationsFacet/InitClassificationCmpUI"
+], function (require, InitUI) {
+    "use strict";
+    return {
+        create: function (options) {
+            var ui = new InitUI();
+            var session = options.sdxECCAAutoSession;
+            // OOTB 컨테이너/getController를 사용하고 bookmark→검색→library 순차 대기는 분리합니다.
+            var container = ui.getUI(Object.assign({}, options, {
+                isBookmark: false, isLibrary: false, isExportControl: false
+            }));
+            function stale() {
+                return ui.sdxECCAClosed || !session || session.disposed || session.transitioning || session.status === "error";
+            }
+            function fail(stage, error) {
+                if (stale()) return;
+                ui.sdxECCAInitStage = "error";
+                var reason = error && error.message ? error.message : String(error);
+                var failure = new Error("분류 " + stage + " 실패: " + reason);
+                failure.cause = error;
+                session.fail(failure);
+            }
+            ui.sdxECCAInitStage = "configuration";
+            try {
+                require(["text!DS/ClassificationsFacet/assets/classificationAppsRequire_setting.json"], function (text) {
+                    if (stale()) return;
+                    try {
+                        var definition = JSON.parse(text);
+                        var moduleId = definition.facets.library.require;
+                        if (typeof moduleId !== "string" || !moduleId) throw new Error("library.require 설정이 없습니다.");
+                        ui.sdxECCAInitStage = "module: " + moduleId;
+                        require([moduleId], function (Controller) {
+                            if (stale()) return;
+                            try {
+                                ui.sdxECCAInitStage = "constructor: " + moduleId;
+                                ui.plmNewLibraryActive = new Controller({
+                                    dialogButtons: true, selectionMode: "ONLYSingle", favoriteButton: true,
+                                    appId: "Libraries", handleClassification: true, OKButtonLabel: "OK",
+                                    componentTitle: "OK", isRootSelectable: true, isClassifyMultiEveDispatch: false,
+                                    isonSetActiveEveDispatch: true, container: container,
+                                    getClassificationAttributes: true, attributesReadOnly: false,
+                                    isInformationPanel: options.isInformationPanel, objectId: ui.objectId,
+                                    securityContext: options.securityContext, tenant: options.tenant
+                                });
+                                ui.sdxECCAInitStage = "controller";
+                            } catch (error) { fail("컨트롤러 생성", error); }
+                        }, function (error) { fail("모듈 로딩 (" + moduleId + ")", error); });
+                    } catch (error) { fail("초기화 설정", error); }
+                }, function (error) { fail("초기화 설정 로딩", error); });
+            } catch (error) { fail("초기화 요청", error); }
+            return {ui: ui, container: container};
+        }
+    };
 });
 
 define("DS/sdxECCACreate/ClassifPropController", [
