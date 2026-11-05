@@ -1,28 +1,5 @@
 # 참조 소스와 판단 근거
 
-## 생성창의 두 OOTB 파일 연결과 분류 상속 — 2026-11-05
-
-사용자 지시에 따라 위젯 코드는 private-rag의 `references/enovia-r2026x`를 우선 기준으로 합니다.
-R2025x는 호환 경로 확인용, R2024x는 이전 설계와 비교용입니다.
-공급사 소스는 이 저장소에 복제하지 않습니다.
-
-| R2026x 참조 파일 | 확인한 blob SHA |
-|---|---|
-| 3dspace/webapps/ENONewWidget/ENONewWidget.js | 7d7b8caf4dc7feb43cf9851883ddde3eade34ca6 |
-| 3dspace/webapps/ClassificationsFacet/ClassificationsFacet.js | 784a202ef4e84bdf42c974dce03c24a626f21e4e |
-| 3dspace/webapps/ClassificationProp/ClassificationProp.js | e00ba512f45957a21e37bad935029d29ac93045d |
-| 3dspace/webapps/EditPropWidget/EditPropWidget.js | 67f66cbe31bab6939f625d96b0c76b413e93c661 |
-
-R2026x에서 확인한 차이: 생성 모델의 getSecurityContext 기반 저장,
-project/organisation/role 자격증명 이벤트, 생성 모델을 전달하는 displayDialog,
-refreshDialog의 모델 누락, checkForMandatoryAttributes의 초기 오류 상태 변경입니다.
-ENONewWidget의 기존 helper/기본 폼/Dialog 연결은 유지하고, 분류 쪽과 2026 문맥 재조회는 전용 클래스에서 보완했습니다.
-ENONewWidget 수정 메모는 직전 푸시 전 커밋 9627977의 blob 9838a00fa0169671fcea45f37703384860da48e8과 동일합니다.
-
-R2026x/R2025x 참조의 ENOChgGovernanceUX.js는 빈 파일이므로, 해당 진입 수정 메모는
-기존 저장소에 있던 G0~G2를 유지하고 `entry.launch(options)` 호출만 갱신했습니다.
-메모의 축약 변수와 헤더는 기존 참조 위치이며 설치본 전체 원본으로 보장하지 않습니다.
-
 ## 클래스 코드·활성 상태 조회 (2026-10-21)
 
 API 호출 위치는 [R2024x LibraryEditor.js](https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/LibraryEditor/LibraryEditor.js)의

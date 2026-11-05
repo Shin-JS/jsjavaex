@@ -2,12 +2,12 @@
 // node tests/test-ootb-button-state.cjs /실제/ENONewWidget.js
 const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
 if(!process.argv[2])throw new Error('OOTB ENONewWidget.js 경로를 지정해 주세요.');
-const source=fs.readFileSync(process.argv[2],'utf8'),modules={},definitions={};
-vm.runInNewContext(source,{define(name,deps,factory){definitions[name]={deps:Array.from(deps),factory};}});
+const source=fs.readFileSync(process.argv[2],'utf8'),modules={};
 const names=['DS/ENONewWidget/ENONew/View/Facet/ENONewFacetBase','DS/ENONewWidget/ENONew/Controller/ENONewDialogController'];
 for(const id of names){
- const def=definitions[id];assert.ok(def);
- modules[id]=def.factory(...def.deps.map((dep,i)=>i===0?{extend:obj=>obj}:dep.startsWith('i18n!')?{get:key=>key}:{}));
+ const begin=source.indexOf('define("'+id+'"');assert.ok(begin>=0);
+ let end=source.indexOf(',define(',begin);if(end<0)end=source.length;
+ vm.runInNewContext(source.slice(begin,end),{console,define(name,deps,factory){modules[name]=factory(...Array.from(deps,(dep,i)=>i===0?{extend:obj=>obj}:dep.startsWith('i18n!')?{get:key=>key}:{}));}});
 }
 const base=modules[names[0]], methods=modules[names[1]];
 const property={facetValidation:true};

@@ -36,13 +36,8 @@ function field(mandatory,readOnly=false){
   maxlength:-1,minval:'',maxval:'',get(key){if(key==='error')return {};return this[key];},
   resetError(){},setError(message,type){this.error={message,type};},getIdentifier:()=> 'A'};
 }
-function validatorFor(id) {
- const def=defs.get(id);
- return def.factory(...def.deps.map(dep=>dep==='UWA/Array'?{isArray:Array.isArray}:
-  dep.startsWith('i18n!')?nls:{commonChar:()=>0}));
-}
 for(const id of ['DS/EditPropWidget/utils/AttributesUtils','DS/ClassificationProp/utils/AttributesUtils']){
- const validator=validatorFor(id);
+ const validator=defs.get(id).factory({isArray:Array.isArray},{commonChar:()=>0},nls);
  for(const [display,check] of [[true,false],[false,true],[true,true],[false,false]]){
   const attr=field(check),model={values:()=>[attr],isMergedModel:()=>false};
   const errors=validator.validateModels([model]);
@@ -75,7 +70,7 @@ for(const serverReadonly of [false,true]){
  assert(rendered);assert.equal(readonly,serverReadonly,'staging must preserve native editable/readonly access');
 }
 // Initial button checks must use OOTB validation without changing real error state.
-const basicUtils=validatorFor('DS/EditPropWidget/utils/AttributesUtils');
+const basicUtils=defs.get('DS/EditPropWidget/utils/AttributesUtils').factory({isArray:Array.isArray},{commonChar:()=>0},nls);
 const listDef=defs.get('DS/ENONewWidget/ENONew/View/ENOListView');
 class Attribute {}
 const list=listDef.factory(...listDef.deps.map(dep=>dep==='UWA/Controls/Abstract'?stub:
@@ -103,10 +98,6 @@ const view=Object.assign({},list,{propModel:model,isFormValid:true,propUI:{
  dispatchEvent(event,args){assert.equal(event,'onValidActivation');
   if(args[0]){const errors=control.validateWithoutMessages({validateModels:models=>basicUtils.validateModels(models)},model);args=[!errors||!errors.length];}
   dialog.isPropertiesFormValid=args[0];dialog.evaluateValidationStatus();}});
-if(typeof view.checkForMandatoryAttributes==='function') {
- const original=view.checkForMandatoryAttributes;
- view.checkForMandatoryAttributes=function(){return custom.checkMandatoryQuietly(this,original);};
-}
 view.updateValidStatus();
 assert.equal(attr.error,undefined,'initial button check must not create real validation messages');
 assert.equal(view.isFormValid,true,'initial status must not force all fields into native error display');
