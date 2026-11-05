@@ -1,6 +1,8 @@
-/* 변경 전 2025 OOTB 원본에 처음 적용하는 수정 메모입니다.
+/* 기존 커스텀 ENOChgGovernanceUX.js에 적용하는 생성 진입 수정 메모입니다.
+ * 위젯 구현은 R2026x를 우선 기준으로 합니다. 아래 헤더/축약 변수는 기존 2025 참조 위치입니다.
+ * 설치본의 모듈명과 실제 생성 호출 위치를 기준으로 적용합니다.
  * 이 파일 전체를 OOTB에 덮어쓰지 않습니다.
- * [출발 상태] 이전 zca/sdxECCA 수정이 없는 2025 원본.
+ * [출발 상태] 기존 커스텀 생성 모듈. G0/G1/G2가 있으면 해당 연결만 갱신합니다.
  * [추가] 각 대상 AMD factory 안에 표시된 함수를 한 번 추가합니다.
  * [교체] 같은 모듈의 모든 [변경 N]을 번호 순서대로 적용합니다.
  * 원본에서 찾을 부분은 검색용이며 교체 코드는 여러 줄로 표시합니다.
@@ -67,9 +69,8 @@ function sdxECCALaunch(options, Launcher, localRequire, command) {
     try {
         localRequire(["DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService"], function (entry) {
             try {
-                entry.launch(options, function (configuredOptions) {
-                    return (new Launcher).CreateNew(configuredOptions);
-                });
+                // 대상 생성창만 전용 상속 엔진으로 실행합니다.
+                entry.launch(options);
             } catch (error) {
                 fail(error);
             }
