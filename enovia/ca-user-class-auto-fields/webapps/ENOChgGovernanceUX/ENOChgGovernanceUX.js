@@ -1,5 +1,6 @@
 /* 기존 커스텀 ENOChgGovernanceUX.js에 적용하는 생성 진입 수정 메모입니다.
- * 위젯 구현은 R2026x를 우선 기준으로 합니다. 아래 헤더/축약 변수는 기존 2025 참조 위치입니다.
+ * R2026x 원본의 실제 AMD 헤더/축약 변수/생성 호출을 기준으로 합니다.
+ * 참조 blob: 2e8f017f2471ff3fd657b862f2c4e201f9932906
  * 설치본의 모듈명과 실제 생성 호출 위치를 기준으로 적용합니다.
  * 이 파일 전체를 OOTB에 덮어쓰지 않습니다.
  * [출발 상태] 기존 커스텀 생성 모듈. G0/G1/G2가 있으면 해당 연결만 갱신합니다.
@@ -12,11 +13,11 @@
  * 검색: DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction
  * G0: factory 시작의 function(e,t,i,n,o,a,s){ 와 원래 return{ 사이에 함수 두 개 추가.
  * G1: launchCreateChangeActionDialog(r)의 맨 마지막 (new e).CreateNew(d)만 교체.
- * G2: events.onSuccess의 마지막 let u={}부터 saveUserPreference(u)까지 교체.
+ * G2: events.onSuccess의 마지막 let p={}부터 saveUserPreference(p)까지 교체.
  * Change Request/Change Order 생성 모듈은 수정하지 않습니다.
  */
 
-/* [2025 OOTB 헤더 유지] DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction
+/* [2026 OOTB 헤더 유지] DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction
  * [
  *     "DS/ENONewWidget/ENONewLauncher",
  *     "DS/ENOChgServices/scripts/services/ChgServiceGlobalVariable",
@@ -85,14 +86,15 @@ function sdxECCALaunch(options, Launcher, localRequire, command) {
 /* [G1 앞뒤 위치]
  * 함수: launchCreateChangeActionDialog: function(r)
  * 원래 d={context:..., options:..., facets:..., events:...}를 구성한 다음입니다.
- * 확인한 2025 원본에서는 cloudProbeUtils.genericCommandClickEventForAnalytics(...)
+ * 확인한 2026 원본에서는 cloudProbeUtils.genericCommandClickEventForAnalytics(...)
  * 호출 바로 다음에 (new e).CreateNew(d)가 있습니다.
  * 검색 문자열: (new e).CreateNew(d)
- * 이 호출 표현식만 교체합니다. 앞뒤 쉼표와 메서드를 닫는 괄호는 유지합니다.
+ * CreateNew 호출만 바꾸고 바로 뒤의 t.setDialogEventForLoader()는 유지합니다.
+ * 앞뒤 쉼표와 메서드를 닫는 괄호도 유지합니다.
  * 원본 options/type/typeName/facets와 기존 이벤트 본문은 여기서 바꾸지 않습니다.
  */
 /* [변경 1 — 원본에서 찾을 부분]
-(new e).CreateNew(d)
+(new e).CreateNew(d),t.setDialogEventForLoader()
 */
 /* [변경 1 — 아래 코드로 교체]
 sdxECCALaunch(
@@ -100,27 +102,29 @@ sdxECCALaunch(
     e, // 원본 ENONewLauncher
     s, // 원본 AMD require
     r  // 원본 launchCreateChangeActionDialog 인자
-)
+),
+// 2026 원래 로더 이벤트 연결 유지
+t.setDialogEventForLoader()
 */
 
 /* [위치 G2] 같은 함수의 events.onSuccess 콜백 끝, 기본 타입 저장 부분. */
 /* [G2 앞뒤 위치]
  * 함수: launchCreateChangeActionDialog의 events.onSuccess: function(e)
  * 기존 목록/상세 갱신과 displayObjectInfoInsideIDcard(o,true) 호출 다음입니다.
- * 검색 문자열: CA_DEF_TYPE 또는 i.saveUserPreference(u)
- * let u={}부터 i.saveUserPreference(u) 끝까지를 아래 코드로 교체합니다.
+ * 검색 문자열: CA_DEF_TYPE 또는 i.saveUserPreference(p)
+ * let p={}부터 i.saveUserPreference(p) 끝까지를 아래 코드로 교체합니다.
  * 다음 onFailure/onCancel과 onSuccess를 닫는 } 및 구분 쉼표는 유지합니다.
  * G1의 d/e/s/r과 이 onSuccess 안의 e는 다른 함수의 지역변수입니다.
  */
 /* [변경 2 — 원본에서 찾을 부분]
-let u={};u[n.keys.createKeys.CA_DEF_TYPE]=e.result[0].type,i.saveUserPreference(u)
+let p={};p[n.keys.createKeys.CA_DEF_TYPE]=e.result[0].type,i.saveUserPreference(p)
 */
 /* [변경 2 — 아래 코드로 교체]
-let u = {};
+let p = {};
 
 // [변경] 우리 위젯의 커스텀 타입을 공용 기본 타입으로 저장하지 않습니다.
 if (!sdxECCAIsEnabled()) {
-    u[n.keys.createKeys.CA_DEF_TYPE] = e.result[0].type;
-    i.saveUserPreference(u);
+    p[n.keys.createKeys.CA_DEF_TYPE] = e.result[0].type;
+    i.saveUserPreference(p);
 }
 */

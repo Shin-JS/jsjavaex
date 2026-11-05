@@ -44,6 +44,8 @@ entry.launch(options);
 ```
 
 현재 [생성 진입 메모](webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js)에 반영되어 있습니다.
+진입 메모는 R2026x 원본 기준입니다. G2는 `let p={}; ... saveUserPreference(p)`이며,
+G1 뒤의 `t.setDialogEventForLoader()`를 유지합니다. 이전 2025 변수 `u` 조각을 섞지 않습니다.
 일반 위젯의 `(new Launcher).CreateNew(options)` 분기와 G2 기본 타입 저장 분기는 유지합니다.
 
 ## 원복할 기존 연결

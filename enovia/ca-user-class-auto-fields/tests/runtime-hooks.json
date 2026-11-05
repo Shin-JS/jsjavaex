@@ -3,13 +3,15 @@
     "setup": "// 아래 두 함수를 같은 ChgCreateChangeAction factory 안에 한 번 추가합니다.\nfunction sdxECCAIsEnabled() {\n    if (typeof widget === \"undefined\") {\n        return false;\n    }\n\n    var enabled = widget.getValue(\"sdxECCAEnableAutoClassByOrganization\");\n    return enabled === true || enabled === \"true\";\n}\n\nfunction sdxECCALaunch(options, Launcher, localRequire, command) {\n    if (!sdxECCAIsEnabled()) {\n        // [원본 흐름] 일반 위젯은 커스텀 파일을 요청하지 않습니다.\n        return (new Launcher).CreateNew(options);\n    }\n\n    function fail(error) {\n        if (command) {\n            command.isClickProcessing = false;\n        }\n        console.error(\"[sdxECCA] 생성창 준비에 실패했습니다.\", error);\n    }\n\n    try {\n        localRequire([\"DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService\"], function (entry) {\n            try {\n                // 대상 생성창만 전용 상속 엔진으로 실행합니다.\n                entry.launch(options);\n            } catch (error) {\n                fail(error);\n            }\n        }, fail);\n    } catch (error) {\n        fail(error);\n    }\n}\n",
     "changes": [
       {
-        "from": "(new e).CreateNew(d)",
-        "to": "sdxECCALaunch(\n    d, // 원본 생성 옵션\n    e, // 원본 ENONewLauncher\n    s, // 원본 AMD require\n    r  // 원본 launchCreateChangeActionDialog 인자\n)"
+        "from": "(new e).CreateNew(d),t.setDialogEventForLoader()",
+        "to": "sdxECCALaunch(\n    d, // 원본 생성 옵션\n    e, // 원본 ENONewLauncher\n    s, // 원본 AMD require\n    r  // 원본 launchCreateChangeActionDialog 인자\n),\n// 2026 원래 로더 이벤트 연결 유지\nt.setDialogEventForLoader()"
       },
       {
-        "from": "let u={};u[n.keys.createKeys.CA_DEF_TYPE]=e.result[0].type,i.saveUserPreference(u)",
-        "to": "let u = {};\n\n// [변경] 우리 위젯의 커스텀 타입을 공용 기본 타입으로 저장하지 않습니다.\nif (!sdxECCAIsEnabled()) {\n    u[n.keys.createKeys.CA_DEF_TYPE] = e.result[0].type;\n    i.saveUserPreference(u);\n}"
+        "from": "let p={};p[n.keys.createKeys.CA_DEF_TYPE]=e.result[0].type,i.saveUserPreference(p)",
+        "to": "let p = {};\n\n// [변경] 우리 위젯의 커스텀 타입을 공용 기본 타입으로 저장하지 않습니다.\nif (!sdxECCAIsEnabled()) {\n    p[n.keys.createKeys.CA_DEF_TYPE] = e.result[0].type;\n    i.saveUserPreference(p);\n}"
       }
-    ]
+    ],
+    "referenceVersion": "R2026x",
+    "referenceBlob": "2e8f017f2471ff3fd657b862f2c4e201f9932906"
   }
 }

@@ -131,7 +131,7 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
             return new Promise(function (resolve, reject) {
                 require(["DS/WAFData/WAFData"], function (WAFData) {
                     try {
-                        // R2024x 3DSpaceAjaxRequests.getListOfAttributes의 bus 조회 계약입니다.
+                        // R2026x ClassificationProp/3DSpaceAjaxRequests.getListOfAttributes의 bus 조회 계약입니다.
                         WAFData.authenticatedRequest(url.replace(/\/$/, "") +
                             "/resources/v1/collabServices/attributes/op/read?tenant=" + encodeURIComponent(scope.tenant), {
                             method: "POST", type: "json", timeout: 60000, proxy: "passport", authentication: "passport",

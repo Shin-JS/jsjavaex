@@ -1,5 +1,16 @@
 # 검사 결과와 현장 확인 범위 — 2026-10-19
 
+## R2026x 생성 진입 기준 정정 — 2026-11-05
+
+ENOChgGovernanceUX 원본 blob `2e8f017f2471ff3fd657b862f2c4e201f9932906`의 실제 생성 모듈에
+변경 조각을 적용했습니다. 2025의 `u`가 남아 있던 G2를 2026의 `p`로 맞추고,
+생성 호출 뒤 setDialogEventForLoader를 그대로 유지합니다. AMD 헤더도 원본과 대조합니다.
+대용량 번들을 빈 파일로 판단했던 이전 설명은 정정합니다.
+
+추가 `test-governance-2026` 검사: 일반/커스텀 생성 분기, 초기 context/draft/facet 옵션,
+원래 분석·로더 연결, 성공 후 목록/상세 갱신, 기본 타입 저장 분기, 실패/취소 버튼 상태를 확인합니다.
+수정 대상 이외 AMD 모듈과 의존성이 변하지 않는 것도 확인합니다.
+
 ## 생성 진입부 한 곳으로 전환 — 2026-11-05
 
 위젯 관련 소스는 R2026x를 우선 기준으로 검토했습니다. 현재 배포 절차는 [전환 안내](MIGRATION.md)를 따릅니다.
@@ -16,9 +27,10 @@
 - 생성 모델 변경 구독/해제, typeInfo/자격증명 지연 응답, A→B→A 요청 세대 격리, 종료 후 응답 차단 확인.
 - R2025x의 원본 helper/분류 로딩과 legacy 문맥 경로는 호환 검사로 확인.
 
-원본 소스를 사용하는 R2026x 추가 실행 검사 6개:
+원본 소스를 사용하는 R2026x 추가 실행 검사 7개:
 `test-runtime-hooks`, `test-ootb-classification-edit`, `test-ootb-control-layout`,
-`test-ootb-validation`, `test-security-context`의 헤더 검사, `test-ootb-button-state`.
+`test-ootb-validation`, `test-security-context`의 헤더 검사, `test-ootb-button-state`,
+`test-governance-2026`.
 
 검사는 VM/AMD/DOM/서버 대역입니다. 실제 ENOVIA 브라우저와 전체 CredentialsManager 실행,
 DB 생성·분류 저장 성공, 운영 환경의 CO/CR 회귀 확인을 대신하지 않습니다.

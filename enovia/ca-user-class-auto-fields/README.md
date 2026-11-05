@@ -7,6 +7,9 @@
 OOTB 수정은 이미 커스텀한 `ENOChgGovernanceUX.js`의 생성 진입부만 남깁니다.
 `ENONewWidget.js`, `ClassificationsFacet.js`, `ClassificationProp.js`는 설치 버전 원본을 사용합니다.
 
+생성 진입 메모도 실제 **R2026x ENOChgGovernanceUX 원본**에 맞췄습니다.
+기본 타입 저장 변수 `p`와 생성 뒤 `setDialogEventForLoader()` 연결을 보존합니다.
+
 ## 배포할 커스텀 파일
 
 서버 `3dspace/webapps/sdxENOChgGovernanceUX/custom/services`에 아래 **세 파일**을 배포합니다.

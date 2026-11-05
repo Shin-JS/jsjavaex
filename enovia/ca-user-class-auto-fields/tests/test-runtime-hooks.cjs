@@ -16,6 +16,16 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxENOChgGove
  }
 });
 const constants=defs.get('DS/ClassificationProp/constants/ClassifPropConstants').factory();
+// 클래스 필수 플래그를 읽는 bus POST 계약도 2026 원본에서 확인합니다.
+const readRow=defs.get('DS/ClassificationProp/ajaxRequests/3DSpaceAjaxRequests');
+let busRead;
+const reads=readRow.factory(...readRow.deps.map(id=>id==='DS/WidgetServices/WidgetServices'?{getWidgetValue(){},isDebug:()=>false}:
+ id.endsWith('/ServicesAjaxRequests')?{createRequest(options,method,url,body){busRead={method,url,body};}}:
+ id.endsWith('/ClassifPropConstants')?constants:{}));
+reads.getListOfAttributes({modelList:[{get:key=>({objectId:'C1',metatype:'bus'})[key],isMergedModel:()=>false}],readonly:true,attributes:true});
+assert.equal(busRead.method,'POST');assert.equal(busRead.url,'/resources/v1/collabServices/attributes/op/read');
+assert.deepEqual(Array.from(busRead.body.busIDs),['C1']);assert.equal(busRead.body.readonly,'true');
+assert.equal(busRead.body.attributes,'true');assert.equal(busRead.body.plmparameters,'false');
 const nls={get:key=>key,replace:value=>value};
 const helperRow=defs.get('DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper');
 const helper=helperRow.factory({ENONewFACET_CLASSIFICATION:'classificationFacet'},nls,nls);
