@@ -1,55 +1,24 @@
 'use strict';
-// Execute the distributed OOTB replacement fragments, without vendor bundles.
+// Governance와 F/M/P만 OOTB에 적용합니다. 문맥 재초기화는 상속/세션 회귀 검사에서 확인합니다.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
 const specs=JSON.parse(fs.readFileSync(path.join(__dirname,'runtime-hooks.json'),'utf8'));
-for(const [id,spec] of Object.entries(specs)) {
- const bundle=id.split('/')[1],note=fs.readFileSync(path.join(root,'webapps',bundle,bundle+'.js'),'utf8');
- const start=note.indexOf('[대상 AMD 모듈] '+id),next=note.indexOf('/* [2025 OOTB 헤더 유지]',start);
- const block=note.slice(start,next<0?undefined:next);
- assert(start>=0);assert(block.includes(spec.setup),id);
- spec.changes.forEach((edit,index)=>{
-  assert(block.includes('/* [변경 '+(index+1)+' — 원본에서 찾을 부분]\n'+edit.from+'\n*/'),id);
-  assert(block.includes('/* [변경 '+(index+1)+' — 아래 코드로 교체]\n'+edit.to+'\n*/'),id);
+assert.equal(Object.keys(specs).length,4);
+for(const [id,spec] of Object.entries(specs).filter(([id])=>id.startsWith('DS/ENOChgGovernanceUX/'))) {
+ const note=fs.readFileSync(path.join(root,'webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js'),'utf8');
+ assert(note.includes(spec.setup),id);
+ for(const edit of spec.changes){assert(note.includes(edit.from));assert(note.includes(edit.to));}
+ let enabled=true,created=0,ordinary=0,command={isClickProcessing:true};
+ const launcher=function(){};launcher.prototype.CreateNew=()=>ordinary++;
+ const runtime=vm.runInNewContext('(function(){'+spec.setup+';return sdxECCALaunch;})()',{
+  widget:{getValue:()=>enabled},console:{error(){}},
  });
+ runtime({},launcher,(ids,done)=>{assert.equal(ids[0],'DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService');done({launch(){created++;}});},command);
+ assert.equal(created,1);assert.equal(ordinary,0);
+ enabled=false;runtime({},launcher,()=>assert.fail(),command);assert.equal(ordinary,1);
+ enabled=true;runtime({},launcher,(ids,done,fail)=>fail(Error('missing')),command);assert.equal(command.isClickProcessing,false);
 }
-const facetSpec=specs['DS/ClassificationsFacet/PLMNewClassificationFacet'];
-const subscription=facetSpec.changes[1].to;
-const provider=facetSpec.changes[2].to;
-// F2 has the closing brace of init; F3 has that of plmNewContextProvider.
-const setup=vm.runInNewContext('(function(){let securityContext="A";return {init:function(e){'+
- 'var sdxECCAFacet=this;'+subscription+',provider:function(){'+provider+'};})()',{
- r:class {getUI(options){this.context=options.securityContext;return {context:options.securityContext};}},
- sdxECCAGetApi:()=>({connectClassification(facet,options){
-  if(options.sdxECCAAutoSession){facet.sdxECCAAutoSession=options.sdxECCAAutoSession;facet.sdxECCAAutoContext=options.sdxECCAAutoSession.context;}
- }})
-});
-let published;
-const checks=[];
-const facet=Object.assign({},setup,{listenToPublishedInfo(fn){published=fn;}});
-facet.init({sdxECCAAutoSession:{context:'A',checkContext:value=>checks.push(value)}});
-for(const value of ['B','C','A']){published('currentSecurityContext',{value});assert.equal(facet.provider(),'A');}
-assert.deepEqual(checks,[]);
-let replacement;
-const oldContainer={parentNode:{replaceChild(next,old){assert.equal(old,oldContainer);replacement=next;}}};
-facet.elements={container:oldContainer};
-facet.sdxECCARebuildUI('B');const firstUI=facet.initUI;
-assert.equal(firstUI.context,'B');assert.equal(replacement,facet.elements.container);
-facet.sdxECCARebuildUI('C');assert.notEqual(facet.initUI,firstUI);assert.equal(facet.initUI.context,'C');assert.equal(firstUI.context,'B');
-// Non-target CO/CR facets retain OOTB global credential behavior.
-for(const type of ['Change Order','Change Request']) {
- const ordinary=Object.assign({},setup,{listenToPublishedInfo(fn){published=fn;}});
- ordinary.init({});published('currentSecurityContext',{value:type});assert.equal(ordinary.provider(),type);
-}
-const listSpec=specs['DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet'];
-const changes=[],order=[];
-const options={events:{onChangeAttribute(){order.push('original');}}};
-const properties={sdxECCAAutoSession:{changeContext:value=>changes.push(value),checkType(){}},publishAttributeInfo(){order.push('publish');}};
-vm.runInNewContext('(function(){'+listSpec.changes[3].to+'}).call(i)',{t:options,i:properties});
-options.events.onChangeAttribute({'New-SecurityContext':{valueDB:'B'}});
-assert.deepEqual(changes,['B']);assert.deepEqual(order,['publish','original']);
-assert.equal(properties.sdxECCAAutoSession.currentContext,'B');
-console.log('PASS: every distributed hook matches fixture; global credentials preserve active CA context; New-SecurityContext still checks; CO/CR retain OOTB publishing');
+console.log('PASS: only Governance entry fragments; target uses custom engine, normal uses original Launcher, load failure restores command');
 
 // Optional public runtime source: prove the final value reaches the create HTTP header.
 if(process.argv[2]) {
@@ -60,9 +29,9 @@ if(process.argv[2]) {
  const methods=controller.factory(...Array.from(controller.deps,(_,i)=>i===0?extend:{}));
  const service=rows['DS/ENONewWidget/ajaxRequests/ENONewServices'];
  let sent;
- const services=service.factory(...Array.from(service.deps,(_,i)=>i===0?extend:i===4?{_post(body,options){sent={body,options};}}:i===5?{enrichRequestWithMetrics(){}}:{}));
- const instance=Object.assign({},services,{service:'https://example/3dspace',tenant:'OnPremise',header:{SecurityContext:'GLOBAL-B'},rawTypeInfo:[{}]});
- const create=Object.assign({},methods,{_create(data,options){instance.createContent(data,options,()=>{},()=>{});}});
+ const services=service.factory(...Array.from(service.deps,(dep,i)=>i===0?extend:dep.endsWith('/ENONewAjaxRequests')?{_post(body,options){sent={body,options};}}:{}));
+ const instance=Object.assign({},services,{service:'https://example/3dspace',tenant:'OnPremise',header:{SecurityContext:'GLOBAL-B'},rawTypeInfo:[{}],enrichWithMetrics(){}});
+ const create=Object.assign({},methods,{model:{getSecurityContext:()=> 'DIALOG-A'},_create(data,options){instance.createContent(data,options,()=>{},()=>{});}});
  const result={defaultAttributes:{Type:{name:'Type',value:'sdxECChangeAction',persistData:[{name:'sdxECChangeAction'}]},SecurityContext:{name:'SecurityContext',value:'DIALOG-A'}},attributes:{publicAttributes:[]}};
  create.onSubmit(result,{eventID:'createClose'});
  assert.equal(sent.options.header.SecurityContext,'DIALOG-A');
