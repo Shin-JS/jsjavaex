@@ -57,6 +57,15 @@ assert(engine instanceof Engine);assert(controller instanceof Controller);assert
 assert.notEqual(engine.constructor,Engine);assert.notEqual(controller.constructor,Controller);assert.notEqual(dialog.constructor,Dialog);
 assert.equal(dialog.options.sdxECCATenant,'tenant-A');assert.equal(controller.getUI(),dialog);
 assert.equal(engine.options.events,options.events);assert.equal(options.type,undefined);
+assert.equal(engine.options.viewType,'tabView');assert.equal(options.viewType,undefined);
+assert.equal(engine.options.facets.length,1);assert.equal(engine.options.facets[0].name,'classificationFacet');
+assert.equal(options.facets,undefined);
+const sourceFacets=[{name:'otherFacet',facetoptions:{keep:true}},{name:'classificationFacet',facetoptions:{isLibrary:false}}];
+const configured=entry.launch({...options,viewType:'listView',facets:sourceFacets}).options;
+assert.equal(configured.viewType,'tabView');assert.equal(configured.facets.length,2);
+assert.equal(configured.facets[0].facetoptions.keep,true);assert.equal(configured.facets[1].facetoptions.isLibrary,false);
+assert.notEqual(configured.facets,sourceFacets);assert.notEqual(configured.facets[1],sourceFacets[1]);
+assert.notEqual(configured.facets[1].facetoptions,sourceFacets[1].facetoptions);
 const another=entry.launch(options);assert.notEqual(another.objInfo,engine.objInfo);assert.notEqual(another.objInfo.options,engine.objInfo.options);
 assert.notEqual(engine.objInfo.events,Engine.prototype.objInfo.events);
 const originalEntries=[{require:'original-properties',facet:{name:'ENOCreate'},options:{}},

@@ -4,7 +4,8 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const Base=require('./uwa-class-stub.cjs'),dir=process.argv[2];
 if(!dir)throw Error('Specify original ENONewWidget/ClassificationsFacet/ClassificationProp directory');
-const defs=new Map(),window={top:{performance:{mark(){}}}},UWA={Promise};
+const defs=new Map(),window={top:{performance:{mark(){}}}},UWA={Promise,
+ is:(value,type)=>typeof value===type,createElement:()=>({inject(){}})};
 for(const file of ['ENONewWidget','ClassificationsFacet','ClassificationProp'])vm.runInNewContext(fs.readFileSync(path.join(dir,file+'.js'),'utf8'),{
  define(id,deps,factory){defs.set(id,{deps:Array.from(deps),factory});},window,UWA,console
 });
@@ -30,9 +31,10 @@ const nls={get:key=>key,replace:value=>value};
 const helperRow=defs.get('DS/ENONewWidget/ENONew/View/Facet/ENONewFacetHelper');
 const helper=helperRow.factory({ENONewFACET_CLASSIFICATION:'classificationFacet'},nls,nls);
 const beforeHelper=Object.getOwnPropertyDescriptors(helper);
-class TabView { constructor(options){this.facets=options.facets;}loadView(done){done();} }
+class TabView { constructor(options){this.facets=options.facets;this.skeleton={inject(){}};}loadView(done){done();} }
 const dialogRow=defs.get('DS/ENONewWidget/ENONew/Controller/ENONewDialogController');
-const OriginalDialog=dialogRow.factory(...dialogRow.deps.map(id=>id==='UWA/Controls/Abstract'?Base:id.endsWith('/ENOTabView')?TabView:{}));
+const OriginalDialog=dialogRow.factory(...dialogRow.deps.map(id=>id==='UWA/Controls/Abstract'?Base:
+ id.endsWith('/ENOTabView')?TabView:id.endsWith('/ENONewFacetHelper')?helper:id.startsWith('i18n!')?nls:{}));
 const modelInstances=[];
 class Model {
  constructor(id){this._attributes={objectId:id};modelInstances.push(this);}
@@ -56,7 +58,7 @@ const OriginalProp=controllerRow.factory(...controllerRow.deps.map(id=>{
 const originalSnapshot=Object.getOwnPropertyDescriptors(OriginalProp.prototype);
 const derived=new Map();
 vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService.js'),'utf8'),{
- define(id,deps,factory){derived.set(id,{deps:Array.from(deps),factory});}
+ widget:{},define(id,deps,factory){derived.set(id,{deps:Array.from(deps),factory});}
 });
 const api=Object.assign({},runtime,{notifyAttributesLoaded(model,response){
  assert.equal(renderCount,1,'notify occurs after native initData');assert.equal(model,modelInstances[0]);
@@ -75,6 +77,38 @@ const dialog=Object.assign(Object.create(Dialog.prototype),{
  assert.equal(input[0].require,'DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet');
  assert.equal(input[0].options.sdxECCAAutoSession,undefined);
  const session=dialog.facets[0].options.sdxECCAAutoSession;
+ // 실제 2026 Engine.init -> Controller.displayDialog -> Dialog.setup도 통과시킵니다.
+ // 기존 검사는 helper 결과와 tabView를 직접 주입해 호출부 옵션 누락을 놓쳤습니다.
+ const engineRow=defs.get('DS/ENONewWidget/ENONew/ENONewEngine');
+ const NativeEngine=engineRow.factory(UWA,Base,{},function(){},function(){},{DIALOG:{LIST_VIEW:'listView'}});
+ class CaptureController {constructor(options){Object.assign(this,options);}}
+ const CustomEngine=derived.get('DS/sdxECCACreate/Engine').factory(NativeEngine,CaptureController);
+ const entry=derived.get('DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService').factory(api,CustomEngine);
+ const nativeControllerRow=defs.get('DS/ENONewWidget/ENONew/Controller/ENONewController');
+ const NativeController=nativeControllerRow.factory(...nativeControllerRow.deps.map(id=>id==='UWA/Controls/Abstract'?Base:{}));
+ for(const inputOptions of [
+  {context:{tenant:'OnPremise'},options:{}},
+  {context:{tenant:'OnPremise'},options:{},viewType:'listView',facets:[]},
+  {context:{tenant:'OnPremise'},options:{},viewType:'tabView',facets:[{name:'classificationFacet'}]}
+ ]) {
+  const captured=entry.launch(inputOptions).controller;
+  const rendered=Object.assign(Object.create(Dialog.prototype),{
+   options:{sdxECCATenant:'OnPremise'},elements:{},footerButtons:{},addEvent(){},
+   getDefaultButtons(){return {};},buildToolbar(){return Promise.resolve(null);},
+   buildDialog(){return {};},manageButtons(){}
+  });
+  Object.assign(captured,{
+   defaultAttributes:data.defaultAttributes,model:{getSecurityContext:()=> 'A',getTenant:()=> 'OnPremise'},
+   labelTopBar:'CA',id:'pipeline',dialog:rendered,buttons:{}
+  });
+  NativeController.prototype.displayDialog.call(captured);
+  await Promise.resolve();await Promise.resolve();
+  assert.equal(rendered.viewType,'tabView');
+  assert.equal(rendered.facets[0].require,'DS/sdxECCACreate/PropertiesFacet');
+  assert.equal(rendered.facets[1].require,'DS/sdxECCACreate/ClassificationFacet');
+  assert(rendered.facets[0].options.sdxECCAAutoSession);
+  assert(rendered.myDialog,'native setup finishes creating the dialog');
+ }
  session.classId='C1';session.mandatory=true;session.controller={sdxECCAAutoSession:session};
  const CustomProp=derived.get('DS/sdxECCACreate/ClassifPropController').factory(OriginalProp,api);
  const prop=Object.assign(Object.create(CustomProp.prototype),{

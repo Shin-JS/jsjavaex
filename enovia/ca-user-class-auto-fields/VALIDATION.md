@@ -1,5 +1,19 @@
 # 검사 결과와 현장 확인 범위 — 2026-10-19
 
+## 자동 분류 생성창 탭 옵션 보장 — 2026-11-05
+
+`sdxECCACreateService.launch`에서 `viewType=tabView`와 분류 facet을 보장합니다.
+기존에는 호출부가 이 설정을 빠짐없이 전달한다고 가정하여, 누락되면 OOTB가 listView를 선택한 뒤
+"자동 분류 생성창에는 속성·분류 탭 구성이 필요합니다." 오류로 중단됐습니다.
+기존 추가 facet과 분류 facet 설정은 복제하여 유지하고, 분류 facet은 없을 때만 추가합니다.
+기본 속성 facet은 계속 OOTB helper가 구성합니다. OOTB 수정 범위는 늘리지 않습니다.
+
+외부 원본 없는 16개 검사와 R2026x 원본을 사용하는 추가 7개 검사를 통과했습니다.
+특히 `test-runtime-hooks`에서 실제 Engine.init → Controller.displayDialog → Dialog.setup/buildContent를
+실행하여 옵션 누락/listView/기존 tabView 세 경우 모두 전용 속성·분류 facet과 생성창 구성이 완료됨을 확인했습니다.
+CredentialsManager와 UI 컨트롤은 대역이며 실제 서버에서 관찰한 오류의 입력 옵션은 확보하지 못했습니다.
+따라서 배포 후 같은 메시지가 사라지고 자동 분류·저장이 되는지 현장 확인이 필요합니다.
+
 ## R2026x 생성 진입 기준 정정 — 2026-11-05
 
 ENOChgGovernanceUX 원본 blob `2e8f017f2471ff3fd657b862f2c4e201f9932906`의 실제 생성 모듈에

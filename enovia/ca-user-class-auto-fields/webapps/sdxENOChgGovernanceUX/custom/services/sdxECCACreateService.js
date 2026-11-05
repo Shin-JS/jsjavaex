@@ -15,6 +15,15 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService", [
             if (!createOptions) throw new Error("기존 생성 옵션을 확인해 주세요.");
             var options = Object.assign({}, createOptions);
             options.options = Object.assign({}, createOptions.options);
+            // 자동 분류는 기본 속성 facet과 분류 facet을 함께 사용합니다.
+            // 호출부에 탭 옵션이 없으면 OOTB가 listView로 내려가므로 여기서 보장합니다.
+            options.viewType = "tabView";
+            options.facets = (createOptions.facets || []).map(function (facet) {
+                return Object.assign({}, facet, {facetoptions: Object.assign({}, facet.facetoptions)});
+            });
+            if (!options.facets.some(function (facet) { return facet.name === "classificationFacet"; })) {
+                options.facets.push({name: "classificationFacet", facetoptions: {isBookmark: true, isLibrary: true}});
+            }
             AutoClass.configureCreateType(options);
             // OOTB Launcher와 같은 엔진을 상속하되, 이 생성창의 Controller만 교체합니다.
             return new Engine(options);
