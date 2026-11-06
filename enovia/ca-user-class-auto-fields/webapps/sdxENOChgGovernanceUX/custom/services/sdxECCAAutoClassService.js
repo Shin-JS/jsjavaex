@@ -935,7 +935,12 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
             // occurrence의 지연 생성이 라이브러리 초기화를 막지 않게 분리합니다.
             var occurrenceReady = isCA ||
                 (occurrence && typeof occurrence.setValidation === "function");
+            var propertyBridgeReady = false;
             if (occurrenceReady && ctrl && ctrl.autoComplete && ctrl.classifPropertiesView && ctrl.accordeonCon) {
+                try { propertyBridgeReady = sdxECCABindClassificationProperties(ctrl, session); }
+                catch (error) { clearInterval(facet.sdxECCAAutoTimer); session.fail(error); return; }
+            }
+            if (propertyBridgeReady) {
                 connected = true;
                 clearInterval(facet.sdxECCAAutoTimer);
                 try {
@@ -955,7 +960,7 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                     ctrl.plmNewContextProvider = session.context;
                     if (ctrl.container) ctrl.container.style.display = "none";
                     session.controller = ctrl;
-                    // master의 M/P 연결이 모델 표식과 원본 분류 속성 렌더링을 처리합니다.
+                    // M은 모델 표식을, 이 생성창의 폼 인스턴스 연결은 P의 전후 처리를 담당합니다.
                     session.notify();
                     if (session.status === "error" || session.disposed || session.transitioning) return;
                     if (session.ruleMode === "code") {
@@ -993,10 +998,71 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                     if (!ctrl[key]) missing.push(key);
                 });
                 if (!occurrenceReady) missing.push("occurrence.setValidation");
+                if (ctrl && !propertyBridgeReady) missing.push("classificationAttiProp instance bridge");
                 console.warn("[sdxECCA] 분류 초기화 준비 미완료", missing);
                 session.fail(new Error("분류 입력창 준비 시간이 초과되었습니다. 콘솔의 준비 미완료 항목을 확인해 주세요."));
             }
         }, 100);
+    }
+
+    /** 원본 분류 속성 facet의 현재 인스턴스만 연결합니다. 모듈 경로/공통 prototype은 바꾸지 않습니다. */
+    function sdxECCABindClassificationProperties(controller, session) {
+        var view = controller.classifPropertiesView;
+        var skeleton = view && view.controller && view.controller.skeleton;
+        if (!skeleton || typeof skeleton.getFacetContent !== "function") return false;
+        if (skeleton.sdxECCAPropertyBridge) {
+            if (skeleton.sdxECCAPropertyBridge !== session) throw new Error("다른 생성 세션의 분류 폼을 재사용할 수 없습니다.");
+            return true;
+        }
+        function closed() { return session.disposed || session.transitioning || session.status === "error"; }
+        function bind(facet) {
+            if (!facet) return;
+            if (facet.sdxECCAPropertyBridge) {
+                if (facet.sdxECCAPropertyBridge !== session) throw new Error("분류 속성 폼의 생성 세션이 다릅니다.");
+                return;
+            }
+            var load = facet.loadModels, complete = facet._onCompleteLoadModel;
+            if (typeof load !== "function" || typeof complete !== "function" || typeof facet.getModel !== "function") {
+                throw new Error("분류 속성 폼의 원본 로딩 메서드를 확인해 주세요.");
+            }
+            facet.sdxECCAPropertyBridge = session;
+            facet.loadModels = function (model) {
+                if (closed() || (model && model.sdxECCAAutoSession && model.sdxECCAAutoSession !== session)) return;
+                return load.apply(this, arguments);
+            };
+            facet._onCompleteLoadModel = function (response) {
+                if (closed()) return;
+                // 원본의 빈 폼 초기화/분류 외 데이터 경로는 그대로 실행합니다.
+                if (!response || !Object.prototype.hasOwnProperty.call(response, "attribute")) {
+                    return complete.apply(this, arguments);
+                }
+                var model = this.getModel();
+                if (!model || model.sdxECCAAutoSession !== session) {
+                    session.fail(new Error("분류 속성 모델의 M 세션 연결을 확인해 주세요."));
+                    return;
+                }
+                if (!sdxECCAPrepareClassAttributes(model, response)) return;
+                var result = complete.apply(this, arguments);
+                sdxECCANotifyAutoClassAttributes(model, response);
+                return result;
+            };
+        }
+        var existing = skeleton.getFacetContent("classificationAttiProp");
+        var publish = skeleton.publishEvt;
+        // 원본 _loadFacet은 생성 직후 이 이벤트를 발행한 다음 모델 로딩 콜백을 실행합니다.
+        // 지연 생성되는 폼도 소비자가 사용하기 전에 연결합니다. 전역 이벤트 구독은 만들지 않습니다.
+        if (typeof publish === "function") {
+            skeleton.publishEvt = function (event, entry) {
+                if (event === "classifAttributeLoaded" && entry && entry.facet && entry.facet.name === "classificationAttiProp") {
+                    try { bind(entry.content); } catch (error) { session.fail(error); }
+                }
+                return publish.apply(this, arguments);
+            };
+        } else if (!existing) return false;
+        bind(existing);
+        skeleton.sdxECCAPropertyBridge = session;
+        // 종료 후에도 인스턴스의 가드는 유지해 이미 보낸 요청의 늦은 응답을 차단합니다.
+        return true;
     }
 
     /** OOTB getClassPaths 응답으로 클래스 노드를 만들고 원래 select/change 처리를 실행합니다.
@@ -1232,6 +1298,7 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         preserveValidationState: sdxECCAPreserveValidationState,
         disposeDialog: sdxECCADisposeAutoDialog,
         connectClassification: sdxECCAConnectAutoClassification,
+        bindClassificationProperties: sdxECCABindClassificationProperties,
         disconnectClassification: sdxECCADisconnectAutoClassification,
         applyClass: sdxECCAApplyOrganizationClass,
         tagClassModel: sdxECCATagAutoClassModel,

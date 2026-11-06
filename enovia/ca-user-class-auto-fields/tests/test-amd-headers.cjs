@@ -17,4 +17,4 @@ for(const row of fixtures){
  assert.deepEqual(JSON.parse(dependencyJson),row.originalDependencies);
  assert.deepEqual(block.match(/function\(([^)]*)\)/)[1].split(','),row.originalArguments);
 }
-console.log('PASS: Governance/F/M/P retain exact R2026x AMD headers; ENONewWidget has no patch.');
+console.log('PASS: Governance/F/M retain exact R2026x AMD headers; ENONewWidget and ClassificationProp have no patch.');

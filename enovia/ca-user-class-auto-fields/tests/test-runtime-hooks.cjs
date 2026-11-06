@@ -1,6 +1,6 @@
 'use strict';
 // node tests/test-runtime-hooks.cjs <동일 릴리스의 원본 JS 디렉터리>
-// ENONewWidget은 원본 그대로, 분류 두 파일은 가이드 F/M/P 조각만 적용해 실행합니다.
+// ENONewWidget/ClassificationProp은 원본 그대로, ClassificationsFacet의 F/M만 적용합니다.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const Base=require('./uwa-class-stub.cjs'),dir=process.argv[2];
 const patch=require('./apply-native-hooks.cjs'),fixtures=JSON.parse(fs.readFileSync(path.join(__dirname,'runtime-hooks.json'),'utf8'));
@@ -40,7 +40,7 @@ const OriginalDialog=dialogRow.factory(...dialogRow.deps.map(id=>id==='UWA/Contr
 const modelInstances=[];
 class Model {
  constructor(id){this._attributes=typeof id==='object'?id:{objectId:id};modelInstances.push(this);}
- get(key){return this._attributes[key];}getTenant(){return 'OnPremise';}set(key,value){this._attributes[key]=value;}
+ values(){return [];}get(key){return this._attributes[key];}getTenant(){return 'OnPremise';}set(key,value){this._attributes[key]=value;}
  keys(){return [];}clearChangedValue(){}getChangedValues(){return {};}setChangedValues(){}isMergedModel(){return false;}
 }
 const api=Object.assign({},runtime,{notifyAttributesLoaded(model,response){
@@ -49,7 +49,7 @@ const api=Object.assign({},runtime,{notifyAttributesLoaded(model,response){
 }});
 widget.sdxECCARuntime=api;
 const propId='DS/ClassificationProp/facets/Properties/ClassifPropController';
-const controllerRow=patch(defs.get(propId),fixtures[propId],{window,UWA,console,widget});
+const controllerRow=defs.get(propId);
 const OriginalProp=controllerRow.factory(...controllerRow.deps.map(id=>{
  if(id==='UWA/Class/Model')return Model;
  if(id.endsWith('/ClassifFacetsBase'))return Base;
@@ -114,17 +114,24 @@ const dialog=Object.assign(Object.create(Dialog.prototype),{
   assert(rendered.myDialog,'native setup finishes creating the dialog');
  }
  session.classId='C1';session.mandatory=true;session.controller={sdxECCAAutoSession:session};
- const prop=Object.assign(Object.create(OriginalProp.prototype),{
+ function makeProperty(session) { return Object.assign(Object.create(OriginalProp.prototype),{
   options:{sdxECCAAutoSession:session},alreadySelectedModels:[],getListHandle:{handle:null},
   showLoader(){},hideLoader(){},_resetModifFlag(){},getModel(){return this.model;},setModel(model){this.model=model;},
   getTabId:()=> 'classificationAttiProp',isReadOnly:()=>false,updateReadWriteAccess(){},_manageNotificationFromAnswer(){},
   _buildFromResponse(response){assert.equal(response.results[0].data[0].mandatory,false);return {modifyAccess:true,allAttributeAreRO:false,oneSuccess:true};},
-  editPropertiesUI:{
+  editPropertiesUI:{elements:{UIController:{validateModels(){return [];}}},
    getExistingClassAttributes(){return null;},getUpdatedValueForAttribute(){},getClassUsage(){return 'Standard';},
    getClassTitleFromID(){return 'Class';},getClassPath(){return 'Library/Class';},isReadonly:()=>false,
    switchComponentMode(readonly){assert.equal(readonly,false);},setAccordionProperties(){},initData(){renderCount++;}
   }
- });
+ }); }
+ const prop=makeProperty(session);
+ const propertiesSkeleton={getFacetContent:()=>prop};
+ session.controller.accordeonCon={style:{},querySelectorAll:()=>[]};
+ session.controller.classifPropertiesView={controller:{skeleton:propertiesSkeleton}};
+ assert.equal(runtime.bindClassificationProperties(session.controller,session),true);
+ const mark=session.markAttributesLoaded;
+ session.markAttributesLoaded=function(id){assert.equal(renderCount,1,'notify follows native rendering');notified++;return mark(id);};
  // 실제 2026 Common 컨트롤러의 선택 처리 함수(M)를 실행합니다.
  const commonId='DS/ClassificationsFacet/PLMNewCommomCmpUXController';
  const commonRow=patch(defs.get(commonId),fixtures[commonId],{window,UWA,console,widget});
@@ -150,6 +157,21 @@ const dialog=Object.assign(Object.create(Dialog.prototype),{
  session.disposed=true;
  request.onComplete({id:'C1',attribute:[{name:'ACCMAttr',nls_label:'old',default:'late',type:'string'}]});
  assert.equal(renderCount,1);assert.equal(notified,1);
+ // 원본 onAttributesLoad는 늦은 완료 이벤트를 발행해도 새 세션의 폼/준비 상태를 바꾸면 안 됩니다.
+ const oldRequest=request;
+ const newFacets=[{facet:{name:'ENOCreate'},options:{}},{facet:{name:'classificationFacet'},options:{}}];
+ runtime.attachBridge({defaultAttributes:{Type:{value:'sdxECChangeAction'},SecurityContext:{value:'B'}}},newFacets,{securityContext:'B'});
+ const fresh=newFacets[0].options.sdxECCAAutoSession;fresh.classId='C1';fresh.mandatory=true;
+ const freshProp=makeProperty(fresh);
+ fresh.controller={sdxECCAAutoSession:fresh,accordeonCon:{style:{},querySelectorAll:()=>[]},
+  classifPropertiesView:{controller:{skeleton:{getFacetContent:()=>freshProp}}}};
+ runtime.bindClassificationProperties(fresh.controller,fresh);
+ const freshModel=new Model('C1');runtime.tagClassModel(fresh.controller,freshModel,'C1');freshProp.loadModels(freshModel);
+ const freshRequest=request;
+ oldRequest.onComplete({id:'C1',attribute:[{name:'ACCMAttr',nls_label:'old context',default:'OLD',type:'string'}]});
+ assert.equal(renderCount,1);assert.equal(fresh.attributesLoaded,false);assert.equal(freshProp.getModel(),freshModel);
+ freshRequest.onComplete({id:'C1',attribute:[{name:'ACCMAttr',nls_label:'new context',default:'NEW',type:'string'}]});
+ assert.equal(renderCount,2);assert.equal(fresh.attributesLoaded,true);assert.equal(fresh.classControlForm.model,freshModel);
  assert.deepEqual(Object.getOwnPropertyDescriptors(helper),beforeHelper);
  assert.deepEqual(Object.getOwnPropertyDescriptors(OriginalProp.prototype),originalSnapshot);
  const ordinary=helper.getFacetList(data,[{name:'classificationFacet'}],{});
@@ -187,5 +209,5 @@ const dialog=Object.assign(Object.create(Dialog.prototype),{
  const ordinaryFacet=new NativeFacet({securityContext:'NORMAL'});assert.equal(connected,1);
  assert.equal(ordinaryFacet.plmNewContextProvider(),'NORMAL');
  api.connectClassification=oldConnect;api.disconnectClassification=oldDisconnect;
- console.log('PASS: ENONewWidget original Engine/Controller/Dialog/helper; custom basic facet only; native 2026 F init/rebuild/postCreation, M tag before consumer, P prepare/native render/notify; stale callbacks blocked; unbound save context isolated; normal facet unchanged');
+ console.log('PASS: ENONewWidget original Engine/Controller/Dialog/helper; custom basic facet only; native 2026 F init/rebuild/postCreation, M tag before consumer, instance P prepare/native render/notify with unmodified ClassificationProp; stale callbacks blocked; unbound save context isolated; normal facet unchanged');
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -3,7 +3,7 @@
 검토일: 2026-10-14
 
 2026-11-05 현재 구현은 [README](README.md)와 [전환 안내](MIGRATION.md)를 기준으로 합니다.
-위젯 소스는 R2026x를 우선 검토하며, ENONewWidget만 원본으로 유지하고 Governance/F/M/P 연결을 사용합니다.
+위젯 소스는 R2026x를 우선 검토하며, ENONewWidget만 원본으로 유지하고 Governance/F/M 연결과 P 인스턴스 연결을 사용합니다.
 ENONew 연결만 전용 Engine/Controller/Dialog/기본 속성 facet 상속으로 분리하고 분류는 master의 원래 경로를 유지합니다.
 아래는 초기 설계 검토 기록이며 현재 설치 절차가 아닙니다.
 

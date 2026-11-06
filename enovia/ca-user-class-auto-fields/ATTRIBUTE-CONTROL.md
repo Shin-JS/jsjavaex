@@ -1,6 +1,6 @@
 # CA 등록창의 제어 객체 기반 속성 구성
 
-2026-11-05: R2026x 위젯 우선, ENONewWidget 원본 + Governance/F/M/P 연결 구조를 사용합니다.
+2026-11-05: R2026x 위젯 우선, ENONewWidget 원본 + Governance/F/M + P 인스턴스 연결 구조를 사용합니다.
 배포와 기존 OOTB 연결 원복은 [전환 안내](MIGRATION.md)를 따릅니다. 속성 제어 규칙은 유지합니다.
 
 2026-11-02 요청 기준입니다. 기존 Searchable=false 방식은 제거했습니다.

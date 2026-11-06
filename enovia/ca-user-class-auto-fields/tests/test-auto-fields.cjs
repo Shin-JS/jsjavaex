@@ -76,10 +76,9 @@ function makeController(session){
  ctrl.classifPropModels.push(model);api.tagClassModel(ctrl,model,session.classId);}}},
  PLMNewCommonWebService:{get3DSpaceUrl:()=>Promise.resolve('https://example/3dspace'),getClassPaths(opts){request=opts},constructPath:response=>response.chains,extractPath:()=> 'Library > Class'}
  };
- ctrl.classifPropertiesView.controller={skeleton:{_lFacets:[{facet:{name:'classificationAttiProp'},require:'DS/ClassificationProp/facets/Properties/ClassifPropController'}],getFacetContent(name){assert.equal(name,'classificationAttiProp');return {
- getModel:()=>ctrl.renderedModel || ctrl.classifPropModels[0],
- editPropertiesUI:{elements:{UIController:{validateModels(models){assert.equal(models[0],ctrl.renderedModel || ctrl.classifPropModels[0]);return validateError?[{message:validateError}]:null;}}}}
- };}}};
+ const propertyFacet={loadModels(){},_onCompleteLoadModel(){},getModel:()=>ctrl.renderedModel || ctrl.classifPropModels[0],
+ editPropertiesUI:{elements:{UIController:{validateModels(models){assert.equal(models[0],ctrl.renderedModel || ctrl.classifPropModels[0]);return validateError?[{message:validateError}]:null;}}}}};
+ ctrl.classifPropertiesView.controller={skeleton:{_lFacets:[{facet:{name:'classificationAttiProp'},require:'DS/ClassificationProp/facets/Properties/ClassifPropController'}],getFacetContent(name){assert.equal(name,'classificationAttiProp');return propertyFacet;}}};
  return {ctrl,parent,form,sibling,request:()=>request,selectedCount:()=>selectedCount};
 }
 // 2026은 생성 모델의 문맥을 우선 사용하고 legacy SecurityContext 필드를 추가하지 않습니다.

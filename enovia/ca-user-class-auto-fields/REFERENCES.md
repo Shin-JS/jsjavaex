@@ -1,6 +1,6 @@
 # 참조 소스와 판단 근거
 
-## ENONewWidget만 원본 유지 — 2026-11-05
+## 1단계: ClassificationProp도 원본 유지 — 2026-11-06
 
 사용자 지시에 따라 위젯 코드는 private-rag의 `references/enovia-r2026x`를 우선 기준으로 합니다.
 R2025x는 호환 경로 확인용, R2024x는 이전 설계와 비교용입니다.
@@ -17,8 +17,10 @@ R2025x는 호환 경로 확인용, R2024x는 이전 설계와 비교용입니다
 R2026x에서 확인한 차이: 생성 모델의 getSecurityContext 기반 저장,
 project/organisation/role 자격증명 이벤트, 생성 모델을 전달하는 displayDialog,
 refreshDialog의 모델 누락, checkForMandatoryAttributes의 초기 오류 상태 변경입니다.
-ENONewWidget의 연결만 전용 상속 클래스에서 보완하고, 분류 두 파일은 master와 같은 F/M/P 연결을 유지합니다.
-F/M/P 가이드의 헤더와 축약 변수도 위 R2026x 원본으로 다시 생성하고 적용·실행했습니다.
+ENONewWidget의 연결만 전용 상속 클래스에서 보완하고, ClassificationsFacet은 F/M 연결을 유지합니다. ClassificationProp의 P 연결은 폼 인스턴스에서 처리합니다.
+F/M 가이드와 원본 ClassificationProp의 _loadFacet/렌더링 흐름을 위 R2026x 소스로 실행했습니다.
+IDCardSkeleton._loadFacet은 폼 생성 후 classifAttributeLoaded를 발행하고, 그 다음 완료 콜백을 호출합니다.
+이 순서를 이용해 원본 constructor/모듈 경로를 유지하면서 지연 생성된 폼 인스턴스에도 연결합니다.
 
 ### 생성 진입 원본 확인 정정
 

@@ -1,9 +1,9 @@
 'use strict';
-// Governance와 F/M/P만 OOTB에 적용합니다. 문맥 재초기화는 상속/세션 회귀 검사에서 확인합니다.
+// Governance와 F/M만 OOTB에 적용합니다. 문맥 재초기화는 상속/세션 회귀 검사에서 확인합니다.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
 const specs=JSON.parse(fs.readFileSync(path.join(__dirname,'runtime-hooks.json'),'utf8'));
-assert.equal(Object.keys(specs).length,4);
+assert.equal(Object.keys(specs).length,3);
 for(const [id,spec] of Object.entries(specs).filter(([id])=>id.startsWith('DS/ENOChgGovernanceUX/'))) {
  const note=fs.readFileSync(path.join(root,'webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js'),'utf8');
  assert(note.includes(spec.setup),id);

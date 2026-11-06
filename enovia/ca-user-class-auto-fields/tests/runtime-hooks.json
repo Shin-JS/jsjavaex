@@ -39,24 +39,5 @@
     ],
     "referenceBlob": "784a202ef4e84bdf42c974dce03c24a626f21e4e",
     "referenceVersion": "R2026x"
-  },
-  "DS/ClassificationProp/facets/Properties/ClassifPropController": {
-    "setup": "function sdxECCAGetApi() {\n    return typeof widget === \"undefined\" ? null : widget.sdxECCARuntime;\n}\n\nfunction sdxECCAIsClassModelActive(model) {\n    var session = model && model.sdxECCAAutoSession;\n    return !session || (!session.disposed && !session.transitioning && session.status !== \"error\");\n}\n",
-    "changes": [
-      {
-        "from": "loadModels:function(t,i){window.top.performance.mark(\"start_PrepareAjax\");",
-        "to": "loadModels: function (t, i) {\n    if (!sdxECCAIsClassModelActive(t)) return;\n    window.top.performance.mark(\"start_PrepareAjax\");"
-      },
-      {
-        "from": "onAttributesLoad:function(r){if(!1===h){",
-        "to": "onAttributesLoad: function (r) {\n    if (!sdxECCAIsClassModelActive(i)) return;\n    if (!1 === h) {"
-      },
-      {
-        "from": "a.getListHandle.handle=null,a._onCompleteLoadModel(r,{initTable:!e,buildBehavior:t?f.FORCE_DEFAULT:f.NO_CHANGES})",
-        "to": "a.getListHandle.handle = null;\nvar sdxECCAApi = sdxECCAGetApi();\nif (sdxECCAApi && !sdxECCAApi.prepareAttributes(i, r)) return;\na._onCompleteLoadModel(r, {\n    initTable: !e, buildBehavior: t ? f.FORCE_DEFAULT : f.NO_CHANGES\n});\nif (sdxECCAApi) sdxECCAApi.notifyAttributesLoaded(i, r);"
-      }
-    ],
-    "referenceBlob": "e00ba512f45957a21e37bad935029d29ac93045d",
-    "referenceVersion": "R2026x"
   }
 }
