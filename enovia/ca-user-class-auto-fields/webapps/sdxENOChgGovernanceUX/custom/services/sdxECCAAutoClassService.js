@@ -152,7 +152,12 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
             session.readCurrentContext = null;
         };
         session.timer = setTimeout(function () {
-            session.fail(new Error("지정 클래스 속성 준비 시간이 초과되었습니다."));
+            var canRetry = session.classificationFacet &&
+                typeof session.classificationFacet.sdxECCARebuildUI === "function";
+            session.classificationTimedOut = Boolean(canRetry);
+            session.fail(new Error(canRetry ?
+                "지정 클래스 속성 준비 시간이 초과되었습니다. 분류 속성을 다시 불러와 주세요." :
+                "지정 클래스 속성 준비 시간이 초과되었습니다. 생성 화면을 다시 열어 주세요."));
         }, 60000);
         return session;
     }
@@ -569,6 +574,19 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         root.appendChild(style);
         var status = document.createElement("div");
         status.setAttribute("role", "status");
+        var retry = document.createElement("button");
+        retry.type = "button";
+        retry.textContent = "분류 속성 다시 불러오기";
+        retry.style.display = "none";
+        retry.onclick = function () {
+            if (session.disposed || session.transitioning || !session.classificationTimedOut) return;
+            var context = session.readCurrentContext && session.readCurrentContext();
+            if (context !== session.context) {
+                session.changeContext(context);
+                return;
+            }
+            sdxECCARestartAutoSession(session, context);
+        };
         var host = document.createElement("div");
         host.style.width = "100%";
         host.style.height = "360px";
@@ -603,8 +621,15 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
             }
             state.refreshReady();
             status.textContent = state.error ? state.error.message :
-                state.status === "ready" ? "" : !state.attributeControlReady ?
-                    "속성 제어 설정을 조회하고 있습니다…" : "지정 클래스 속성을 준비하고 있습니다…";
+                state.status === "ready" ? "" : state.classificationDelayed && !state.controller ?
+                    "분류 속성을 불러오는 중입니다…" : !state.attributeControlReady ?
+                        "속성 제어 설정을 조회하고 있습니다…" : "지정 클래스 속성을 준비하고 있습니다…";
+            if (state.classificationTimedOut && !state.transitioning) {
+                if (!retry.parentNode) root.insertBefore(retry, host);
+                retry.style.display = "";
+            } else {
+                retry.style.display = "none";
+            }
             host.style.display = state.attributesLoaded ? "" : "none";
         });
         sdxECCAScheduleAttributeControl(facet, session);
@@ -924,8 +949,8 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         facet.sdxECCAAutoContext = options.securityContext || session.context;
         session.checkContext(facet.sdxECCAAutoContext);
         var started = Date.now(), connected = false;
-        facet.sdxECCAAutoTimer = setInterval(function () {
-            if (connected || session.disposed || session.transitioning || session.status === "error") { clearInterval(facet.sdxECCAAutoTimer); return; }
+        var timer = setInterval(function () {
+            if (connected || session.disposed || session.transitioning || session.status === "error") { clearInterval(timer); return; }
             if (session.refreshValidation) session.refreshValidation();
             var isCA = session.type === "sdxECChangeAction";
             var occurrence = !isCA && typeof facet.getOccurrence === "function" ? facet.getOccurrence() : null;
@@ -937,7 +962,7 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                 (occurrence && typeof occurrence.setValidation === "function");
             if (occurrenceReady && ctrl && ctrl.autoComplete && ctrl.classifPropertiesView && ctrl.accordeonCon) {
                 connected = true;
-                clearInterval(facet.sdxECCAAutoTimer);
+                clearInterval(timer);
                 try {
                     if ((ctrl.autoComplete.selectedItems || []).length || (ctrl.classifPropModels || []).length) {
                         throw new Error("이미 분류가 선택된 화면에는 자동 초기화를 적용하지 않습니다.");
@@ -985,8 +1010,8 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                         sdxECCAApplyOrganizationClass(ctrl, session);
                     }
                 } catch (error) { session.fail(error); }
-            } else if (Date.now() - started > 30000) {
-                clearInterval(facet.sdxECCAAutoTimer);
+            } else if (!session.classificationDelayed && Date.now() - started >= 30000) {
+                session.classificationDelayed = true;
                 var missing = [];
                 if (!ctrl) missing.push("controller");
                 else ["autoComplete", "classifPropertiesView", "accordeonCon"].forEach(function (key) {
@@ -994,9 +1019,10 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                 });
                 if (!occurrenceReady) missing.push("occurrence.setValidation");
                 console.warn("[sdxECCA] 분류 초기화 준비 미완료", missing);
-                session.fail(new Error("분류 입력창 준비 시간이 초과되었습니다. 콘솔의 준비 미완료 항목을 확인해 주세요."));
+                session.notify();
             }
         }, 100);
+        facet.sdxECCAAutoTimer = timer;
     }
 
     /** OOTB getClassPaths 응답으로 클래스 노드를 만들고 원래 select/change 처리를 실행합니다.
@@ -1059,7 +1085,9 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                 } catch (error) { session.fail(error); }
             },
             onFailure: function () {
-                if (!session.disposed && !session.transitioning) session.fail(new Error("지정 클래스 경로 조회에 실패했습니다."));
+                if (!session.disposed && !session.transitioning && session.status !== "error") {
+                    session.fail(new Error("지정 클래스 경로 조회에 실패했습니다."));
+                }
             }
         });
     }
