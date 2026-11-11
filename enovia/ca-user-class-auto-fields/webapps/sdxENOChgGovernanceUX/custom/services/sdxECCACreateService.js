@@ -2,62 +2,104 @@
  * 아래 상속 클래스는 이 파일에서 함께 등록합니다. 공통 OOTB prototype은 변경하지 않습니다.
  * ENONewWidget은 설치 버전 원본을 사용합니다. 분류 두 파일의 F/M/P 연결은 유지합니다.
  */
-define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService", [
-    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService",
-    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/Engine"
-], function (AutoClass, Engine) {
-    "use strict";
-    return {
-        launch: function (createOptions) {
-            if (typeof widget === "undefined" || !AutoClass.isEnabled()) {
-                throw new Error("대상 위젯의 자동 분류 설정을 확인해 주세요.");
-            }
-            if (!createOptions) throw new Error("기존 생성 옵션을 확인해 주세요.");
-            var options = Object.assign({}, createOptions);
-            options.options = Object.assign({}, createOptions.options);
-            // 자동 분류는 기본 속성 facet과 분류 facet을 함께 사용합니다.
-            // 호출부에 탭 옵션이 없으면 OOTB가 listView로 내려가므로 여기서 보장합니다.
-            options.viewType = "tabView";
-            options.facets = (createOptions.facets || []).map(function (facet) {
-                return Object.assign({}, facet, {facetoptions: Object.assign({}, facet.facetoptions)});
-            });
-            if (!options.facets.some(function (facet) { return facet.name === "classificationFacet"; })) {
-                options.facets.push({name: "classificationFacet", facetoptions: {isBookmark: true, isLibrary: true}});
-            }
-            AutoClass.configureCreateType(options);
-            // OOTB Launcher와 같은 엔진을 상속하되, 이 생성창의 Controller만 교체합니다.
-            widget.sdxECCARuntime = AutoClass;
-            return new Engine(options);
-        }
-    };
-});
-
-define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/Engine", [
-    "DS/ENONewWidget/ENONew/ENONewEngine",
-    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/Controller"
-], function (Base, Controller) {
+define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/PropertiesFacet", [
+    "DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet",
+    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService"
+], function (Base, AutoClass) {
     "use strict";
     return Base.extend({
-        init: function () {
-            // OOTB 엔진의 prototype에 있는 옵션/이벤트 객체를 생성창별로 분리합니다.
-            this.objInfo = Object.assign({}, this.objInfo, {
-                options: Object.assign({}, this.objInfo.options),
-                events: Object.assign({}, this.objInfo.events)
-            });
+        init: function (options) {
+            this.sdxECCAAutoSession = options.sdxECCAAutoSession;
+            AutoClass.prepareFixedType(options.data, this.sdxECCAAutoSession);
+            this._parent.apply(this, arguments);
+            var view = this.listview;
+            var check = view && view.checkForMandatoryAttributes;
+            if (typeof check === "function") {
+                view.checkForMandatoryAttributes = function () {
+                    return AutoClass.checkMandatoryQuietly(this, check);
+                };
+            }
+            AutoClass.installFields(this, options);
+        },
+        // OOTB가 속성을 발행하기 전에 문맥 변경을 기록합니다. 원래 이벤트는 그대로 실행됩니다.
+        publishAttributeInfo: function (field) {
+            var session = this.sdxECCAAutoSession;
+            if (session && field) {
+                if (field.name === "SecurityContext") {
+                    session.currentContext = field.valueDB;
+                    session.changeContext(field.valueDB);
+                } else if (field.name === "Type") session.checkType(field.valueDB);
+            }
             return this._parent.apply(this, arguments);
         },
-        _getController: function (options, createOptionsModel) {
-            return this.controller || new Controller(options, createOptionsModel);
+        updateFacet: function (options) {
+            if (AutoClass.checkFacetContext(this, options) === false) return;
+            return this._parent.apply(this, arguments);
+        },
+        destroy: function () {
+            AutoClass.destroyFields(this);
+            return this._parent.apply(this, arguments);
         }
     });
 });
 
-define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/Controller", [
+define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService", [
+    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService",
+    "DS/ENONewWidget/ENONew/ENONewEngine",
     "DS/ENONewWidget/ENONew/Controller/ENONewController",
-    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/Dialog"
-], function (Base, Dialog) {
+    "DS/ENONewWidget/ENONew/Controller/ENONewDialogController",
+    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/PropertiesFacet"
+], function (AutoClass, BaseEngine, BaseController, BaseDialog) {
     "use strict";
-    return Base.extend({
+
+    // 이 서비스의 생성자입니다. 별도 AMD 파일 요청 없이 참조합니다.
+var Dialog = BaseDialog.extend({
+        buildContent: function (data, options) {
+            if (this.viewType !== "tabView" || !Array.isArray(this.facets)) {
+                throw new Error("자동 분류 생성창에는 속성·분류 탭 구성이 필요합니다.");
+            }
+            // OOTB helper가 만든 결과만 복제합니다. helper/공통 facet 정의는 수정하지 않습니다.
+            this.facets = this.facets.map(function (entry) {
+                return Object.assign({}, entry, {options: Object.assign({}, entry.options)});
+            });
+            AutoClass.attachBridge(data, this.facets, Object.assign({}, options, {
+                tenant: this.options.sdxECCATenant
+            }));
+            var properties = this.facets.find(function (entry) { return entry.facet.name === "ENOCreate"; });
+            var classification = this.facets.find(function (entry) { return entry.facet.name === "classificationFacet"; });
+            if (!properties || !classification || !properties.options.sdxECCAAutoSession) {
+                throw new Error("자동 분류 세션과 생성 타입 설정을 확인해 주세요.");
+            }
+            properties.require = "DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/PropertiesFacet";
+            // 분류 facet은 master와 같은 OOTB 경로와 F/M/P 연결을 사용합니다.
+            return this._parent.apply(this, arguments);
+        },
+        manageButtons: function () {
+            var result = this._parent.apply(this, arguments);
+            if (this.myDialog) AutoClass.bindDialog(this);
+            return result;
+        },
+        onSubmitDialog: function () {
+            if (!AutoClass.canSubmitDialog(this)) {
+                this.resetButtonLabel();
+                this.disableFormInput(false, false, true);
+                return;
+            }
+            return this._parent.apply(this, arguments);
+        },
+        disableFormInput: function () {
+            var result = this._parent.apply(this, arguments);
+            AutoClass.preserveValidationState(this);
+            return result;
+        },
+        destroy: function () {
+            AutoClass.disposeDialog(this);
+            return this._parent.apply(this, arguments);
+        }
+    });
+
+    // 이 서비스의 생성자입니다. 별도 AMD 파일 요청 없이 참조합니다.
+var Controller = BaseController.extend({
         getUI: function () {
             if (!this.dialog) {
                 this.dialog = new Dialog({sdxECCATenant: this.context && this.context.tenant}, this.createOptsModel);
@@ -113,96 +155,43 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/Controller
             return this._parent.apply(this, arguments);
         }
     });
-});
 
-define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/Dialog", [
-    "DS/ENONewWidget/ENONew/Controller/ENONewDialogController",
-    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService"
-], function (Base, AutoClass) {
-    "use strict";
-    return Base.extend({
-        buildContent: function (data, options) {
-            if (this.viewType !== "tabView" || !Array.isArray(this.facets)) {
-                throw new Error("자동 분류 생성창에는 속성·분류 탭 구성이 필요합니다.");
-            }
-            // OOTB helper가 만든 결과만 복제합니다. helper/공통 facet 정의는 수정하지 않습니다.
-            this.facets = this.facets.map(function (entry) {
-                return Object.assign({}, entry, {options: Object.assign({}, entry.options)});
+    // 이 서비스의 생성자입니다. 별도 AMD 파일 요청 없이 참조합니다.
+var Engine = BaseEngine.extend({
+        init: function () {
+            // OOTB 엔진의 prototype에 있는 옵션/이벤트 객체를 생성창별로 분리합니다.
+            this.objInfo = Object.assign({}, this.objInfo, {
+                options: Object.assign({}, this.objInfo.options),
+                events: Object.assign({}, this.objInfo.events)
             });
-            AutoClass.attachBridge(data, this.facets, Object.assign({}, options, {
-                tenant: this.options.sdxECCATenant
-            }));
-            var properties = this.facets.find(function (entry) { return entry.facet.name === "ENOCreate"; });
-            var classification = this.facets.find(function (entry) { return entry.facet.name === "classificationFacet"; });
-            if (!properties || !classification || !properties.options.sdxECCAAutoSession) {
-                throw new Error("자동 분류 세션과 생성 타입 설정을 확인해 주세요.");
-            }
-            properties.require = "DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/PropertiesFacet";
-            // 분류 facet은 master와 같은 OOTB 경로와 F/M/P 연결을 사용합니다.
             return this._parent.apply(this, arguments);
         },
-        manageButtons: function () {
-            var result = this._parent.apply(this, arguments);
-            if (this.myDialog) AutoClass.bindDialog(this);
-            return result;
-        },
-        onSubmitDialog: function () {
-            if (!AutoClass.canSubmitDialog(this)) {
-                this.resetButtonLabel();
-                this.disableFormInput(false, false, true);
-                return;
-            }
-            return this._parent.apply(this, arguments);
-        },
-        disableFormInput: function () {
-            var result = this._parent.apply(this, arguments);
-            AutoClass.preserveValidationState(this);
-            return result;
-        },
-        destroy: function () {
-            AutoClass.disposeDialog(this);
-            return this._parent.apply(this, arguments);
+        _getController: function (options, createOptionsModel) {
+            return this.controller || new Controller(options, createOptionsModel);
         }
     });
-});
 
-define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/PropertiesFacet", [
-    "DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet",
-    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService"
-], function (Base, AutoClass) {
-    "use strict";
-    return Base.extend({
-        init: function (options) {
-            this.sdxECCAAutoSession = options.sdxECCAAutoSession;
-            AutoClass.prepareFixedType(options.data, this.sdxECCAAutoSession);
-            this._parent.apply(this, arguments);
-            var view = this.listview;
-            var check = view && view.checkForMandatoryAttributes;
-            if (typeof check === "function") {
-                view.checkForMandatoryAttributes = function () {
-                    return AutoClass.checkMandatoryQuietly(this, check);
-                };
+return {
+        launch: function (createOptions) {
+            if (typeof widget === "undefined" || !AutoClass.isEnabled()) {
+                throw new Error("대상 위젯의 자동 분류 설정을 확인해 주세요.");
             }
-            AutoClass.installFields(this, options);
-        },
-        // OOTB가 속성을 발행하기 전에 문맥 변경을 기록합니다. 원래 이벤트는 그대로 실행됩니다.
-        publishAttributeInfo: function (field) {
-            var session = this.sdxECCAAutoSession;
-            if (session && field) {
-                if (field.name === "SecurityContext") {
-                    session.currentContext = field.valueDB;
-                    session.changeContext(field.valueDB);
-                } else if (field.name === "Type") session.checkType(field.valueDB);
+            if (!createOptions) throw new Error("기존 생성 옵션을 확인해 주세요.");
+            var options = Object.assign({}, createOptions);
+            options.options = Object.assign({}, createOptions.options);
+            // 자동 분류는 기본 속성 facet과 분류 facet을 함께 사용합니다.
+            // 호출부에 탭 옵션이 없으면 OOTB가 listView로 내려가므로 여기서 보장합니다.
+            options.viewType = "tabView";
+            options.facets = (createOptions.facets || []).map(function (facet) {
+                return Object.assign({}, facet, {facetoptions: Object.assign({}, facet.facetoptions)});
+            });
+            if (!options.facets.some(function (facet) { return facet.name === "classificationFacet"; })) {
+                options.facets.push({name: "classificationFacet", facetoptions: {isBookmark: true, isLibrary: true}});
             }
-            return this._parent.apply(this, arguments);
-        },
-        updateFacet: function (options) {
-            if (AutoClass.checkFacetContext(this, options) === false) return;
-            return this._parent.apply(this, arguments);
-        },
-        destroy: function () {
-            AutoClass.destroyFields(this);
-            return this._parent.apply(this, arguments);
+            AutoClass.configureCreateType(options);
+            // OOTB Launcher와 같은 엔진을 상속하되, 이 생성창의 Controller만 교체합니다.
+            widget.sdxECCARuntime = AutoClass;
+            return new Engine(options);
         }
-    });
+    };
 });
