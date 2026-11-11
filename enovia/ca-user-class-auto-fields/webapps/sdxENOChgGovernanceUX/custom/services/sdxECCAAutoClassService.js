@@ -253,6 +253,9 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         classification.options = classification.options || {};
         properties.options.sdxECCAAutoSession = session;
         classification.options.sdxECCAAutoSession = session;
+        // 생성창은 객체 생성 후 postCreation에서 분류를 저장합니다.
+        // undefined이면 OOTB가 공용 정보 패널 상태를 읽어 선택 즉시 연결을 시도합니다.
+        classification.options.isInformationPanel = false;
         classification.alwaysCalled = true;
         // 속성/분류/북마크 탭 선택 영역은 OOTB 표시 상태를 유지합니다.
         if (configError) session.fail(configError);
