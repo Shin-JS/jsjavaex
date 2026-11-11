@@ -301,6 +301,11 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         try {
             sdxECCAInstallAutoFields(properties, {sdxECCAAutoSession: next});
             classification.sdxECCARebuildUI(context);
+            // OOTB getInformationPanel()은 DOM의 생성창 표식을 매번 확인합니다.
+            // 원래 컨테이너와 함께 분리된 표식을 새 컨테이너로 옮겨 속성 로딩도 생성 모드를 유지합니다.
+            var creationPanel = classification.plmNewCreationClass;
+            var container = classification.elements && classification.elements.container;
+            if (creationPanel && container) container.appendChild(creationPanel);
             sdxECCAConnectAutoClassification(classification, options);
             if (dialog) sdxECCABindDialog(dialog);
         } catch (error) { next.fail(error); }
