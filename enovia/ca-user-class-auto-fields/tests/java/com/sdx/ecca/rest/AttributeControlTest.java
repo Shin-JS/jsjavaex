@@ -22,7 +22,7 @@ public class AttributeControlTest {
     }
     private static Response call() {
         RestService.nextContext=new Context();RestService.deny=false;
-        Response result=new SdxEccaAttributeService().readControl(null,"CREATE");
+        Response result=new SdxEccaAttributeService().readControl(null,"CREATE",null);
         check(RestService.nextContext.shutdowns==1,"Context cleanup");
         return result;
     }
@@ -71,18 +71,32 @@ public class AttributeControlTest {
         Map work=row("A","1");work.put("attribute[sdxECAttributeState]","In Work");
         DomainObject.rows=Arrays.asList(work);
         RestService.nextContext=new Context();RestService.deny=false;
-        result=new SdxEccaAttributeService().readControl(null,"In Work");
+        result=new SdxEccaAttributeService().readControl(null,"In Work",null);
         check(result.getStatus()==200 && json(result).getString("state").equals("In Work"),"Dynamic state response");
         check(DomainObject.where.endsWith("== 'In Work'"),"Dynamic state DB filter");
+        DomainObject.rows=Arrays.asList(row("A","1"));
+        for (String policy : Arrays.asList("sdxECR", "sdxECO", "customECR")) {
+            result=new SdxEccaAttributeService().readControl(null,"CREATE",policy);
+            check(result.getStatus()==200,"Policy-filtered query succeeds");
+            check(DomainObject.where.endsWith("attribute[sdxECAttributeType] == '"+
+                policy.substring(policy.length()-3)+"'"),"Policy suffix filters DB query");
+            check(DomainObject.selects.size()==8,"Policy filter needs no additional selects");
+        }
+        int policyCalls=DomainObject.calls;
+        for (String invalid : Arrays.asList("", "EC", "sdxECR' || true", "sdxECR ")) {
+            check(new SdxEccaAttributeService().readControl(null,"CREATE",invalid).getStatus()==400,
+                "Invalid policy rejected");
+        }
+        check(DomainObject.calls==policyCalls,"Invalid policy never reaches DB");
         int calls=DomainObject.calls;
         for (String invalid : Arrays.asList(null,""," ","CREATE' || true","*","A\\B")) {
             RestService.nextContext=new Context();
-            check(new SdxEccaAttributeService().readControl(null,invalid).getStatus()==400,"Invalid state rejected");
+            check(new SdxEccaAttributeService().readControl(null,invalid,null).getStatus()==400,"Invalid state rejected");
             check(RestService.nextContext.shutdowns==1,"Invalid-state Context cleanup");
         }
         check(DomainObject.calls==calls,"Invalid state never reaches DB");
         DomainObject.fail=true;check(call().getStatus()==500,"Query failure");DomainObject.fail=false;
-        RestService.deny=true;check(new SdxEccaAttributeService().readControl(null,"CREATE").getStatus()==401,"Authentication required");
+        RestService.deny=true;check(new SdxEccaAttributeService().readControl(null,"CREATE",null).getStatus()==401,"Authentication required");
         check(new SdxEccaModeler().getServices()[0]==SdxEccaAttributeService.class,"Service registration retained");
         System.out.println("PASS: Java service, scoped single query, current-user context, eight selects, deterministic ordering, Y/N/X (N=X), invalid/duplicate/scope/failure/authentication and cleanup");
     }
