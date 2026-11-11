@@ -47,15 +47,15 @@ department 모드는 고정 클래스 ID를 요구하지 않으며 조회 실패
 
 ## 오늘 확인한 속성 완료 처리
 
-ClassificationsFacet.js에서 모델 생성 직후 `tagClassModel(컨트롤러, 모델, 클래스ID)`를 호출해 모델에 세션을 표시합니다. ClassificationProp.js에서는 실제 폼 반영 뒤 **동일 모델**과 응답으로 `notifyAttributesLoaded(모델, 응답)`를 호출합니다.
+CreateService의 전용 `ClassifPropController.loadModels(model)`에서 원래 조회를 시작하기 전에 `tagClassModel`로 세션을 표시합니다. 전용 `_onCompleteLoadModel(response)`가 기존 폼 생성 전 `prepareAttributes`, 폼 생성 뒤 `notifyAttributesLoaded`를 호출합니다. OOTB ClassificationsFacet/ClassificationProp 파일은 수정하지 않습니다.
 
-현재 설치 소스의 `modelList:[i]`, `onAttributesLoad:function(r)` 구조에서는 다음이 맞습니다.
+상속 컨트롤러에서 사용하는 호출은 다음과 같습니다.
 
 ```js
-sdxECCAAutoClass.notifyAttributesLoaded(i, r);
+AutoClass.notifyAttributesLoaded(model, response);
 ```
 
-`notifyAttributesLoaded(r,e)`로 전달하면 응답을 모델로 읽어 세션을 찾지 못하며 준비 메시지가 계속 표시됩니다. 여기의 축약 변수명은 다른 버전에 그대로 적용하지 않습니다. 세션 속성명은 모두 `sdxECCAAutoSession`입니다.
+모델/응답 인자의 순서를 뒤집으면 세션을 찾지 못합니다. 세션 속성명은 `sdxECCAAutoSession`입니다. 위젯 관련 소스는 R2026x를 먼저 확인합니다.
 
 검증 모듈은 기존 분류 컨트롤러 준비 후 ClassifPropWidget → AttributesUtils 순서로 지연 로드하며 구독 알림당 반복 로드를 막습니다. 문맥 검사에는 옵션 객체 전체 대신 실제 securityContext 문자열을 전달합니다. 조사에 사용한 공유 디버그 모델/컨트롤러 변수는 추가하지 않았습니다.
 

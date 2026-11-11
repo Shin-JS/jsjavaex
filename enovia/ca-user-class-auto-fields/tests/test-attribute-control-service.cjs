@@ -19,6 +19,16 @@ const scope={tenant:'OnPremise',securityContext:'ctx::Leader.Org.Space',state:'C
  assert.equal(request.url,'https://space/3dspace/resources/v1/modeler/sdxECCA/attributes/control?state=CREATE');
  assert.equal(request.options.method,'GET');assert.equal(request.options.headers.SecurityContext,encodeURIComponent(scope.securityContext));
  assert.equal(rules.get('A').edit,false);assert.equal(request.options.data,undefined);
+ for (const policy of ['sdxECR', 'sdxECO']) {
+  payload=response([row()]);
+  assert.equal((await api.read({...scope,policy})).size,1);
+  assert.equal(request.url,'https://space/3dspace/resources/v1/modeler/sdxECCA/attributes/control?state=CREATE&policy='+policy);
+ }
+ for (const policy of ['',null,12,'EC',"sdxECR' || true",'sdxECR ']) {
+  request=null;
+  await assert.rejects(api.read({...scope,policy}));
+  assert.equal(request,null);
+ }
  for(const bad of [response([row(),row()]),response([{...row(),read:'Y'}]),response([{...row(),order:-1}]),
   response([{...row(),order:1.2}]),{...response([]),organization:'VD'},'<html>login</html>',{success:false}]){
   payload=bad;await assert.rejects(api.read(scope));

@@ -131,7 +131,7 @@ define("DS/sdxECCAAutoClass/sdxECCAClassAttributeService", ["require"], function
             return new Promise(function (resolve, reject) {
                 require(["DS/WAFData/WAFData"], function (WAFData) {
                     try {
-                        // R2024x 3DSpaceAjaxRequests.getListOfAttributes의 bus 조회 계약입니다.
+                        // R2026x ClassificationProp/3DSpaceAjaxRequests.getListOfAttributes의 bus 조회 계약입니다.
                         WAFData.authenticatedRequest(url.replace(/\/$/, "") +
                             "/resources/v1/collabServices/attributes/op/read?tenant=" + encodeURIComponent(scope.tenant), {
                             method: "POST", type: "json", timeout: 60000, proxy: "passport", authentication: "passport",
@@ -311,6 +311,10 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControlService", [
             return Promise.reject(new Error("속성 제어 조회 URL·권한 문맥·tenant·상태를 확인해 주세요."));
         }
         var state = request.state;
+        var policy = request.policy;
+        if (policy !== undefined && (typeof policy !== "string" || !/^[A-Za-z0-9_]{3,128}$/.test(policy))) {
+            return Promise.reject(new Error("속성 제어 조회 policy를 확인해 주세요."));
+        }
         function closed() { return request.isCancelled && request.isCancelled(); }
         return new Promise(function (resolve, reject) {
             Compass.getServiceUrl({serviceName: "3DSpace", platformId: request.tenant,
@@ -326,7 +330,9 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControlService", [
         }).then(function (base) {
             if (closed()) return null;
             return new Promise(function (resolve, reject) {
-                WAFData.authenticatedRequest(base + url + "?state=" + encodeURIComponent(state), {method: "GET", type: "json", timeout: 10000,
+                var query = "?state=" + encodeURIComponent(state);
+                if (policy !== undefined) query += "&policy=" + encodeURIComponent(policy);
+                WAFData.authenticatedRequest(base + url + query, {method: "GET", type: "json", timeout: 10000,
                     proxy: "passport", authentication: "passport",
                     headers: {Accept: "application/json", SecurityContext: encodeURIComponent(request.securityContext)},
                     onComplete: function (response) {

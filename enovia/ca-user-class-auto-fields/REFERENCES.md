@@ -1,5 +1,40 @@
 # 참조 소스와 판단 근거
 
+## ENONewWidget만 원본 유지 — 2026-11-05
+
+사용자 지시에 따라 위젯 코드는 private-rag의 `references/enovia-r2026x`를 우선 기준으로 합니다.
+R2025x는 호환 경로 확인용, R2024x는 이전 설계와 비교용입니다.
+공급사 소스는 이 저장소에 복제하지 않습니다.
+
+| R2026x 참조 파일 | 확인한 blob SHA |
+|---|---|
+| 3dspace/webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js | 2e8f017f2471ff3fd657b862f2c4e201f9932906 |
+| 3dspace/webapps/ENONewWidget/ENONewWidget.js | 7d7b8caf4dc7feb43cf9851883ddde3eade34ca6 |
+| 3dspace/webapps/ClassificationsFacet/ClassificationsFacet.js | 784a202ef4e84bdf42c974dce03c24a626f21e4e |
+| 3dspace/webapps/ClassificationProp/ClassificationProp.js | e00ba512f45957a21e37bad935029d29ac93045d |
+| 3dspace/webapps/EditPropWidget/EditPropWidget.js | 67f66cbe31bab6939f625d96b0c76b413e93c661 |
+
+R2026x에서 확인한 차이: 생성 모델의 getSecurityContext 기반 저장,
+project/organisation/role 자격증명 이벤트, 생성 모델을 전달하는 displayDialog,
+refreshDialog의 모델 누락, checkForMandatoryAttributes의 초기 오류 상태 변경입니다.
+ENONewWidget의 연결만 전용 상속 클래스에서 보완하고, 분류 두 파일은 master와 같은 F/M/P 연결을 유지합니다.
+F/M/P 가이드의 헤더와 축약 변수도 위 R2026x 원본으로 다시 생성하고 적용·실행했습니다.
+
+### 생성 진입 원본 확인 정정
+
+R2026x ENOChgGovernanceUX.js는 빈 파일이 아니라 **1,835,141바이트의 대용량 번들**입니다.
+이전 파일 조회 응답의 빈 content를 원본 파일이 비어 있는 것으로 해석한 것은 잘못이었습니다.
+Git blob으로 원본 전체를 읽어 ChgCreateChangeAction 모듈을 직접 확인했습니다.
+수정 메모의 헤더/함수 인자와 G1/G2 원문을 해당 R2026x 소스에 일치시켰습니다.
+
+- G2 원문은 `let p={};p[n.keys.createKeys.CA_DEF_TYPE]=...saveUserPreference(p)`입니다.
+- G1은 `(new e).CreateNew(d)` 뒤에 `t.setDialogEventForLoader()`가 이어집니다.
+- context, draft 설정, classificationFacet 옵션, 분석 이벤트, 목록/상세 갱신과 실패/취소 콜백을 유지합니다.
+- 원본 생성 모듈에 실제 변경 조각을 적용한 실행 검사로 확인합니다.
+- 클래스 필수 플래그의 bus POST도 R2026x ClassificationProp/3DSpaceAjaxRequests.getListOfAttributes와 대조했습니다.
+
+아래 R2024x/R2025x 내용은 이전 조사 기록입니다. 현재 프런트엔드 기준은 위 R2026x 소스와 실행 검사입니다.
+
 ## 클래스 코드·활성 상태 조회 (2026-10-21)
 
 API 호출 위치는 [R2024x LibraryEditor.js](https://github.com/Ignim94/R2024x/blob/master/3dspace/webapps/LibraryEditor/LibraryEditor.js)의

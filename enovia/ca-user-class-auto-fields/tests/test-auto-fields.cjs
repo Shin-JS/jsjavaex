@@ -76,11 +76,32 @@ function makeController(session){
  ctrl.classifPropModels.push(model);api.tagClassModel(ctrl,model,session.classId);}}},
  PLMNewCommonWebService:{get3DSpaceUrl:()=>Promise.resolve('https://example/3dspace'),getClassPaths(opts){request=opts},constructPath:response=>response.chains,extractPath:()=> 'Library > Class'}
  };
- ctrl.classifPropertiesView.controller={skeleton:{getFacetContent(name){assert.equal(name,'classificationAttiProp');return {
+ ctrl.classifPropertiesView.controller={skeleton:{_lFacets:[{facet:{name:'classificationAttiProp'},require:'DS/ClassificationProp/facets/Properties/ClassifPropController'}],getFacetContent(name){assert.equal(name,'classificationAttiProp');return {
  getModel:()=>ctrl.renderedModel || ctrl.classifPropModels[0],
  editPropertiesUI:{elements:{UIController:{validateModels(models){assert.equal(models[0],ctrl.renderedModel || ctrl.classifPropModels[0]);return validateError?[{message:validateError}]:null;}}}}
  };}}};
  return {ctrl,parent,form,sibling,request:()=>request,selectedCount:()=>selectedCount};
+}
+// 2026은 생성 모델의 문맥을 우선 사용하고 legacy SecurityContext 필드를 추가하지 않습니다.
+{
+ config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',
+  sdxECCACreatePolicy:'sdxECR',sdxECCAEnableModelSearch:false};
+ let current='MODEL-A',listener,removed=0,finish;
+ const createModel={getSecurityContext:()=>current,
+  addEvent(name,fn){assert.equal(name,'onChange:securityContext');listener=fn;},
+  removeEvent(name,fn){assert.equal(name,'onChange:securityContext');assert.equal(fn,listener);removed++;}};
+ const typed={model:createModel,defaultAttributes:{Type:{value:'sdxECChangeAction'},SecurityContext:{value:'LEGACY-OTHER'}}};
+ const entries=metadata();api.attachBridge(typed,entries,{});const state=entries[0].options.sdxECCAAutoSession;
+ assert.equal(state.context,'MODEL-A');
+ const props={skeleton:new Element(),listview:{data:typed,onSubmit(callback){finish=callback;}}};
+ api.installFields(props,{sdxECCAAutoSession:state});assert.equal(state.readCurrentContext(),'MODEL-A');
+ let received;props.listview.onSubmit(value=>{received=value;});
+ finish({defaultAttributes:{Type:{value:'sdxECChangeAction'}},attributes:{publicAttributes:[]}});
+ assert(received);assert.equal(received.defaultAttributes.SecurityContext,undefined);
+ assert.equal(received.basicAttributes.policy,'sdxECR');
+ current='MODEL-B';listener();assert.equal(state.transitioning,true);assert.equal(state.currentContext,'MODEL-B');
+ assert.equal(state.readCurrentContext(),'MODEL-B');state.dispose();assert.equal(removed,1);
+ const pending=state.pendingContext;current='MODEL-C';listener();assert.equal(state.pendingContext,pending);
 }
 // 필수 라벨만 기본 아이콘으로 교체하며 분류/오류 아이콘은 건드리지 않습니다.
 {
@@ -114,6 +135,8 @@ for (const mode of ['absent', 'delayed', 'missing-method', 'uninitialized']) {
  api.connectClassification(delayed,{sdxECCAAutoSession:state,securityContext:state.context});
  const poll=timers.get(delayed.sdxECCAAutoTimer);
  poll();assert.ok(controller.request(),mode+' occurrence must not block CA');
+ assert.equal(controller.ctrl.classifPropertiesView.controller.skeleton._lFacets[0].require,'DS/ClassificationProp/facets/Properties/ClassifPropController');
+ assert.equal(controller.ctrl.classifPropertiesView.controller.skeleton._lFacets[0].options,undefined);
  const request=controller.request();delayed.getOccurrence=()=>({setValidation(){}});poll();
  assert.equal(controller.request(),request);assert.notEqual(state.status,'error');state.dispose();
 }

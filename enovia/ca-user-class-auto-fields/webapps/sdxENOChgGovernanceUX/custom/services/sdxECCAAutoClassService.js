@@ -45,6 +45,40 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
 
     // C1. 세션 생성·종료와 협업공간 변경
 
+    function fieldValue(field, key) {
+        var value = typeof field.get === "function" ? field.get(key) : undefined;
+        return value === undefined ? field[key] : value;
+    }
+
+    function captureInputs(model, inputs, classId) {
+        if (!model || typeof model.values !== "function") return;
+        model.values().forEach(function (field) {
+            if (!field || typeof field.getIdentifier !== "function" || !fieldValue(field, "isUIModified")) return;
+            var name = fieldValue(field, "name");
+            if (!name || name === "sdxECModel" || /^(?:New-)?(?:Type|SecurityContext|project|organisation|organization|role)$/i.test(name)) return;
+            if (classId && fieldValue(field, "facet") !== classId) return;
+            inputs.set(field.getIdentifier(), {
+                name: name, value: fieldValue(field, "value"), valueDB: fieldValue(field, "valueDB")
+            });
+        });
+    }
+
+    function restoreInputs(model, inputs, classId) {
+        if (!inputs || !model || typeof model.values !== "function") return;
+        model.values().forEach(function (field) {
+            if (!field || typeof field.getIdentifier !== "function" || typeof field.set !== "function") return;
+            var saved = inputs.get(field.getIdentifier());
+            if (!saved || saved.name !== fieldValue(field, "name") ||
+                    fieldValue(field, "readOnly") || fieldValue(field, "isReadOnly") ||
+                    fieldValue(field, "visible") === false || fieldValue(field, "isUIModified") ||
+                    (classId && fieldValue(field, "facet") !== classId)) return;
+            field.set("value", saved.value);
+            field.set("valueDB", saved.valueDB);
+            field.set("isModified", true);
+            field.set("isUIModified", true);
+        });
+    }
+
     /** 대화상자마다 별도 세션을 만들어 초기화·속성 로딩·UI·생성 검증을 연결합니다. */
     function sdxECCACreateAutoSession(context, type, rule) {
         var session = {
@@ -92,6 +126,15 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
             if (session.disposed || (!session.transitioning && value === session.context)) return;
             // onChangeAttribute의 원래 자격증명/프로젝트 초기화가 끝나기 전에는
             // dispose, UI 교체, 검증 이벤트 발행을 실행하지 않습니다.
+            if (!session.transitioning && session.type === "sdxECChangeAction") {
+                var view = session.propertiesFacet && session.propertiesFacet.listview;
+                session.baseInputs = session.baseInputs || new Map();
+                captureInputs(view && view.propModel, session.baseInputs);
+                if (session.classControlForm && session.classId) {
+                    session.classInputs = {id: session.classId, values: new Map()};
+                    captureInputs(session.classControlForm.model, session.classInputs.values, session.classId);
+                }
+            }
             session.pendingContext = value;
             session.transitioning = true;
             session.status = "loading";
@@ -138,6 +181,7 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
             if (session.cleanupAttributeControl) session.cleanupAttributeControl();
             if (session.cancelRequest) session.cancelRequest();
             if (session.cleanupValidation) session.cleanupValidation();
+            if (session.cleanupContextWatch) session.cleanupContextWatch();
             session.listeners.forEach(function (fn) { fn(session); });
             session.listeners.clear();
             if (session.controller && session.controller.sdxECCAAutoSession === session) {
@@ -151,7 +195,12 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
             session.readCurrentContext = null;
         };
         session.timer = setTimeout(function () {
-            session.fail(new Error("지정 클래스 속성 준비 시간이 초과되었습니다."));
+            var canRetry = session.classificationFacet &&
+                typeof session.classificationFacet.sdxECCARebuildUI === "function";
+            session.classificationTimedOut = Boolean(canRetry);
+            session.fail(new Error(canRetry ?
+                "지정 클래스 속성 준비 시간이 초과되었습니다. 분류 속성을 다시 불러와 주세요." :
+                "지정 클래스 속성 준비 시간이 초과되었습니다. 생성 화면을 다시 열어 주세요."));
         }, 60000);
         return session;
     }
@@ -169,7 +218,9 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         var properties = facetList.find(function (item) { return item.facet.name === "ENOCreate"; });
         var classification = facetList.find(function (item) { return item.facet.name === "classificationFacet"; });
         if (!properties || !classification) throw new Error("ENOCreate와 classificationFacet이 필요합니다.");
-        var context = attrs && attrs.SecurityContext && attrs.SecurityContext.value;
+        var createModel = data && data.model;
+        var context = createModel && typeof createModel.getSecurityContext === "function" ?
+            createModel.getSecurityContext() : attrs && attrs.SecurityContext && attrs.SecurityContext.value;
         context = context || settings && settings.securityContext;
         var rule = null, configError = null;
         var typeDisplay = settingsValues.typeDisplay || "hidden";
@@ -202,6 +253,9 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         classification.options = classification.options || {};
         properties.options.sdxECCAAutoSession = session;
         classification.options.sdxECCAAutoSession = session;
+        // 생성창은 객체 생성 후 postCreation에서 분류를 저장합니다.
+        // undefined이면 OOTB가 공용 정보 패널 상태를 읽어 선택 즉시 연결을 시도합니다.
+        classification.options.isInformationPanel = false;
         classification.alwaysCalled = true;
         // 속성/분류/북마크 탭 선택 영역은 OOTB 표시 상태를 유지합니다.
         if (configError) session.fail(configError);
@@ -211,7 +265,7 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
     function sdxECCARestartAutoSession(previous, context) {
         var properties = previous.propertiesFacet, classification = previous.classificationFacet;
         if (!properties || !classification || typeof classification.sdxECCARebuildUI !== "function") {
-            previous.fail(new Error("권한 문맥 재초기화 연결을 확인해 주세요. ENONewWidget B4와 ClassificationsFacet F2를 함께 적용해야 합니다."));
+            previous.fail(new Error("권한 문맥 재초기화를 위한 커스텀 생성 모듈 연결을 확인해 주세요."));
             return;
         }
         var dialog = previous.dialog || previous.bindingDialog;
@@ -221,6 +275,8 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
             next[key] = previous[key];
         });
         next.facetEntries = entries;
+        next.baseInputs = previous.baseInputs;
+        next.classInputs = previous.classInputs;
         // dispose는 이전 제출 콜백/검색/표시 조회/분류 속성 응답을 모두 차단합니다.
         previous.dispose();
         clearInterval(classification.sdxECCAAutoTimer);
@@ -244,7 +300,18 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         var options = Object.assign({}, previous.classificationOptions, {sdxECCAAutoSession: next, securityContext: context});
         try {
             sdxECCAInstallAutoFields(properties, {sdxECCAAutoSession: next});
+            var previousContainer = classification.elements && classification.elements.container;
             classification.sdxECCARebuildUI(context);
+            // OOTB getInformationPanel()은 DOM의 생성창 표식을 매번 확인합니다.
+            // 원래 컨테이너와 함께 분리된 표식을 새 컨테이너로 옮겨 속성 로딩도 생성 모드를 유지합니다.
+            var creationPanel = classification.plmNewCreationClass;
+            var container = classification.elements && classification.elements.container;
+            // 숨겨진 분류 탭을 교체해도 현재 탭의 표시 상태와 OOTB 컨테이너 클래스를 유지합니다.
+            if (previousContainer && container && previousContainer !== container) {
+                container.className = previousContainer.className;
+                container.style.cssText = previousContainer.style.cssText;
+            }
+            if (creationPanel && container) container.appendChild(creationPanel);
             sdxECCAConnectAutoClassification(classification, options);
             if (dialog) sdxECCABindDialog(dialog);
         } catch (error) { next.fail(error); }
@@ -449,7 +516,13 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                     var security = result.defaultAttributes.SecurityContext;
                     // OOTB 직렬화가 생략한 문맥만 검증된 현재 선택값으로 보충합니다.
                     // 기존 값이 있으면 덮어쓰지 않고 아래에서 일치 여부를 검사합니다.
-                    if (!security || security.value == null) {
+                    var createModel = view.data && view.data.model;
+                    var modelContext = createModel && typeof createModel.getSecurityContext === "function";
+                    // 2026은 생성 모델에서 HTTP 권한 문맥을 읽습니다. legacy 필드를 새로 만들지 않습니다.
+                    if (modelContext) {
+                        session.checkContext(createModel.getSecurityContext());
+                        if (security) session.checkContext(security.value);
+                    } else if (!security || security.value == null) {
                         var selectedContext = session.readCurrentContext();
                         session.checkContext(selectedContext);
                         if (session.status === "error") throw session.error;
@@ -458,7 +531,7 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                         });
                         result.defaultAttributes.SecurityContext = security;
                     }
-                    session.checkContext(security.value);
+                    if (!modelContext) session.checkContext(security.value);
                     if (session.status === "error") throw session.error;
                     var type = result.defaultAttributes && result.defaultAttributes.Type;
                     if (!type || type.value !== session.type) throw new Error("생성 요청의 유형이 지정 유형과 다릅니다.");
@@ -484,12 +557,40 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
 
     // C3. 기본 폼 연결·자동 분류 영역 배치·검색 예약
 
+    /** 2026의 필수값 버튼 검사는 원래 검증기로 수행하되 실제 필드에 초기 오류를 남기지 않습니다. */
+    function sdxECCACheckMandatoryQuietly(view, original) {
+        var snapshot = Object.create(view);
+        snapshot.propModel = Object.create(view.propModel);
+        snapshot.propModel.getAllAttributes = function () {
+            var fields = view.propModel.getAllAttributes(), copies = {};
+            Object.keys(fields).forEach(function (key) {
+                var field = fields[key];
+                if (!field || typeof field !== "object" || field.isUIModified) { copies[key] = field; return; }
+                var copy = Object.create(field);
+                copy.resetError = function () {};
+                copy.setError = function () {};
+                copies[key] = copy;
+            });
+            return copies;
+        };
+        return original.call(snapshot);
+    }
+
     /** OOTB 분류 폼을 이동하고 대상 타입의 모델 검색을 연결합니다. */
     function sdxECCAInstallAutoFields(facet, options) {
         var session = options.sdxECCAAutoSession;
         if (!session) return;
         var settingsValues = sdxECCAReadSettings();
         session.propertiesFacet = facet;
+        session.restoreInputs = function (model, classification) {
+            if (!classification) {
+                restoreInputs(model, session.baseInputs);
+                return;
+            }
+            var saved = session.classInputs;
+            if (saved && saved.id === session.classId) restoreInputs(model, saved.values, session.classId);
+            session.classInputs = null;
+        };
         var searchEnabled = typeof widget !== "undefined" && settingsValues.searchEnabled;
         session.modelSearchEnabled = session.type === "sdxECChangeAction" && searchEnabled !== false && searchEnabled !== "false";
         facet.sdxECCAAutoSession = session;
@@ -504,6 +605,10 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         };
         session.readCurrentContext = function () {
             var view = facet.listview;
+            var createModel = view && view.data && view.data.model;
+            if (createModel && typeof createModel.getSecurityContext === "function") {
+                return createModel.getSecurityContext();
+            }
             var field = view && view.propModel && view.propModel.get("New-SecurityContext");
             var value;
             if (field) {
@@ -512,12 +617,44 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
             }
             return value != null ? value : session.currentContext;
         };
+        // 2026의 project/organisation/role 선택은 생성 모델의 securityContext를 갱신합니다.
+        var createModel = facet.listview && facet.listview.data && facet.listview.data.model;
+        if (createModel && typeof createModel.getSecurityContext === "function") {
+            if (typeof createModel.addEvent !== "function" || typeof createModel.removeEvent !== "function") {
+                session.fail(new Error("생성 모델의 권한 문맥 변경 이벤트를 확인해 주세요."));
+            } else {
+                var onContextChange = function () {
+                    if (session.disposed) return;
+                    var value = createModel.getSecurityContext();
+                    session.currentContext = value;
+                    session.changeContext(value);
+                };
+                createModel.addEvent("onChange:securityContext", onContextChange);
+                session.cleanupContextWatch = function () {
+                    createModel.removeEvent("onChange:securityContext", onContextChange);
+                    session.cleanupContextWatch = null;
+                };
+            }
+        }
         var root = document.createElement("div");
         var style = document.createElement("style");
         style.textContent = ".sdxECCAObjectSearchValue { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; } .sdxECCAObjectSearchValue > .formTweakerContainer { flex: 1; min-width: 0; } .sdxECCAObjectSearchButton { cursor: pointer; min-width: 28px; height: 28px; border: 1px solid #b4b6ba; border-radius: 3px; background: white; } .sdxECCAObjectSearchError { width: 100%; color: #b32020; } .sdxECCAClassFields .flexLine .formLabel .mandIcon { font-size: 7px; font-family: DSFontIcon; color: rgb(234, 79, 55) !important; }";
         root.appendChild(style);
         var status = document.createElement("div");
         status.setAttribute("role", "status");
+        var retry = document.createElement("button");
+        retry.type = "button";
+        retry.textContent = "분류 속성 다시 불러오기";
+        retry.style.display = "none";
+        retry.onclick = function () {
+            if (session.disposed || session.transitioning || !session.classificationTimedOut) return;
+            var context = session.readCurrentContext && session.readCurrentContext();
+            if (context !== session.context) {
+                session.changeContext(context);
+                return;
+            }
+            sdxECCARestartAutoSession(session, context);
+        };
         var host = document.createElement("div");
         host.style.width = "100%";
         host.style.height = "360px";
@@ -552,8 +689,15 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
             }
             state.refreshReady();
             status.textContent = state.error ? state.error.message :
-                state.status === "ready" ? "" : !state.attributeControlReady ?
-                    "속성 제어 설정을 조회하고 있습니다…" : "지정 클래스 속성을 준비하고 있습니다…";
+                state.status === "ready" ? "" : state.classificationDelayed && !state.controller ?
+                    "분류 속성을 불러오는 중입니다…" : !state.attributeControlReady ?
+                        "속성 제어 설정을 조회하고 있습니다…" : "지정 클래스 속성을 준비하고 있습니다…";
+            if (state.classificationTimedOut && !state.transitioning) {
+                if (!retry.parentNode) root.insertBefore(retry, host);
+                retry.style.display = "";
+            } else {
+                retry.style.display = "none";
+            }
             host.style.display = state.attributesLoaded ? "" : "none";
         });
         sdxECCAScheduleAttributeControl(facet, session);
@@ -873,8 +1017,8 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         facet.sdxECCAAutoContext = options.securityContext || session.context;
         session.checkContext(facet.sdxECCAAutoContext);
         var started = Date.now(), connected = false;
-        facet.sdxECCAAutoTimer = setInterval(function () {
-            if (connected || session.disposed || session.transitioning || session.status === "error") { clearInterval(facet.sdxECCAAutoTimer); return; }
+        var timer = setInterval(function () {
+            if (connected || session.disposed || session.transitioning || session.status === "error") { clearInterval(timer); return; }
             if (session.refreshValidation) session.refreshValidation();
             var isCA = session.type === "sdxECChangeAction";
             var occurrence = !isCA && typeof facet.getOccurrence === "function" ? facet.getOccurrence() : null;
@@ -886,7 +1030,7 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                 (occurrence && typeof occurrence.setValidation === "function");
             if (occurrenceReady && ctrl && ctrl.autoComplete && ctrl.classifPropertiesView && ctrl.accordeonCon) {
                 connected = true;
-                clearInterval(facet.sdxECCAAutoTimer);
+                clearInterval(timer);
                 try {
                     if ((ctrl.autoComplete.selectedItems || []).length || (ctrl.classifPropModels || []).length) {
                         throw new Error("이미 분류가 선택된 화면에는 자동 초기화를 적용하지 않습니다.");
@@ -904,6 +1048,7 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                     ctrl.plmNewContextProvider = session.context;
                     if (ctrl.container) ctrl.container.style.display = "none";
                     session.controller = ctrl;
+                    // master의 M/P 연결이 모델 표식과 원본 분류 속성 렌더링을 처리합니다.
                     session.notify();
                     if (session.status === "error" || session.disposed || session.transitioning) return;
                     if (session.ruleMode === "code") {
@@ -933,8 +1078,8 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                         sdxECCAApplyOrganizationClass(ctrl, session);
                     }
                 } catch (error) { session.fail(error); }
-            } else if (Date.now() - started > 30000) {
-                clearInterval(facet.sdxECCAAutoTimer);
+            } else if (!session.classificationDelayed && Date.now() - started >= 30000) {
+                session.classificationDelayed = true;
                 var missing = [];
                 if (!ctrl) missing.push("controller");
                 else ["autoComplete", "classifPropertiesView", "accordeonCon"].forEach(function (key) {
@@ -942,9 +1087,10 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                 });
                 if (!occurrenceReady) missing.push("occurrence.setValidation");
                 console.warn("[sdxECCA] 분류 초기화 준비 미완료", missing);
-                session.fail(new Error("분류 입력창 준비 시간이 초과되었습니다. 콘솔의 준비 미완료 항목을 확인해 주세요."));
+                session.notify();
             }
         }, 100);
+        facet.sdxECCAAutoTimer = timer;
     }
 
     /** OOTB getClassPaths 응답으로 클래스 노드를 만들고 원래 select/change 처리를 실행합니다.
@@ -981,8 +1127,11 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                         session.classTitle = leaf.label;
                         ctrl._classPathMap.set(session.classId, path);
                         ctrl._classNameMap.set(session.classId, leaf.label);
-                        ctrl.classifPropertiesUI.setClassPath(ctrl.getClassPath());
-                        ctrl.classifPropertiesUI.setClassUsage(ctrl.getClassUsage());
+                        var summaryUI = ctrl.classifPropertiesUI || ctrl.classifPropertiesUIInfo;
+                        if (summaryUI) {
+                            if (typeof summaryUI.setClassPath === "function") summaryUI.setClassPath(ctrl.getClassPath());
+                            if (typeof summaryUI.setClassUsage === "function") summaryUI.setClassUsage(ctrl.getClassUsage());
+                        }
                         var data = {
                             id: session.classId, label: leaf.label, plmType: leaf.type,
                             value: {label: leaf.label, subLabel: path},
@@ -1007,7 +1156,9 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                 } catch (error) { session.fail(error); }
             },
             onFailure: function () {
-                if (!session.disposed && !session.transitioning) session.fail(new Error("지정 클래스 경로 조회에 실패했습니다."));
+                if (!session.disposed && !session.transitioning && session.status !== "error") {
+                    session.fail(new Error("지정 클래스 경로 조회에 실패했습니다."));
+                }
             }
         });
     }
@@ -1172,6 +1323,7 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         attachBridge: sdxECCAAttachAutoBridge,
         prepareFixedType: sdxECCAPrepareFixedType,
         installFields: sdxECCAInstallAutoFields,
+        checkMandatoryQuietly: sdxECCACheckMandatoryQuietly,
         destroyFields: sdxECCADestroyAutoFields,
         checkFacetContext: sdxECCACheckAutoFacetContext,
         canSubmitDialog: sdxECCACanSubmitAutoDialog,
@@ -1391,7 +1543,9 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
                 wrap(view, "buildModel", function (original) { return function (data) {
                     collect(data);
                     var result = original.apply(this, arguments);
-                    bindModel(); enforce(); return result;
+                    bindModel(); enforce();
+                    if (rules && !closed() && session.restoreInputs) session.restoreInputs(view.propModel, false);
+                    return result;
                 }; });
                 ["refresh", "loadView"].forEach(function (key) {
                     wrap(view, key, function (original) { return function () {
@@ -1421,7 +1575,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
         }).then(function (Service) {
             if (closed()) return null;
             return Service.read({securityContext: session.context, tenant: session.tenant,
-                url: options && options.url, state: session.attributeControlState, isCancelled: closed});
+                url: options && options.url, state: session.attributeControlState,
+                policy: session.createPolicy, isCancelled: closed});
         });
         return query.then(function (result) {
             if (closed() || !result) { cleanup(); return function () {}; }
@@ -1430,6 +1585,7 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
                 return a.order - b.order || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
             }).forEach(function (rule, index) { ranks.set(rule.name, index + 1); });
             enforce();
+            if (session.restoreInputs) session.restoreInputs(view.propModel, classification);
             view.refresh();
             if (classification) {
                 session.classificationControlReady = true;
