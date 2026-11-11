@@ -40,7 +40,7 @@ public class SdxEccaAttributeService extends RestService {
     @Path("/control")
     @Produces("application/json")
     public Response readControl(@jakarta.ws.rs.core.Context HttpServletRequest request,
-            @QueryParam("state") String state) {
+            @QueryParam("state") String state, @QueryParam("policy") String policy) {
         Context context = null;
         try {
             context = getAuthenticatedContext(request, true);
@@ -49,10 +49,17 @@ public class SdxEccaAttributeService extends RestService {
             if (state == null || !state.matches("[\\p{L}\\p{N}_ .:-]{1,128}") ||
                     !state.equals(state.trim())) return error(400, "INVALID_STATE");
             StringList selects = new StringList();
+            // 등록창은 저장에 사용하는 policy를 전달합니다. 기존 상태 전용 호출은 유지합니다.
+            if (policy != null && (!policy.matches("[A-Za-z0-9_]{3,128}"))) {
+                return error(400, "INVALID_POLICY");
+            }
             for (String field : FIELDS) selects.add("attribute[" + field + "]");
             // DB 조회 단계부터 조건을 제한합니다. 다른 사업부/상태의 규칙은 읽지 않습니다.
             String where = "attribute[sdxECAttributeOrganization] == 'MX' && " +
                 "attribute[sdxECAttributeState] == '" + state + "'";
+            if (policy != null) {
+                where += " && attribute[sdxECAttributeType] == '" + policy.substring(policy.length() - 3) + "'";
+            }
             List rows = DomainObject.findObjects(context, CONTROL_TYPE, "*", "*", "*", "*",
                 where, false, selects);
             if (rows == null) throw new IllegalStateException("Control query returned null");

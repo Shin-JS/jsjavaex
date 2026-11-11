@@ -1575,7 +1575,8 @@ define("DS/sdxECCAAutoClass/sdxECCAAttributeControl", ["require"], function (req
         }).then(function (Service) {
             if (closed()) return null;
             return Service.read({securityContext: session.context, tenant: session.tenant,
-                url: options && options.url, state: session.attributeControlState, isCancelled: closed});
+                url: options && options.url, state: session.attributeControlState,
+                policy: session.createPolicy, isCancelled: closed});
         });
         return query.then(function (result) {
             if (closed() || !result) { cleanup(); return function () {}; }

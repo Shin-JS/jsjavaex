@@ -10,13 +10,14 @@
 ## 조회 기준과 동작
 
 - 제어 객체 타입: **sdxECAttributeControl**.
-- DB where 조건: sdxECAttributeOrganization=MX AND sdxECAttributeState=<JS에서 전달한 상태>.
+- DB where 조건: sdxECAttributeOrganization=MX AND sdxECAttributeState=<JS에서 전달한 상태> AND sdxECAttributeType=<등록 policy의 마지막 3자리>.
 - 현재 사용자 인증 Context에서 조회하며 관리자 권한으로 전환하지 않습니다.
 - JS의 sdxECCAAttributeControlState 값을 state 쿼리 파라미터로 전달합니다. 서버는 상태를 하드코딩하지 않습니다.
   별도 전달이 없는 기존 등록창은 JS에서 CREATE를 기본값으로 사용합니다.
   Policy의 상태를 계산/조회한 호출부는 이 값에 실제 state 이름을 지정합니다.
   각 생성 세션이 상태값을 보관하며 협업공간 변경 후에도 같은 상태로 다시 조회합니다.
-- Policy 필드는 제어 객체에 정의되지 않았으므로 ECR/ECO별 규칙을 임의로 구분하지 않습니다.
+- 등록창은 저장에 사용하는 session.createPolicy를 policy 파라미터로 전달합니다. 서버에서 마지막 3자리를 추출합니다(sdxECR → ECR, sdxECO → ECO).
+  policy를 보내지 않는 기존 호출은 사업부/상태 조건을 유지합니다.
 - 조회 목록에 없거나 Read=N인 기본/확장 속성은 숨깁니다.
 - 기본/확장/분류 어느 폼에도 정의되지 않은 속성명은 새 입력창을 생성하지 않고 무시합니다.
 - 제어 객체가 0개이면 기본/확장 속성을 전부 숨깁니다. 조회 실패와 빈 정상 응답은 구분합니다.
@@ -45,6 +46,7 @@
 | sdxECAttributeOrder | OOTB 기본/추가 정보 구획 각각의 표시 순서. 분류는 분류 폼 안의 순서. |
 | sdxECAttributeOrganization | 현재 MX 고정 |
 | sdxECAttributeState | JS에서 전달한 Policy 상태명 |
+| sdxECAttributeType | 등록 policy의 마지막 3자리(ECR/ECO). DB where 조건에 사용 |
 | sdxECAttributeRead | Y=표시, N/X=숨김 |
 | sdxECAttributeEdit | Y=편집 허용, N/X=읽기 전용 |
 | sdxECAttributeMandatory | Y=필수 아이콘 표시, N/X=아이콘 없음 |
@@ -63,11 +65,12 @@ MandatoryCheck는 필수 빈값 검증입니다. 자료형·길이·범위·서�
 
 ## API
 
-GET /3dspace/resources/v1/modeler/sdxECCA/attributes/control?state=CREATE
+GET /3dspace/resources/v1/modeler/sdxECCA/attributes/control?state=CREATE&policy=sdxECR
 
 본문과 속성명 배열은 보내지 않습니다. 기존 POST /attributes/visibility는 제거했습니다.
 CSRF가 필요한 쓰기 작업은 하지 않습니다. WAFData의 인증된 GET에 SecurityContext를 전달합니다.
 각 생성 세션/협업공간 문맥에서 다시 조회하며 전역 캐시는 두지 않습니다.
+policy는 전달 시 영문·숫자·밑줄 3~128자만 허용합니다. Java 서비스 재컴파일과 AutoClass/DataService 동시 배포가 필요합니다.
 state는 필수이며 최대 128자의 상태명만 받습니다. 누락/빈값/따옴표 등 MQL 표현식 문자는 400으로 거절합니다.
 응답의 state가 요청값과 다르면 JS가 적용하지 않습니다.
 
