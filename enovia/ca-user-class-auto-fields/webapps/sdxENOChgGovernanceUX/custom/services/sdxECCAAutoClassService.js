@@ -300,11 +300,17 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         var options = Object.assign({}, previous.classificationOptions, {sdxECCAAutoSession: next, securityContext: context});
         try {
             sdxECCAInstallAutoFields(properties, {sdxECCAAutoSession: next});
+            var previousContainer = classification.elements && classification.elements.container;
             classification.sdxECCARebuildUI(context);
             // OOTB getInformationPanel()은 DOM의 생성창 표식을 매번 확인합니다.
             // 원래 컨테이너와 함께 분리된 표식을 새 컨테이너로 옮겨 속성 로딩도 생성 모드를 유지합니다.
             var creationPanel = classification.plmNewCreationClass;
             var container = classification.elements && classification.elements.container;
+            // 숨겨진 분류 탭을 교체해도 현재 탭의 표시 상태와 OOTB 컨테이너 클래스를 유지합니다.
+            if (previousContainer && container && previousContainer !== container) {
+                container.className = previousContainer.className;
+                container.style.cssText = previousContainer.style.cssText;
+            }
             if (creationPanel && container) container.appendChild(creationPanel);
             sdxECCAConnectAutoClassification(classification, options);
             if (dialog) sdxECCABindDialog(dialog);
