@@ -4,7 +4,7 @@
  */
 define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService", [
     "DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService",
-    "DS/sdxECCACreate/Engine"
+    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/Engine"
 ], function (AutoClass, Engine) {
     "use strict";
     return {
@@ -32,9 +32,9 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService", [
     };
 });
 
-define("DS/sdxECCACreate/Engine", [
+define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/Engine", [
     "DS/ENONewWidget/ENONew/ENONewEngine",
-    "DS/sdxECCACreate/Controller"
+    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/Controller"
 ], function (Base, Controller) {
     "use strict";
     return Base.extend({
@@ -52,9 +52,9 @@ define("DS/sdxECCACreate/Engine", [
     });
 });
 
-define("DS/sdxECCACreate/Controller", [
+define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/Controller", [
     "DS/ENONewWidget/ENONew/Controller/ENONewController",
-    "DS/sdxECCACreate/Dialog"
+    "DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/Dialog"
 ], function (Base, Dialog) {
     "use strict";
     return Base.extend({
@@ -115,7 +115,7 @@ define("DS/sdxECCACreate/Controller", [
     });
 });
 
-define("DS/sdxECCACreate/Dialog", [
+define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/Dialog", [
     "DS/ENONewWidget/ENONew/Controller/ENONewDialogController",
     "DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService"
 ], function (Base, AutoClass) {
@@ -137,7 +137,7 @@ define("DS/sdxECCACreate/Dialog", [
             if (!properties || !classification || !properties.options.sdxECCAAutoSession) {
                 throw new Error("자동 분류 세션과 생성 타입 설정을 확인해 주세요.");
             }
-            properties.require = "DS/sdxECCACreate/PropertiesFacet";
+            properties.require = "DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/PropertiesFacet";
             // 분류 facet은 master와 같은 OOTB 경로와 F/M/P 연결을 사용합니다.
             return this._parent.apply(this, arguments);
         },
@@ -166,7 +166,7 @@ define("DS/sdxECCACreate/Dialog", [
     });
 });
 
-define("DS/sdxECCACreate/PropertiesFacet", [
+define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/PropertiesFacet", [
     "DS/ENONewWidget/ENONew/View/Facet/ENOListViewFacet",
     "DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService"
 ], function (Base, AutoClass) {
