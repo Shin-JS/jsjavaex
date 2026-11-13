@@ -558,7 +558,7 @@ for (const typeName of ['sdxECChangeAction','Change Order','Change Request']) {
   if (policyName==='sdxECR'||policyName==='sdxECO') {
    assert.notEqual(state.status,'error');assert.equal(state.createPolicy,policyName);
    assert.equal(typed.basicAttributes.policy,policyName);
-   assert.equal(typed.attributes.publicAttributes[0].value,'ECR');
+   assert.equal(typed.attributes.publicAttributes[0].value,policyName.slice(-3));
   } else {assert.equal(state.status,'error');assert.match(state.error.message,/Policy/);}
  }
  assert.equal(sessions[0].createPolicy,'sdxECR');assert.equal(sessions[1].createPolicy,'sdxECO');

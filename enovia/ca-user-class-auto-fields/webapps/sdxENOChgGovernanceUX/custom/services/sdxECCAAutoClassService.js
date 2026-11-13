@@ -330,7 +330,7 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
             attributes.forEach(function (attribute) {
                 if (!attribute || attribute.name !== "sdxECType") return;
                 found = true;
-                attribute.value = "ECR";
+                attribute.value = session.createPolicy === "sdxECO" ? "ECO" : "ECR";
                 attribute.modified = true;
                 attribute.isReadOnly = true;
                 attribute.visible = false;

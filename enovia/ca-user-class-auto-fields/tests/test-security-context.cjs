@@ -3,14 +3,15 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
 const specs=JSON.parse(fs.readFileSync(path.join(__dirname,'runtime-hooks.json'),'utf8'));
-assert.equal(Object.keys(specs).length,4);
+assert.equal(Object.keys(specs).length,5);
 for(const [id,spec] of Object.entries(specs).filter(([id])=>id.startsWith('DS/ENOChgGovernanceUX/'))) {
  const note=fs.readFileSync(path.join(root,'webapps/ENOChgGovernanceUX/ENOChgGovernanceUX.js'),'utf8');
  assert(note.includes(spec.setup),id);
  for(const edit of spec.changes){assert(note.includes(edit.from));assert(note.includes(edit.to));}
  let enabled=true,created=0,ordinary=0,command={isClickProcessing:true};
  const launcher=function(){};launcher.prototype.CreateNew=()=>ordinary++;
- const runtime=vm.runInNewContext('(function(){'+spec.setup+';return sdxECCALaunch;})()',{
+ const launchName=id.endsWith('/ChgCreateChangeOrder')?'sdxECCACOLaunch':'sdxECCALaunch';
+ const runtime=vm.runInNewContext('(function(){'+spec.setup+';return '+launchName+';})()',{
   widget:{getValue:()=>enabled},console:{error(){}},
  });
  runtime({},launcher,(ids,done)=>{assert.equal(ids[0],'DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService');done({launch(){created++;}});},command);

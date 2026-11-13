@@ -58,5 +58,20 @@
     ],
     "referenceBlob": "e00ba512f45957a21e37bad935029d29ac93045d",
     "referenceVersion": "R2026x"
+  },
+  "DS/ENOChgGovernanceUX/scripts/view/ChgCreateChangeOrder": {
+    "setup": "function sdxECCACOIsEnabled() {\n    if (typeof widget === \"undefined\") return false;\n    var enabled = widget.getValue(\"sdxECCAEnableAutoClassByOrganization\");\n    return enabled === true || enabled === \"true\";\n}\n\nfunction sdxECCACOLaunch(options, Launcher, localRequire, command) {\n    if (!sdxECCACOIsEnabled()) return (new Launcher).CreateNew(options);\n    function fail(error) {\n        if (command) command.isClickProcessing = false;\n        console.error(\"[sdxECCA] CO 생성창 준비에 실패했습니다.\", error);\n    }\n    try {\n        localRequire([\"DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService\"], function (entry) {\n            try {\n                entry.launch(options, {\n                    policy: \"sdxECO\",\n                    attributeControlState: widget.getValue(\"sdxECCACOAttributeControlState\") || \"CREATE\"\n                });\n            } catch (error) { fail(error); }\n        }, fail);\n    } catch (error) { fail(error); }\n}\n",
+    "changes": [
+      {
+        "from": "(new c).CreateNew(n),r.setDialogEventForLoader()",
+        "to": "sdxECCACOLaunch(n, c, p, e),r.setDialogEventForLoader()"
+      },
+      {
+        "from": "let c={};c[d.keys.createKeys.CO_DEF_TYPE]=t.result[0].type,l.saveUserPreference(c)",
+        "to": "let c = {};\nif (!sdxECCACOIsEnabled()) {\n    c[d.keys.createKeys.CO_DEF_TYPE] = t.result[0].type;\n    l.saveUserPreference(c);\n}"
+      }
+    ],
+    "referenceVersion": "R2026x",
+    "referenceBlob": "2e8f017f2471ff3fd657b862f2c4e201f9932906"
   }
 }

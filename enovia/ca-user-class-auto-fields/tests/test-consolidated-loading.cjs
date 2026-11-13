@@ -47,7 +47,7 @@ const load = ids => new Promise((resolve, reject) => req(ids, (...modules) => re
  assert.equal(typeof control.install, 'function'); assert.equal(typeof search.install, 'function');
  assert.equal(typeof controlService.read, 'function'); assert.equal(typeof modelService.readAttributes, 'function');
  const [properties] = await load([
-  'DS/sdxECCACreate/PropertiesFacet'
+  'DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/PropertiesFacet'
  ]);
  assert.equal(typeof properties.prototype.init, 'function');
  assert.equal(requested.length, 3);

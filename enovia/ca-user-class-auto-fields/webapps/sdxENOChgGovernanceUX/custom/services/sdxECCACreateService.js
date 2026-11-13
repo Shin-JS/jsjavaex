@@ -63,8 +63,9 @@ var Dialog = BaseDialog.extend({
                 return Object.assign({}, entry, {options: Object.assign({}, entry.options)});
             });
             AutoClass.attachBridge(data, this.facets, Object.assign({}, options, {
-                tenant: this.options.sdxECCATenant
-            }));
+                tenant: this.options.sdxECCATenant,
+                attributeControlState: this.options.sdxECCACreateSettings.attributeControlState
+            }), this.options.sdxECCACreateSettings.policy);
             var properties = this.facets.find(function (entry) { return entry.facet.name === "ENOCreate"; });
             var classification = this.facets.find(function (entry) { return entry.facet.name === "classificationFacet"; });
             if (!properties || !classification || !properties.options.sdxECCAAutoSession) {
@@ -100,9 +101,16 @@ var Dialog = BaseDialog.extend({
 
     // 이 서비스의 생성자입니다. 별도 AMD 파일 요청 없이 참조합니다.
 var Controller = BaseController.extend({
+        init: function (options) {
+            this.sdxECCACreateSettings = options.sdxECCACreateSettings || {};
+            return this._parent.apply(this, arguments);
+        },
         getUI: function () {
             if (!this.dialog) {
-                this.dialog = new Dialog({sdxECCATenant: this.context && this.context.tenant}, this.createOptsModel);
+                this.dialog = new Dialog({
+                    sdxECCATenant: this.context && this.context.tenant,
+                    sdxECCACreateSettings: this.sdxECCACreateSettings
+                }, this.createOptsModel);
             }
             return this._parent.apply(this, arguments);
         },
@@ -158,7 +166,8 @@ var Controller = BaseController.extend({
 
     // 이 서비스의 생성자입니다. 별도 AMD 파일 요청 없이 참조합니다.
 var Engine = BaseEngine.extend({
-        init: function () {
+        init: function (options) {
+            this.sdxECCACreateSettings = Object.assign({}, options.sdxECCACreateSettings);
             // OOTB 엔진의 prototype에 있는 옵션/이벤트 객체를 생성창별로 분리합니다.
             this.objInfo = Object.assign({}, this.objInfo, {
                 options: Object.assign({}, this.objInfo.options),
@@ -167,17 +176,20 @@ var Engine = BaseEngine.extend({
             return this._parent.apply(this, arguments);
         },
         _getController: function (options, createOptionsModel) {
+            // OOTB Engine은 알려진 옵션만 복사하므로 전용 Controller에 명시적으로 전달합니다.
+            options.sdxECCACreateSettings = this.sdxECCACreateSettings;
             return this.controller || new Controller(options, createOptionsModel);
         }
     });
 
 return {
-        launch: function (createOptions) {
+        launch: function (createOptions, createSettings) {
             if (typeof widget === "undefined" || !AutoClass.isEnabled()) {
                 throw new Error("대상 위젯의 자동 분류 설정을 확인해 주세요.");
             }
             if (!createOptions) throw new Error("기존 생성 옵션을 확인해 주세요.");
             var options = Object.assign({}, createOptions);
+            options.sdxECCACreateSettings = Object.assign({}, createSettings);
             options.options = Object.assign({}, createOptions.options);
             // 자동 분류는 기본 속성 facet과 분류 facet을 함께 사용합니다.
             // 호출부에 탭 옵션이 없으면 OOTB가 listView로 내려가므로 여기서 보장합니다.

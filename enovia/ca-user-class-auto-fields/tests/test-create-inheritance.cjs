@@ -3,7 +3,7 @@ const fs = require('node:fs'), path = require('node:path'), vm = require('node:v
 const Base = require('./uwa-class-stub.cjs');
 const widgetValue={};
 const definitions = new Map(), cache = new Map(), calls = [], timers = [];
-const prefix = 'DS/sdxECCACreate/';
+const prefix = 'DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService/';
 const api = {
  isEnabled: () => true, configureCreateType(o) { o.type = 'sdxECChangeAction'; },
  attachBridge(data, facets) { const session = {context:data.context}; facets.forEach(f => f.options.sdxECCAAutoSession = session); },

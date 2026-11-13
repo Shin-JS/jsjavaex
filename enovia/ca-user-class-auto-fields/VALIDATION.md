@@ -56,3 +56,18 @@ DB 생성·분류 저장 성공과 실제 서버 CO/CR 회귀를 입증하지 �
 
 이전 전체 무수정 실험 기록은 `feature/ca-ootb-entry-only-2026` 브랜치의 VALIDATION.md에 남아 있습니다.
 그 실험에서 통과한 대역 검사를 실제 서버 해결로 간주하지 않습니다.
+
+
+## CO 생성 확장 검증 — 2026-11-13
+
+- `NODE_PATH=/tmp/co-test-deps/node_modules node tests/run-tests.cjs`: 17/17 통과.
+- 실제 R2026x Governance의 CA/CO 생성 factory와 ENONewEngine을 private-rag 참조에서 읽어 별도 입력으로 검사했습니다.
+- `node tests/test-governance-2026.cjs <Governance 생성 모듈>`: 기존 CA 진입, 로더/분석/화면 갱신/일반 위젯 경로 통과.
+- `node tests/test-change-order-create.cjs <Governance 생성 모듈> <ENONewEngine 모듈>`: CO 원본 조각 적용, 일반/커스텀 분기, ECO policy/state 전달, 기본 타입 설정 보존, 실패/취소 및 동시 CA/CO 창 격리 통과.
+- 실제 Engine이 임의 root 옵션을 자동 전달하지 않는 경우에도 CO 설정이 Controller/Dialog/세션까지 도달하고 UI 재구성 후 유지되는 것을 확인했습니다.
+- 기존 검사 세 곳의 이전 내부 AMD 경로 참조를 현재 통합 모듈 구조에 맞췄습니다. CO 추가에 따라 Governance 조각 검사도 두 진입을 검사합니다.
+- 원본 입력을 요구하는 나머지 7개 검사는 이번 변경에서 실행하지 않았습니다. 공급사 소스는 jsjavaex에 복제하지 않았습니다.
+- 실제 ENOVIA 서버의 CO 생성, DB policy/속성/분류 저장, CO 목록·상세 표시, 협업공간 변경은 미검증입니다.
+
+서버 확인 기준: CA는 기존 ECR로 저장되고, CO는 `type=sdxECChangeAction`, `policy=sdxECO`, `sdxECType=ECO`로 저장되어야 합니다.
+CO 제어 GET에는 `policy=sdxECO`와 설정한 state가 전달되어야 합니다. 해당 조건의 제어 객체와 실제 초기 상태 설정을 확인합니다.

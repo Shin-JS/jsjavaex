@@ -130,3 +130,16 @@ ClassifPropModel의 onChangeAttributes 이벤트를 사용하고 화면 종료 �
 
 사용자가 지정한 private-rag의 2025/2024 Route Management와 2025 WUX/속성/6W 검색 모듈을
 읽고 대조했습니다. 정확한 경로·blob SHA·실행 검사 및 적용 범위는 [MODEL-SEARCH.md](MODEL-SEARCH.md)에 정리했습니다.
+
+
+## CO 생성 진입 — 2026-11-13
+
+R2026x `ENOChgGovernanceUX.js` blob `2e8f017f2471ff3fd657b862f2c4e201f9932906`의
+`DS/ENOChgGovernanceUX/scripts/view/ChgCreateChangeOrder`를 직접 읽었습니다.
+원본 `createChangeOrder`의 `(new c).CreateNew(n)`과 `CO_DEF_TYPE` 저장 조각만 연결 메모에 추가합니다.
+기존 AMD 의존성의 `c=ENONewLauncher`, `p=require`를 그대로 사용합니다.
+원본 CO/CA factory를 실행하여 콜백·로더·분석 이벤트 보존을 확인했습니다.
+
+R2026x `ENONewWidget.js` blob `7d7b8caf4dc7feb43cf9851883ddde3eade34ca6`의
+ENONewEngine이 `objInfo`의 알려진 옵션만 복사하는 것을 확인했습니다.
+전용 Engine에서 창별 policy/state 설정을 Controller/Dialog로 명시적으로 전달하며, 실제 원본 Engine으로 검사했습니다.

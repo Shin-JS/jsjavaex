@@ -14,7 +14,7 @@
  * G0: factory 시작의 function(e,t,i,n,o,a,s){ 와 원래 return{ 사이에 함수 두 개 추가.
  * G1: launchCreateChangeActionDialog(r)의 맨 마지막 (new e).CreateNew(d)만 교체.
  * G2: events.onSuccess의 마지막 let p={}부터 saveUserPreference(p)까지 교체.
- * Change Request/Change Order 생성 모듈은 수정하지 않습니다.
+ * Change Order는 아래 CO0/CO1/CO2를 별도 factory에 적용합니다. Change Request는 수정하지 않습니다.
  */
 
 /* [2026 OOTB 헤더 유지] DS/ENOChgGovernanceUX/scripts/view/changeAction/ChgCreateChangeAction
@@ -126,5 +126,61 @@ let p = {};
 if (!sdxECCAIsEnabled()) {
     p[n.keys.createKeys.CA_DEF_TYPE] = e.result[0].type;
     i.saveUserPreference(p);
+}
+*/
+
+/* ============================================================
+ * CO 생성창 — R2026x: DS/ENOChgGovernanceUX/scripts/view/ChgCreateChangeOrder
+ * 참조 blob: 2e8f017f2471ff3fd657b862f2c4e201f9932906
+ * CO0: 해당 factory function(e,t,i,n,o,a,s,r,l,d,c,p){ 안의 var u= 앞에 아래 함수 추가.
+ * c는 기존 ENONewLauncher, p는 기존 require입니다. 의존성/인자를 추가하지 않습니다.
+ * CA의 G0/G1/G2와 다른 factory입니다. CO 함수들을 CA factory에 넣지 않습니다.
+ * processChangeOrder/createBlankChangeOrder의 별도 생성 경로는 수정하지 않습니다.
+ * ============================================================ */
+function sdxECCACOIsEnabled() {
+    if (typeof widget === "undefined") return false;
+    var enabled = widget.getValue("sdxECCAEnableAutoClassByOrganization");
+    return enabled === true || enabled === "true";
+}
+
+function sdxECCACOLaunch(options, Launcher, localRequire, command) {
+    if (!sdxECCACOIsEnabled()) return (new Launcher).CreateNew(options);
+    function fail(error) {
+        if (command) command.isClickProcessing = false;
+        console.error("[sdxECCA] CO 생성창 준비에 실패했습니다.", error);
+    }
+    try {
+        localRequire(["DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService"], function (entry) {
+            try {
+                entry.launch(options, {
+                    policy: "sdxECO",
+                    attributeControlState: widget.getValue("sdxECCACOAttributeControlState") || "CREATE"
+                });
+            } catch (error) { fail(error); }
+        }, fail);
+    } catch (error) { fail(error); }
+}
+
+/* [CO1] createChangeOrder의 마지막 생성 호출
+ * 원래 로더·분석 이벤트·목록/상세 갱신·실패/취소 콜백은 유지합니다.
+ */
+/* [원본에서 찾을 부분]
+(new c).CreateNew(n),r.setDialogEventForLoader()
+*/
+/* [아래 코드로 교체]
+sdxECCACOLaunch(n, c, p, e),r.setDialogEventForLoader()
+*/
+
+/* [CO2] createChangeOrder의 events.onSuccess 끝 기본 타입 저장
+ * 원래 로더·분석 이벤트·목록/상세 갱신·실패/취소 콜백은 유지합니다.
+ */
+/* [원본에서 찾을 부분]
+let c={};c[d.keys.createKeys.CO_DEF_TYPE]=t.result[0].type,l.saveUserPreference(c)
+*/
+/* [아래 코드로 교체]
+let c = {};
+if (!sdxECCACOIsEnabled()) {
+    c[d.keys.createKeys.CO_DEF_TYPE] = t.result[0].type;
+    l.saveUserPreference(c);
 }
 */

@@ -2,10 +2,14 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const Base=require('./uwa-class-stub.cjs'),defs=new Map();
 vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../webapps/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService.js'),'utf8'),{
- define(id,deps,factory){defs.set(id,{deps:Array.from(deps),factory});}
+ widget:{},define(id,deps,factory){defs.set(id,{deps:Array.from(deps),factory});}
 });
 const Original=Base.extend({destroyComponent(){this.destroyed=true;}});
-const Controller=defs.get('DS/sdxECCACreate/Controller').factory(Original,function(){});
+// Controller는 통합 진입 모듈의 내부 클래스입니다. 실제 생성 경로로 얻습니다.
+const Engine=Base.extend({objInfo:{options:{},events:{}},init(options){this.controller=this._getController(options);}});
+const entry=defs.get('DS/sdxENOChgGovernanceUX/custom/services/sdxECCACreateService').factory(
+ {isEnabled:()=>true,configureCreateType(){}},Engine,Original,Base);
+const Controller=function(options){return entry.launch(options).controller;};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function deferred(){let resolve,reject;const promise=new Promise((ok,fail)=>{resolve=ok;reject=fail;});return {promise,resolve,reject};}
 (async function(){

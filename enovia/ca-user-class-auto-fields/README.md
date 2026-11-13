@@ -16,6 +16,23 @@ R2026x 소스를 우선 기준으로 합니다. 설치본의 릴리스·핫픽�
 분류 초기화·선택·속성 렌더링·저장은 기존 OOTB 경로와 F/M/P 연결을 사용합니다.
 이전 전체 무수정 브랜치의 직접 분류 초기화, 강제 번들 선로딩, 전용 분류 Controller와 자동 진단은 제거했습니다.
 
+## Change Order 생성 적용 — 2026-11-13
+
+동일한 `sdxECChangeAction` 타입을 생성하고 CO 진입에서만 `sdxECO` policy를 전달합니다.
+기본 타입 조회/생성 서비스의 `typeName`은 기존 성공 경로인 `Change Action`을 유지합니다.
+
+- `ENOChgGovernanceUX.js` 메모의 CO0/CO1/CO2를 R2026x `DS/ENOChgGovernanceUX/scripts/view/ChgCreateChangeOrder` factory에 적용합니다.
+- `sdxECCACreateService.js`, `sdxECCAAutoClassService.js`를 전체 갱신합니다. DataService와 Java 서비스는 기존 policy 조건 지원본을 사용합니다.
+- 위젯의 기존 CA policy 설정 `sdxECCACreatePolicy=sdxECR`은 유지합니다. CO 진입은 창별 설정으로 `sdxECO`를 전달하고 위젯 값을 덮어쓰지 않습니다.
+- CO 제어 조회 상태는 `sdxECCACOAttributeControlState`로 지정하며 미설정 시 `CREATE`입니다. 실제 CO 제어 객체에 `ECO_CREATE` 등 다른 값을 사용한다면 그 값으로 지정합니다. policy 초기 상태를 DB에서 자동 조회하는 기능은 추가하지 않았습니다.
+- `sdxECType`은 세션 policy에 따라 `sdxECR → ECR`, `sdxECO → ECO`로 준비합니다. 속성 제어 GET도 같은 세션 policy를 전달하므로 기존 Java 서비스가 `sdxECAttributeType=ECO` 조건으로 조회합니다.
+- 자동분류·속성 제어·검색·Text 복사·필수표시/검증은 기존 서비스를 함께 사용합니다. 클래스 조건은 현재 위젯 설정을 그대로 사용합니다.
+- CO 기본 타입 사용자 설정에는 커스텀 타입을 저장하지 않습니다. 성공 후 CO 목록/상세 갱신과 로더·분석·실패/취소 처리는 원본을 유지합니다.
+- `processChangeOrder`/`createBlankChangeOrder`의 별도 생성 경로와 Change Request 경로는 이번 적용 대상이 아닙니다.
+
+아래 자동 검사 통과와 별개로 실제 서버에서 생성/분류 저장 및 CO 목록·상세 표시를 확인해야 합니다.
+`sdxECChangeAction` 타입 객체를 CO 화면에 표시하는 지원 여부는 설치 서버의 서비스/목록 로직에 따라 달라질 수 있습니다.
+
 ## 배포 파일
 
 서버 `3dspace/webapps/sdxENOChgGovernanceUX/custom/services`에 커스텀 **세 파일을 함께** 배포합니다.

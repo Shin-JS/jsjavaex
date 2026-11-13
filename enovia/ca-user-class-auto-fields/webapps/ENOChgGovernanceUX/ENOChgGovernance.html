@@ -20,6 +20,10 @@ widget.setValue("sdxECCACreatePolicy", "sdxECR");
 widget.setValue("sdxECCAAttributeControlState", "CREATE");
 widget.setValue("sdxECCATypeDisplay", "hidden");
 
+// CO 생성 진입은 policy를 sdxECO로 별도 전달하므로 위 CA 설정을 바꾸지 않습니다.
+// CO 속성 제어 조회 상태: 실제 sdxECO 제어 객체의 상태값에 맞춥니다.
+widget.setValue("sdxECCACOAttributeControlState", "CREATE");
+
 // 3. 자동 선택할 클래스의 조건입니다.
 widget.setValue("sdxECCAClassRuleMode", "code");
 widget.setValue("sdxECCALibraryTitle", "EC Library");
