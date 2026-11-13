@@ -36,23 +36,24 @@ public class sdxEcrNumbering_mxJPO {
         }
         if (!targetType.equals(type.trim())) return 0;
         // User attributes are saved after this create action in this flow.
-        // Determine ECR from its creation policy, not the later sdxECType value.
+        // Determine ECR/ECO from the creation policy, not the later sdxECType value.
         String policy = MQLCommand.exec(context, "print bus $1 select policy dump", Arrays.asList(objectId));
         if (policy == null || policy.trim().isEmpty()) {
             throw new IllegalStateException("Missing object policy");
         }
         policy = policy.trim();
-        if ("sdxECO".equals(policy)) return 0;
-        if (!"sdxECR".equals(policy)) {
-            throw new IllegalStateException("Expected sdxECR policy; actual: " + policy);
-        }
+        String changeKind;
+        if ("sdxECR".equals(policy)) changeKind = "ECR";
+        else if ("sdxECO".equals(policy)) changeKind = "ECO";
+        else throw new IllegalStateException("Expected sdxECR or sdxECO policy; actual: " + policy);
+        String namePrefix = changeKind + "-";
         String originalName = MQLCommand.exec(context, "print bus $1 select name dump", Arrays.asList(objectId));
         if (originalName == null || originalName.trim().isEmpty()) {
             throw new IllegalStateException("Missing object name");
         }
         originalName = originalName.trim();
         boolean numbered = false;
-        if (originalName.matches("ECR-[WNVAH][0-9]{6}([0-9]{4}|[A-Z][0-9]{3})")) {
+        if (originalName.matches(namePrefix + "[WNVAH][0-9]{6}([0-9]{4}|[A-Z][0-9]{3})")) {
             try {
                 LocalDate.parse("20" + originalName.substring(5, 11),
                         DateTimeFormatter.ofPattern("uuuuMMdd", Locale.ROOT)
@@ -65,8 +66,8 @@ public class sdxEcrNumbering_mxJPO {
             }
         }
         if (numbered) return 0;
-        if (originalName.startsWith("ECR-")) {
-            throw new IllegalStateException("Malformed ECR name: " + originalName);
+        if (originalName.startsWith("ECR-") || originalName.startsWith("ECO-")) {
+            throw new IllegalStateException("Malformed or policy-mismatched " + changeKind + " name: " + originalName);
         }
         String revision = MQLCommand.exec(context, "print bus $1 select revision dump", Arrays.asList(objectId));
         if (revision == null) throw new IllegalStateException("Missing revision result buffer");
@@ -94,7 +95,7 @@ public class sdxEcrNumbering_mxJPO {
         }
         // Capture once; retries across midnight stay in the same daily series.
         LocalDate day = LocalDate.now(ZoneId.of("Asia/Seoul"));
-        String prefix = "ECR-" + divisionCode
+        String prefix = namePrefix + divisionCode
                 + day.format(DateTimeFormatter.ofPattern("yyMMdd", Locale.ROOT));
         int next = 1;
         Exception lastConflict = null;
@@ -122,13 +123,13 @@ public class sdxEcrNumbering_mxJPO {
                     ordinal = 10000 + (tail.charAt(0) - 'A') * 999
                             + Integer.parseInt(tail.substring(1)) - 1;
                 } else {
-                    throw new IllegalArgumentException("Invalid ECR suffix: " + tail);
+                    throw new IllegalArgumentException("Invalid " + changeKind + " suffix: " + tail);
                 }
                 last = Math.max(last, ordinal);
             }
             next = Math.max(next, last + 1);
             if (next > maxOrdinal) {
-                throw new IllegalStateException("ECR sequence exhausted: " + prefix, lastConflict);
+                throw new IllegalStateException(changeKind + " sequence exhausted: " + prefix, lastConflict);
             }
             String suffix;
             if (next <= 9999) {
@@ -185,10 +186,10 @@ public class sdxEcrNumbering_mxJPO {
             String actualName = MQLCommand.exec(context,
                     "print bus $1 select name dump", Arrays.asList(objectId));
             if (actualName == null || !candidate.equals(actualName.trim())) {
-                throw new IllegalStateException("ECR name changed during rename: " + candidate);
+                throw new IllegalStateException(changeKind + " name changed during rename: " + candidate);
             }
             return 0;
         }
-        throw new IllegalStateException("ECR rename conflict retry limit exceeded", lastConflict);
+        throw new IllegalStateException(changeKind + " rename conflict retry limit exceeded", lastConflict);
     }
 }

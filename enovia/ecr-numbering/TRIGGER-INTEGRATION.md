@@ -1,4 +1,4 @@
-# ECR 채번: createAction 단일 메서드 구현 (2026-10-22)
+# ECR/ECO 채번: createAction 단일 메서드 구현 (2026-11-13)
 
 모든 채번 처리를 `createAction(Context context, String[] args)` 하나에 통합했습니다.
 **args[0] = objectId 한 개만 받습니다.** 사업부·날짜·순번은 추가 인자로 받지 않습니다.
@@ -12,18 +12,19 @@ JPO 생성자는 유지하며 보조 메서드·람다·내부 클래스로 로�
 
 ## 규칙과 처리
 
-정확한 타입 sdxECChangeAction + 정책 sdxECR에만 적용합니다.
-sdxECO 정책과 다른 타입은 건너뛰며, 대상 타입의 나머지 다른 정책은 오류로 처리합니다.
-생성 구분 ECR과 정책 sdxECR이 일치한다는 전제입니다. ECO 채번은 추가하지 않았습니다.
+정확한 타입 sdxECChangeAction에 적용하며 다른 타입은 건너뜁니다.
+생성된 객체의 policy가 sdxECR이면 ECR-, sdxECO이면 ECO-를 사용합니다.
+대상 타입의 나머지 policy는 오류로 처리합니다.
 payload의 policy를 대신 변경하지 않습니다.
 
-번호는 ECR- + 사업부(W=MX, N=NW, V=VD, A=DA, H=HME) + 한국 날짜 yyMMdd + 4자리 순번입니다.
-사업부·날짜별로 0001부터 시작하며, 9999 다음 A001, A999 다음 B001, 마지막 Z999입니다.
+번호는 policy에 따른 ECR- 또는 ECO- + 사업부(W=MX, N=NW, V=VD, A=DA, H=HME) + 한국 날짜 yyMMdd + 4자리 순번입니다.
+접두어·사업부·날짜별로 각각 0001부터 시작하며, 9999 다음 A001, A999 다음 B001, 마지막 Z999입니다.
 
 1. 즉시 실행 create action에서 해결된 OBJECTID 한 개를 받습니다.
-2. type과 policy를 검사한 뒤 name을 읽고 이미 유효한 ECR 번호면 반환합니다.
+2. type과 policy를 검사한 뒤 name을 읽고 이미 해당 policy와 맞는 유효한 번호면 반환합니다.
+   ECR/ECO 접두어가 policy와 다르거나 번호가 잘못되었으면 오류로 처리합니다.
 3. 서버 사용자/credential로 사업부를 결정하고 한국 날짜를 한 번 확정합니다.
-4. temp query bus로 해당 사업부·날짜의 기존 name들을 조회하고 최대 순번 + 1을 계산합니다.
+4. temp query bus로 해당 접두어·사업부·날짜의 기존 name들을 조회하고 최대 순번 + 1을 계산합니다.
 5. `DomainObject.newInstance(context, objectId)`로 객체를 얻고 `setName(context, candidate)`로 이름을 변경합니다.
    실행 컨텍스트는 변경하지 않으며, 이 API도 changename 권한 검사를 받습니다.
 6. 변경 실패 시 트랜잭션이 update 상태인지, 자기 이름이 원래대로인지,
@@ -99,15 +100,17 @@ prepare_trigger_registration.py는 기존 전용 이름을 사용하는 다른 �
 
 ## 검증
 
-이번 변경은 JDK 17에서 --release 8로 원본 JPO 및 테스트용 매핑을 넣은 임시 JPO를
+2026-11-13 변경은 JDK 21에서 원본 JPO 및 테스트용 매핑을 넣은 임시 JPO를
 대역 SDK와 컴파일하고 JpoOnlyNumberingTest를 실행했습니다.
+이 실행 환경에는 ct.sym이 없어 --release 8 대신 -source 8 -target 8로 검사했습니다.
+Java 8 API 호환성이나 실제 ENOVIA SDK 컴파일을 이번 검사에서 보증하지는 않습니다.
 테스트용 사본에만 test-user → MX 매핑을 추가하며 배포 원본은 바꾸지 않습니다.
 DomainObject 대역의 setName 호출에서 정상 변경·충돌·권한 실패를 재현하며,
 JPO가 MQL modify로 이름을 바꾸면 테스트가 실패하도록 검사합니다.
 0001 시작, 기존 최대번호 다음 발급, 9999→A001, A999→B001, Z998→Z999,
 상한 초과, 충돌 재시도, 권한 오류 전파, 중단된 트랜잭션, changename 결과 불일치,
 대상 제외, 이중 채번 방지, 잘못된 번호·날짜·미설정 사업부를 확인했습니다.
-sdxECR 정책의 채번, sdxECO 정책 제외, 기타 정책 오류를 확인했습니다.
+sdxECR/ECR 및 sdxECO/ECO 각각에 위 검사를 실행하고 독립 순번 조회와 policy/번호 불일치 거절을 확인했습니다.
 테스트 대역은 sdxECType 조회 시 즉시 실패하도록 하여 생성 트리거가 해당 속성에 의존하지 않는지 검사합니다.
 args는 objectId 한 개만 허용하며 추가 인자, 미해결 매크로, 빈 값 등을 거부하는 것도 검사합니다.
 리플렉션으로 JPO에 선언된 메서드가 createAction 한 개뿐인지 확인합니다.
@@ -132,3 +135,11 @@ run_tests.py에서도 위 검사를 호출합니다. 기존 전체 검사와 실
 
 공급자 과거 버전 문서이며 현재 설치 커널의 충돌/트랜잭션 동작을 증명하는 자료는 아닙니다.
 
+
+
+## 이번 배포 변경
+
+`jpo/sdxEcrNumbering_mxJPO.java`를 갱신하되 서버에서 이미 사용하는 roles/users 사업부 매핑을 유지합니다.
+기존 프로그램 이름 `sdxEcrNumbering`, 메서드 `createAction`, 인자 `${OBJECTID}`는 변경하지 않습니다.
+같은 타입의 기존 Create Action 연결을 그대로 사용하며 ECO용 트리거를 중복 등록하지 않습니다.
+실제 서버에서는 ECR/ECO 각각의 생성·분류 저장·응답 name, 같은 구분 내 동시 요청과 전체 롤백을 확인해야 합니다.

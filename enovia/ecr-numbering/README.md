@@ -1,13 +1,20 @@
-# ECR No: Create Action JPO 내부 채번
+# ECR/ECO No: Create Action JPO 내부 채번
 
 2026-10-22: 현재 구현은 **createAction 단일 메서드에서 최대번호 조회 후 rename 충돌 시 재시도**하는 방식입니다.
 [jpo/sdxEcrNumbering_mxJPO.java](jpo/sdxEcrNumbering_mxJPO.java)에 채번 로직을 모두 넣었습니다. 보조 메서드 없이 `args[0]`으로 objectId 하나만 받습니다.
 카운터 객체·커스텀 속성·interface·별도 유틸리티 JAR가 필요 없습니다.
 
-채번 대상은 정확한 `sdxECChangeAction` 타입 + **`sdxECR` 정책**인 객체입니다.
-`sdxECO` 정책은 건너뛰고, 그 외 정책은 기존처럼 오류로 처리합니다.
-생성 트리거에서는 `sdxECType`이 아직 `-`이고 생성 완료 후 `ECR`로 저장되는 것이 확인되어,
-`sdxECType` 조회·비교를 제거했습니다. ECR 구분과 `sdxECR` 정책이 일치해야 합니다.
+2026-11-13: 채번 대상은 정확한 `sdxECChangeAction` 타입이며 생성된 객체의 policy로 구분합니다.
+
+| policy | 접두어 | 예시 |
+|---|---|---|
+| `sdxECR` | `ECR-` | `ECR-W2611130001` |
+| `sdxECO` | `ECO-` | `ECO-W2611130001` |
+
+접두어·사업부·날짜별로 최대번호를 조회하므로 ECR과 ECO는 각각 독립적으로 순번을 사용합니다.
+나머지 policy는 오류로 처리하며, 생성 시점에 아직 저장되지 않을 수 있는 `sdxECType`에는 의존하지 않습니다.
+이미 같은 policy에 맞는 유효한 번호가 있으면 유지합니다. 반대 접두어의 번호가 있거나 번호가 잘못되었으면 오류를 전달합니다.
+기존 객체의 일괄 재채번은 수행하지 않습니다. JPO 이름·메서드·트리거 인자는 유지합니다.
 
 배포/설정/동시성 조건은 [TRIGGER-INTEGRATION.md](TRIGGER-INTEGRATION.md)를 따릅니다.
 **createAction 안의 실제 사용자/credential 매핑은 배포 전에 채워야 합니다.**

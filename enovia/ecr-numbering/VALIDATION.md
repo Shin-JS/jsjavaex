@@ -55,3 +55,19 @@ python3 run_tests.py
 대역 테스트가 실제 DB rollback이나 다중 WAS 잠금을 구현하지는 않습니다. 서버 JPO insert/등록/실행, OOTB 트리거 보존, 생성 응답 name, 권한 및 전체 rollback은 TRIGGER-INTEGRATION.md에 따른 통합 검증이 필요합니다.
 
 이번 변경도 참조 R2024x 커밋 `ef1fd81959f127ec7d5d5760cf2178e381cf738a`의 실제 `eMatrixServletRMI.jar`, `NewContentWebServices.jar`에 대해 일반 Java 및 JPO wrapper 전체를 Java 8 대상으로 컴파일해 통과했습니다. 로컬 검사 결과: 기존 번호 규칙 143,969 assertions, 기존 번호 조회/발급 46 checks, 새 Create Action 40 assertions, Python 패치/등록 준비 도구 각 4 tests 통과. SDK 컴파일은 서버 설치 버전에서의 실행 호환성 검증과 구분합니다.
+
+
+## 2026-11-13 ECR/ECO 접두어 분리
+
+현재 배포 대상인 단일 메서드 JPO에 policy별 접두어를 추가했습니다.
+JpoOnlyNumberingTest에서 ECR/ECO 양쪽의 최초 발급, 다음 순번, 숫자/문자 전환과 상한,
+충돌 후 재조회·재시도, 권한 실패, 중단 트랜잭션, 변경 결과 불일치, 중복 호출,
+잘못된 날짜/순번 및 policy와 반대 접두어 거절을 통과했습니다.
+최대번호 조회와 정확한 충돌 조회에 해당 접두어가 사용되는지도 검사합니다.
+ECR 기존 0042 다음 0043을 발급하고 ECO는 독립적으로 0001부터 발급하는 대역 검사를 포함합니다.
+
+JDK 21 환경에 ct.sym이 없어 기존 runner의 --release 8 호출은 실패했습니다.
+runner 파일은 변경하지 않고 검사 실행 시 컴파일 옵션만 -source 8 -target 8로 대체하여,
+미설정 배포 원본/테스트용 사업부 매핑 사본 컴파일과 테스트 실행을 통과했습니다.
+이는 Java 8 API 호환성, 실제 SDK 또는 DB 동시성/롤백 검증과 구분합니다.
+서버의 트리거 등록·실행 및 다중 WAS 동시 생성은 이번 환경에서 수행하지 않았습니다.
