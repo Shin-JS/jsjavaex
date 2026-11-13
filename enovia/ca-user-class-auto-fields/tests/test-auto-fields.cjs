@@ -19,7 +19,8 @@ class Element {
  querySelectorAll(){return [];}
  contains(node){return node===this||this.children.some(c=>c.contains(node));}
 }
-const document = {createElement:()=>new Element(),activeElement:null};
+const htmlDocument = require('linkedom').parseHTML('<html><body></body></html>').document;
+const document = {createElement:tag=>tag==='template'?htmlDocument.createElement(tag):new Element(),activeElement:null};
 const context = vm.createContext({console,document,Error,Map,Set,Promise,
  widget:{getValue:key=>config[key]},
  setTimeout:fn=>{const id=++seq;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
@@ -285,6 +286,41 @@ for (const typeName of ['sdxECChangeAction', 'Change Action', 'Change Order', 'C
  let received;view.onSubmit(result=>{received=result;});
  finish({defaultAttributes:typed.defaultAttributes,attributes:{publicAttributes:[]}});
  assert.equal(received,false);assert.equal(state.status,'error');assert.match(state.error.message,/ECPlan/);
+ state.dispose();
+}
+// 세 RichText 사본만 변환하며, 최신 직렬화 값/원본 HTML/배열 형태를 보존합니다.
+{
+ config={sdxECCAEnableAutoClassByOrganization:true,sdxECCAAutoClassType:'sdxECChangeAction',sdxECCAEnableModelSearch:false};
+ const names=['sdxECPlan','sdxECCondition','sdxECReason'];
+ const typed=data();typed.defaultAttributes.Type={value:'sdxECChangeAction',range:['sdxECChangeAction'],persistData:[{name:'sdxECChangeAction'}]};
+ typed.attributes={publicAttributes:[{name:'sdxECType'}],extensionAttributes:[]};
+ names.forEach((name,i)=>typed.attributes[i===0?'publicAttributes':'extensionAttributes'].push(
+  {name,value:'initial'},{name:name+'Text',value:'stale'}));
+ const facets=metadata();api.attachBridge(typed,facets,{},'sdxECR');
+ const state=facets[0].options.sdxECCAAutoSession;api.prepareFixedType(typed,state);
+ let finish;const view={data:typed,onSubmit(callback){finish=callback;}};
+ api.installFields({listview:view,skeleton:new Element()},{sdxECCAAutoSession:state});
+ const cases=[
+  ['<p>변경 <strong>계획</strong> &amp; 검토</p><p>다음<br>단계&nbsp;확인</p>','변경 계획 & 검토\n다음\n단계 확인'],
+  ['<div><p>첫째</p><p>둘째</p></div><ul><li>항목1</li><li>항목2</li></ul>','첫째\n둘째\n항목1\n항목2'],
+  ['<p>첫째</p><p><br></p><p>셋째</p>','첫째\n\n셋째'],
+  ['<table><tr><td>A</td><td>B</td></tr><tr><td>C</td><td>D</td></tr></table>','A\tB\nC\tD'],
+  ['<p>&lt;b&gt;문자&lt;/b&gt; &#54620;&#44544;</p>','<b>문자</b> 한글'],
+  ['<script>throw 1</script><style>bad</style><p>내용<img src="x" onerror="throw 1"></p>','내용'],
+  ['일반 텍스트\n둘째 줄: 1 < 2 & 3 > 2','일반 텍스트\n둘째 줄: 1 < 2 & 3 > 2'],
+  ['',''],[null,''],['<p><br></p>',''],[['<b>A</b>','<p>B<br>C</p>'],['A','B\nC']]
+ ];
+ for(const [value,expected] of cases){
+  const outgoing={defaultAttributes:typed.defaultAttributes,attributes:{publicAttributes:[],extensionAttributes:[]}};
+  names.forEach((name,i)=>outgoing.attributes[i===0?'publicAttributes':'extensionAttributes'].push({name,value}));
+  let received;view.onSubmit(result=>received=result);finish(outgoing);assert.equal(received,outgoing,state.error && state.error.message);
+  names.forEach((name,i)=>{
+   const attrs=outgoing.attributes[i===0?'publicAttributes':'extensionAttributes'];
+   assert.deepEqual(JSON.parse(JSON.stringify(attrs.find(a=>a.name===name+'Text').value)),expected);
+   assert.equal(attrs.find(a=>a.name===name).value,value);
+   assert.equal(attrs.find(a=>a.name===name+'Text').modified,true);
+  });
+ }
  state.dispose();
 }
 for(const typeName of ['Change Action','Change Order','Change Request']) {

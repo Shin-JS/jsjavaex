@@ -66,6 +66,10 @@ CreateService는 ENONewWidget의 Engine/Controller/Dialog/ENOListViewFacet을 �
 
 기본 필드 펼치기/입력 검증과 분류 폼·분류 저장은 원래 모델과 렌더러를 사용합니다.
 C6/C7의 표시·편집·순서·필수 제어, 모델 검색, Text 복사, policy와 조직값 처리를 유지합니다.
+생성 저장 직전 `sdxECPlan`/`sdxECCondition`/`sdxECReason`의 최신 HTML에서 텍스트를 추출하여
+각각 `sdxECPlanText`/`sdxECConditionText`/`sdxECReasonText`에 저장합니다.
+원본 HTML은 유지하며 문단·줄바꿈·HTML 엔티티를 처리합니다. 빈 값은 빈 문자열로 저장하고,
+그 외 `Text` 접미사 속성은 기존 값 복사 규칙을 유지합니다.
 `sdxECOrganization` 값 출처는 미정이며 세션의 organizationValue가 있으면 publicAttributes 숨긴 필드에 반영합니다.
 
 2026 생성 모델의 getSecurityContext를 기준으로 문맥 변경 시 분류 세션을 재생성하고 이전 응답을 차단합니다.

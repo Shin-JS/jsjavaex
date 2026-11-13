@@ -369,6 +369,32 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
         });
     }
 
+    /** RichText HTML을 실행하지 않는 template에서 읽고 문단/줄바꿈을 일반 텍스트로 바꿉니다. */
+    function sdxECCAExtractRichText(value) {
+        if (Array.isArray(value)) return value.map(sdxECCAExtractRichText);
+        if (value == null) return "";
+        var template = document.createElement("template");
+        template.innerHTML = String(value);
+        var text = "";
+        function newline() {
+            if (text && text.slice(-1) !== "\n") text += "\n";
+        }
+        function read(node) {
+            if (node.nodeType === 3) { text += node.nodeValue; return; }
+            if (node.nodeType !== 1) return;
+            var tag = node.tagName.toLowerCase();
+            if (/^(script|style|template|noscript)$/.test(tag)) return;
+            if (tag === "br") { text += "\n"; return; }
+            var block = /^(p|div|li|ul|ol|blockquote|pre|h[1-6]|table|thead|tbody|tfoot|tr|hr)$/.test(tag);
+            if (block) newline();
+            if (/^(td|th)$/.test(tag) && node.previousElementSibling) text += "\t";
+            Array.prototype.forEach.call(node.childNodes, read);
+            if (block) newline();
+        }
+        Array.prototype.forEach.call(template.content.childNodes, read);
+        return text.replace(/\u00a0/g, " ").replace(/^\n+|\n+$/g, "");
+    }
+
     /** BL/모델 직렬화가 끝난 최신 value를 복사합니다. 초기 typeInfo 값은 사용하지 않습니다. */
     function sdxECCACopyTextAttributes(result, session) {
         (session.textAttributePairs || []).forEach(function (pair) {
@@ -380,6 +406,10 @@ define("DS/sdxENOChgGovernanceUX/custom/services/sdxECCAAutoClassService", [
                 throw new Error("Text 속성에 복사할 저장 값을 찾지 못했습니다: " + pair.sourceName);
             }
             var value = Array.isArray(source.value) ? source.value.slice() : source.value;
+            // 원본 HTML은 유지하고 이 세 속성의 Text 사본에만 일반 텍스트를 저장합니다.
+            if (["sdxECPlan", "sdxECCondition", "sdxECReason"].indexOf(pair.sourceName) >= 0) {
+                value = sdxECCAExtractRichText(value);
+            }
             var index = attributes.findIndex(function (item) { return item && item.name === pair.target.name; });
             var target = Object.assign({}, pair.target, index < 0 ? null : attributes[index], {
                 value: value, modified: true
